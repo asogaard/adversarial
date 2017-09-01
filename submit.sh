@@ -18,18 +18,31 @@ fi
 # Get named lxplus node to use
 rm -f .sshlog
 ssh -v asogaard@lxplus.cern.ch > .sshlog 2>&1 3>&1 &
-sleep 1
-PID=`ps -u $USER | grep "ssh$" | sed 's/^ *//g' | sed 's/ .*//g'`
+PID="$!"
+
+# -- Wait for the right time during ssh to extract node name
+QUIT=false
+PATIENCE=10
+start=`date +%s`
+while [ -z "$(cat .sshlog | grep "Connecting to lxplus.cern.ch")" ]; do
+    sleep 1
+    now=`date +%s`
+    if (( $((now - start)) > $PATIENCE )); then
+	echo "No progress in ${PATIENCE} seconds. Exiting"
+	QUIT=true
+	break
+    fi
+done
+
+# -- Clean up after ssh
 kill $PID
 wait $PID 2>/dev/null
-OUTPUT=`cat .sshlog`
 
-if [ -z "$OUTPUT" ]; then
-    echo "Got empty output from SSH"
-    exit
-fi
+# -- Quit if no node name was found
+if [ $QUIT == true ]; then { exit; }; fi
 
-LXPLUS=`echo "$OUTPUT" | grep "Connecting to lxplus.cern.ch" | cut -d "[" -f2 | cut -d "]" -f1 | xargs host | sed 's/.*\(lxplus[0-9]*\).*/\1/g'`
+# -- Extract lxplus node name from ssh output
+LXPLUS=`cat .sshlog | grep "Connecting to lxplus.cern.ch" | cut -d "[" -f2 | cut -d "]" -f1 | xargs host | sed 's/.*\(lxplus[0-9]*\).*/\1/g'`
 
 if [ -z "$LXPLUS" ]; then
     echo "Got empty LXPLUS. Something went wrong in parsing the output from SSH."
