@@ -64,5 +64,5 @@ OMP_NUM_THREADS=4 #$NUMTHREADS
 # fi
 
 echo "Running program"
-./run.py -i $INPUTDIR -o --tensorflow --gpu $OUTPUTDIR 2>&1 | tee $OUTPUTDIR/log.txt
+./run.py -i $INPUTDIR -o $OUTPUTDIR --tensorflow --gpu 2>&1 | tee $OUTPUTDIR/log.txt
 echo "Done"
