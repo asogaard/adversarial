@@ -70,6 +70,6 @@ DATASTORE=/exports/csce/datastore/ph/groups/PPE/atlas/users/$USER/adversarial
 SCRATCH=/exports/eddie/scratch/$USER/adversarial
 
 # Submit all jobs in the correct order with the necessary environment variables
-echo "qsub -v SOURCE=$EOS/$VERSION              -v DESTINATION=$SCRATCH/data            -v KRB5CCNAME=FILE:.kerberos/$KFILE scripts/stagein.sh"
-echo "qsub -v INPUTDIR=$SCRATCH/data/$VERSION   -v OUTPUTDIR=$SCRATCH/output/$TIMESTAMP scripts/run.sh"
-echo "qsub -v SOURCE=$SCRATCH/output/$TIMESTAMP -v DESTINATION=$DATASTORE/output        scripts/stageout.sh"
+qsub -v SOURCE=$EOS/$VERSION              -v DESTINATION=$SCRATCH/data            -v KRB5CCNAME=FILE:.kerberos/$KFILE scripts/stagein.sh
+qsub -v INPUTDIR=$SCRATCH/data/$VERSION   -v OUTPUTDIR=$SCRATCH/output/$TIMESTAMP scripts/run.sh
+qsub -v SOURCE=$SCRATCH/output/$TIMESTAMP -v DESTINATION=$DATASTORE/output        scripts/stageout.sh
