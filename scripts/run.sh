@@ -25,14 +25,14 @@
 #$ -l h_vmem=8G
 #
 # Specify requested number of compute cores
-#$ -pe sharedmem 1
+#----$ -pe sharedmem 2
 #
 # Specify hard runtime limit
 #$ -l h_rt=10:00:00
 
 # Request 'gpu' parallel environment and N GPUs
-#---$ -pe gpu 1
-#---$ -l gpu=1
+#$ -pe gpu 1
+#$ -l gpu=1
 
 # Send mail to these users
 #$ -M andreas.sogaard@ed.ac.uk
@@ -45,9 +45,7 @@
 # Set up correct environment
 echo "Setting up python environment"
 . /etc/profile.d/modules.sh
-#module load anaconda root/6.06.02
-#source activate adversarial
-. ./scripts/setup.sh
+. ./setup.sh
 
 # Run python program
 echo "Reading data from ${INPUTDIR}/*.root"
@@ -60,6 +58,11 @@ echo "Adding '$GROUPPATH' to PYTHONPATH"
 export PYTHONPATH=$PYTHONPATH:$GROUPPATH
 echo ""
 
+# Set number of threads for OpenMP to use for parallelisation
+# if [ ! -z "$GPU ]; then
+OMP_NUM_THREADS=4 #$NUMTHREADS
+# fi
+
 echo "Running program"
-./run.py -i $INPUTDIR -o $OUTPUTDIR | tee $OUTPUTDIR/log.txt
+./run.py -i $INPUTDIR -o --tensorflow --gpu $OUTPUTDIR 2>&1 | tee $OUTPUTDIR/log.txt
 echo "Done"
