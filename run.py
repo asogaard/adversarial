@@ -31,6 +31,7 @@ with open(os.devnull, 'w') as sys.stderr:
 sys.stderr = stderr
 
 # Custom import(s)
+from rootplotting import ap
 from rootplotting.tools import loadData, loadXsec, scale_weights
 
 # Project import(s)
@@ -46,12 +47,14 @@ import argparse
 parser = argparse.ArgumentParser(description="Perform training (and evaluation?) of adversarial neural networks for de-correlated jet tagging.")
 
 # -- Inputs
-parser.add_argument('-i', '--input',  dest='input',  action='store', type=str,
+parser.add_argument('-i', '--input',  dest='input',   action='store', type=str,
                     default='./', help='Input directory, from which to read ROOT files.')
-parser.add_argument('-o', '--output', dest='output', action='store', type=str,
+parser.add_argument('-o', '--output', dest='output',  action='store', type=str,
                     default='./', help='Output directory, to which to write results.')
-parser.add_argument('-c', '--config', dest='config', action='store', type=str,
+parser.add_argument('-c', '--config', dest='config',  action='store', type=str,
                     default='./configs/default.json', help='Configuration file.')
+parser.add_argument('--threads',      dest='threads', action='store', type=int,
+                    default=1, help='Number of (CPU) threads to use with Theano.')
 
 # -- Flags
 parser.add_argument('-v', '--verbose', dest='verbose', action='store_const', 
@@ -88,32 +91,113 @@ def main ():
             cfg = json.load(f)
             pass
 
-        
-        # Set Theano up to run on GPU. This is done automatically for Tensorflow
-        if args.gpu and not args.tensorflow:
-            import theano
-            theano.config.device  = 'gpu' # 'cuda'?
-            theano.config.floatX  = 'float32'
-            pass
-        
         # Specify Keras backend and import module
         os.environ['KERAS_BACKEND'] = "tensorflow" if args.tensorflow else "theano"
 
-        # -- Import Keras
-        import keras
-        from keras.utils.vis_utils import plot_model
+        # Configure backends
+        if args.tensorflow:
 
-        # -- Check backend
-        assert keras.backend.backend() == os.environ['KERAS_BACKEND'], \
-            "Wrong Keras backend was loaded (%s vs. %s)." % (keras.backend.backend(), os.environ['KERAS_BACKEND'])
+            # Set print level to avoid unecessary warnings
+            os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
+            # Switch: CPU/GPU 
+            if args.gpu:
+                # @FIXME: Figure out if it is possible to make Tensorflow run on
+                # multiple GPUs without memory errors?
+                #
+                # If the this environment variable is define, unset it (within
+                # the scope of the program, by deleting it from the dict) to
+                # make tensforflow run on all available GPUs
+                #--if 'CUDA_VISIBLE_DEVICES' in os.environ:
+                #--    del os.environ['CUDA_VISIBLE_DEVICES']
+                #--    pass
+
+                # Set this environment variable to "0", to make Tensorflow use
+                # the first available GPU
+                os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+            else:
+                # Setting this enviorment variable to "" makes all GPUs 
+                # invisible to tensorflow, thus forcing it to run on CPU (on as 
+                # many cores as possible)
+                os.environ['CUDA_VISIBLE_DEVICES'] = ""
+                pass
+
+            ''' @NOTE: Update section below
+            # Restrict memory usage, to avoid "CUDA_ERROR_OUT_OF_MEMORY" errors
+            import tensorflow as tf
+            from keras.backend.tensorflow_backend import set_session
+            print ">> Setting GPU option"
+            config = tf.ConfigProto()
+            config.gpu_options.per_process_gpu_memory_fraction = 0.5
+
+            print ">> Creating session"
+            if not args.gpu:
+                # Suppress "failed call to cuInit: CUDA_ERROR_NO_DEVICE" which 
+                # is intentional, since we don't want to run on GPU. This error
+                # occurs since we're using the GPU binary (tensorflow-gpu), so 
+                # we're kind of asking for it.
+                default_verbosity = tf.logging.get_verbosity()
+                #tf.logging.set_verbosity(tf.logging.FATAL)
+                tf.logging.set_verbosity(tf.logging.INFO)
+                pass
+            sess = tf.Session(config=config)
+            try:
+                # Restore default verbosity after having passed statement 
+                # throwing error.
+                tf.logging.set_verbosity(default_verbosity)
+            except NameError: pass
+
+            print ">> Setting session"
+            set_session(sess)
+            print ">> Done"
+            '''
+
+            # Print devices available to Tensorflow:
+            stderr = sys.stderr
+            with open(os.devnull, 'w') as sys.stderr:
+                from tensorflow.python.client import device_lib
+                devices = device_lib.list_local_devices()
+                pass
+            sys.stderr = stderr
+
+            log.info("Available devices:")
+            pprint(devices)
+
+        else:
+
+            if not args.gpu:
+                # Set number of OpenMP threads to use; even if 1, set to force use
+                # of OpenMP which doesn't happen otherwise, for some reason. Gives 
+                # speed-up of factor of ca. 6-7. (60 sec./epoch -> 9 sec./epoch)
+                os.environ['OMP_NUM_THREADS'] = str(args.threads)
+                pass
+
+            # Switch: CPU/GPU
+            cuda_version = '8.0.61'
+            dnn_flags = [
+                'dnn.enabled=True',
+                'dnn.include_path=/exports/applications/apps/SL7/cuda/{}/include/'.format(cuda_version),
+                'dnn.library_path=/exports/applications/apps/SL7/cuda/{}/lib64/'.format(cuda_version)
+                ]
+            os.environ["THEANO_FLAGS"] = "device={},floatX=float32,openmp=True{}".format('cuda' if args.gpu else 'cpu', ','.join([''] + dnn_flags) if args.gpu else '')
+
+            pass
+        
+        # Import Keras
+        import keras
+        import keras.backend as K
+        from keras.callbacks import Callback
+        from keras.utils.vis_utils import plot_model
+        K.set_floatx('float32')
+
+        # Check backend
+        assert K.backend() == os.environ['KERAS_BACKEND'], \
+            "Wrong Keras backend was loaded (%s vs. %s)." % (K.backend(), os.environ['KERAS_BACKEND'])
         
         # Print setup information
         log.info("Running '%s'" % __file__)
         log.info("Command-line arguments:")
         pprint(vars(args))
-        #for key, val in sorted(vars(args).iteritems(), key=lambda t: t[0]):
-        #    log.info("  {:10s}: '{}'".format(key, val))
-        #    pass
 
         log.info("Configuration file contents:")
         pprint(cfg)
@@ -347,8 +431,8 @@ def main ():
         W_bkg = bkg['weight']   / np.sum(bkg['weight'])   * float(bkg['weight'].size) 
         U_sig = sig['reweight'] / np.sum(sig['reweight']) * float(bkg['reweight'].size) 
         U_bkg = bkg['reweight'] / np.sum(bkg['reweight']) * float(bkg['reweight'].size) 
-        W = np.hstack((W_sig, W_bkg))
-        U = np.hstack((U_sig, U_bkg))
+        W = np.hstack((W_sig, W_bkg)).astype(K.floatx())
+        U = np.hstack((U_sig, U_bkg)).astype(K.floatx())
         
         # Labels
         Y = np.hstack((np.ones(N_sig, dtype=int), np.zeros(N_bkg, dtype=int)))
@@ -377,15 +461,15 @@ def main ():
         #P_bkg = decorrelation_scaler.transform(P_bkg)
         
         # Concatenate signal and background samples
-        X = np.vstack((X_sig, X_bkg))
-        P = np.vstack((P_sig, P_bkg))
+        X = np.vstack((X_sig, X_bkg)).astype(K.floatx())
+        P = np.vstack((P_sig, P_bkg)).astype(K.floatx())
         pass
 
 
     # Classifier-only fit
     # --------------------------------------------------------------------------
     # Adapted from: https://github.com/asogaard/AdversarialSubstructure/blob/master/train.py
-    if Profiler("Classifier-only fit"):
+    with Profiler("Classifier-only fit"):
         # @TODO: - Add 'train' flag
         #        - Implement checkpointing
         #        - Tons of stuf...
@@ -400,37 +484,61 @@ def main ():
         #
         #else:
         
-        # Imported here, to used Keras background and settings set above
-        from adversarial.models import opts, classifier_model, adversarial_model
-        
-        log.info("Fitting non-adversarial classifier model.")
-        
-        # Create new classifier model instance
-        #classifier = classifier_model(X.shape[1], architecture=[(128, 'tanh')] * 4)
-        #classifier = classifier_model(X.shape[1], architecture=[(128, 'tanh')] * 4)
-        classifier = classifier_model(X.shape[1], default     =cfg['classifier']['default'], 
-                                                  architecture=cfg['classifier']['architecture'])
+        with Profiler():
+            # Imported here, to use Keras background and settings set above
+            from adversarial.models import opts, classifier_model, adversarial_model
+            
+            log.info("Fitting non-adversarial classifier model.")
+            
+            # Create new classifier model instance
+            classifier = classifier_model(X.shape[1], default     =cfg['classifier']['default'], 
+                                                      architecture=cfg['classifier']['architecture'])
+            
+            # Save classifier model diagram to file
+            plot_model(classifier, to_file=args.output + 'classifier.png', show_shapes=True)
+            
+            # Compile with optimiser configuration
+            classifier.compile(**opts['classifier'])
+            pass
 
-        plot_model(classifier, to_file=args.output + 'classifier.png', show_shapes=True)
-        
-        # Compile with optimiser configuration
-        classifier.compile(**opts['classifier'])
-        
-        # Get training samples
-        #N = X.shape[0]
-        #indices = np.arange(N, dtype=int)
-        #np.random.shuffle(indices)
-        #X_batch, Y_batch, W_batch, _ = sampler(replace=False).next()
-        
-        # Fit classifier model
-        #classifier.fit(X_batch, Y_batch, sample_weight=W_batch, batch_size=1024, nb_epoch=100) 
-        classifier.fit(X, Y, sample_weight=W, batch_size=1024, epochs=100, shuffle=True) 
-        
-        # Save classifier model to file
-        classifier.save('trained/classifier.h5')
+        # -- Callback for storing costs at batch-level
+        class LossHistory(Callback):
+            """Call back for logging losses for each training batch."""
+            def __init__ (self, lossnames=['loss'], step=1):
+                self.lossnames = lossnames
+                self.step = step
+                return
 
-        # Save classifier model diagram to file
+            def on_train_begin(self, logs={}):
+                self.losses = {name: list() for name in self.lossnames}
+                return
+                
+            def on_batch_end(self, batch, logs={}):
+                if logs['batch'] % self.step != 0: return
+                for name in self.lossnames:
+                    self.losses[name].append(float(logs.get(name, np.nan)))
+                    pass
+                return
+            pass
+                        
+        history = LossHistory(['loss', 'val_loss'], step=5)
+        
+        callbacks = [history]
 
+        with Profiler():
+            # Fit classifier model
+            classifier.fit(X, Y, sample_weight=W, callbacks=callbacks, **cfg['classifier']['fit'])
+            pass
+
+        with Profiler():
+            # Log history (?)
+            fig, ax = plt.subplots()
+            plt.plot(range(len(history.losses['loss'])), history.losses['loss'])
+            plt.savefig(args.output + 'costlog.pdf')
+            
+            # Save classifier model to file
+            classifier.save('trained/classifier.h5')
+            pass
         pass
 
     return
@@ -459,7 +567,7 @@ def main ():
         'sample_weight':    [W_train, np.multiply(W_train, 1. - Y_train)]
     }
 
-    # -- Callback for storing costs at batch-level
+
     class LossHistory(Callback):
         def on_train_begin(self, logs={}):
             self.lossnames = ['loss', 'classifier_loss', 'adversary_loss']
