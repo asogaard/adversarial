@@ -83,7 +83,7 @@ def classifier_model (num_params, architecture, default=dict()):
     """Network model used for classifier/tagger."""
     
     # Input(s)
-    classifier_input = Input(shape=(num_params,), name='input_classifier')
+    classifier_input = Input(shape=(num_params,), name='classifier__input')
 
     # Layer(s)
     l = classifier_input
@@ -99,21 +99,20 @@ def classifier_model (num_params, architecture, default=dict()):
 
         # -- (Opt.) Add batch normalisation layer
         if batchnorm:
-            l = BatchNormalization()(l)
+            l = BatchNormalization(name='classifier__batch_normalisation_%d' % ilayer)(l)
             pass
 
         # -- Add dense layer according to optsifications
-        #l = Dense(nodes, activation=activation, name='dense_classifier_%d' % ilayer)(l)
-        l = Dense(name='dense_classifier_%d' % ilayer, **opts)(l)
+        l = Dense(name='classifier__dense_%d' % ilayer, **opts)(l)
 
         # -- (Opt.) Add dropout regularisation layer
         if dropout:
-            l = Dropout(dropout)(l)
+            l = Dropout(dropout, name='classifier__dropout_%d' % ilayer)(l)
             pass
         pass
 
     # Output(s)
-    classifier_output = Dense(1, activation='sigmoid', name='classifier')(l)
+    classifier_output = Dense(1, activation='sigmoid', name='classifier__output')(l)
 
     # Model
     return Model(inputs=classifier_input, outputs=classifier_output, name='classifier')
