@@ -4,7 +4,7 @@ Main wiki page: https://www.wiki.ed.ac.uk/display/ResearchServices/Eddie
 
 ### Environment
 
-This tool is used in the University of Edinburgh Eddie3 cluster, within the following environment
+This tool is used in the University of Edinburgh Eddie3 cluster, within the two following environments
 ```
 $ module load anaconda cuda/8.0.61 root/6.06.02
 $ conda config --add envs_dirs /exports/csce/eddie/ph/groups/PPE/asogaard/anaconda
