@@ -24,15 +24,16 @@
 # Specify requested amount of memory per core
 #$ -l h_vmem=8G
 #
-# Specify requested number of compute cores
+# IF CPU: Specify requested number of compute cores
 #----$ -pe sharedmem 2
 #
 # Specify hard runtime limit
 #$ -l h_rt=10:00:00
 
-# Request 'gpu' parallel environment and N GPUs
-#$ -pe gpu 1
-#$ -l gpu=1
+# IF GPU: Request 'gpu' parallel environment with 2 CPU cores (necessary to have
+# enough memory ca. 11GB < 2 x 8GB) and N GPUs
+#$ -pe gpu 2
+#$ -l gpu=2
 
 # Send mail to these users
 #$ -M andreas.sogaard@ed.ac.uk
@@ -57,11 +58,6 @@ GROUPPATH=/exports/csce/eddie/ph/groups/PPE/asogaard
 echo "Adding '$GROUPPATH' to PYTHONPATH"
 export PYTHONPATH=$PYTHONPATH:$GROUPPATH
 echo ""
-
-# Set number of threads for OpenMP to use for parallelisation
-# if [ ! -z "$GPU ]; then
-OMP_NUM_THREADS=4 #$NUMTHREADS
-# fi
 
 echo "Running program"
 ./run.py -i $INPUTDIR -o $OUTPUTDIR --tensorflow --gpu 2>&1 | tee $OUTPUTDIR/log.txt
