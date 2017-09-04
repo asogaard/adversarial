@@ -10,20 +10,19 @@ import gzip
 import glob
 import json
 import pickle
-from   pprint import pprint
+from pprint import pprint
 import logging as log
 import itertools
 
 # Scientific import(s)
 import numpy as np
 from numpy.lib.recfunctions import append_fields
-from sklearn import preprocessing
-
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import StratifiedKFold
 import matplotlib.pyplot as plt
-# -- Solve "RuntimeError: Invalid DISPLAY variable" problem
-plt.switch_backend('pdf')
 
-# -- Explicitly ignore DeprecationWarning from scikit-learn
+# -- Explicitly ignore DeprecationWarning from scikit-learn, which we can't do 
+#    anything about anyway.
 stderr = sys.stderr
 with open(os.devnull, 'w') as sys.stderr:
     from hep_ml.reweight import GBReweighter, BinsReweighter
@@ -55,6 +54,8 @@ parser.add_argument('-c', '--config', dest='config',  action='store', type=str,
                     default='./configs/default.json', help='Configuration file.')
 parser.add_argument('--threads',      dest='threads', action='store', type=int,
                     default=1, help='Number of (CPU) threads to use with Theano.')
+parser.add_argument('--folds',       dest='folds',    action='store', type=int,
+                    default=2, help='Number of folds to use for stratified cross-validation.')
 
 # -- Flags
 parser.add_argument('-v', '--verbose', dest='verbose', action='store_const', 
@@ -102,19 +103,9 @@ def main ():
 
             # Switch: CPU/GPU 
             if args.gpu:
-                # @FIXME: Figure out if it is possible to make Tensorflow run on
-                # multiple GPUs without memory errors?
-                #
-                # If the this environment variable is define, unset it (within
-                # the scope of the program, by deleting it from the dict) to
-                # make tensforflow run on all available GPUs
-                #--if 'CUDA_VISIBLE_DEVICES' in os.environ:
-                #--    del os.environ['CUDA_VISIBLE_DEVICES']
-                #--    pass
-
-                # Set this environment variable to "0", to make Tensorflow use
-                # the first available GPU
-                os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+                # Set this environment variable to "0,1,...", to make Tensorflow
+                # use the first N available GPUs
+                os.environ['CUDA_VISIBLE_DEVICES'] = ','.join(map(str,range(args.threads)))
             else:
                 # Setting this enviorment variable to "" makes all GPUs 
                 # invisible to tensorflow, thus forcing it to run on CPU (on as 
@@ -122,37 +113,15 @@ def main ():
                 os.environ['CUDA_VISIBLE_DEVICES'] = ""
                 pass
 
-            ''' @NOTE: Update section below
-            # Restrict memory usage, to avoid "CUDA_ERROR_OUT_OF_MEMORY" errors
+            # Manuall specify the number of allowed CPU/GPU devices
             import tensorflow as tf
-            from keras.backend.tensorflow_backend import set_session
-            print ">> Setting GPU option"
-            config = tf.ConfigProto()
-            config.gpu_options.per_process_gpu_memory_fraction = 0.5
+            config = tf.ConfigProto(intra_op_parallelism_threads=1, 
+                                    inter_op_parallelism_threads=1,
+                                    allow_soft_placement=True, 
+                                    device_count = {'GPU' if args.gpu else 'CPU': args.threads})
+            session = tf.Session(config=config)
 
-            print ">> Creating session"
-            if not args.gpu:
-                # Suppress "failed call to cuInit: CUDA_ERROR_NO_DEVICE" which 
-                # is intentional, since we don't want to run on GPU. This error
-                # occurs since we're using the GPU binary (tensorflow-gpu), so 
-                # we're kind of asking for it.
-                default_verbosity = tf.logging.get_verbosity()
-                #tf.logging.set_verbosity(tf.logging.FATAL)
-                tf.logging.set_verbosity(tf.logging.INFO)
-                pass
-            sess = tf.Session(config=config)
-            try:
-                # Restore default verbosity after having passed statement 
-                # throwing error.
-                tf.logging.set_verbosity(default_verbosity)
-            except NameError: pass
-
-            print ">> Setting session"
-            set_session(sess)
-            print ">> Done"
-            '''
-
-            # Print devices available to Tensorflow:
+h            # Print devices available to Tensorflow:
             stderr = sys.stderr
             with open(os.devnull, 'w') as sys.stderr:
                 from tensorflow.python.client import device_lib
@@ -165,7 +134,11 @@ def main ():
 
         else:
 
-            if not args.gpu:
+            if args.gpu:
+                if argds.threads > 1:
+                    log.warning("Currently it is not possible to specify more than one GPU thread for Theano backend.")
+                    pass
+            else:
                 # Set number of OpenMP threads to use; even if 1, set to force use
                 # of OpenMP which doesn't happen otherwise, for some reason. Gives 
                 # speed-up of factor of ca. 6-7. (60 sec./epoch -> 9 sec./epoch)
@@ -189,6 +162,9 @@ def main ():
         from keras.callbacks import Callback
         from keras.utils.vis_utils import plot_model
         K.set_floatx('float32')
+        if args.tensorflow:
+            K.set_session(session)
+            pass
 
         # Check backend
         assert K.backend() == os.environ['KERAS_BACKEND'], \
@@ -451,12 +427,12 @@ def main ():
         # Depends on whether we _want_ batch normalisation. That should probably be
         # left for the hyperparameter optimisation to decide. In that case, we 
         # should probably perform the manual scaling either way.
-        substructure_scaler = preprocessing.StandardScaler().fit(X_bkg)
+        substructure_scaler = StandardScaler().fit(X_bkg)
         X_sig = substructure_scaler.transform(X_sig)
         X_bkg = substructure_scaler.transform(X_bkg)
         
         # This is already done by hand above
-        #decorrelation_scaler = preprocessing.StandardScaler().fit(P_bkg)
+        #decorrelation_scaler = StandardScaler().fit(P_bkg)
         #P_sig = decorrelation_scaler.transform(P_sig)
         #P_bkg = decorrelation_scaler.transform(P_bkg)
         
@@ -501,34 +477,26 @@ def main ():
             classifier.compile(**opts['classifier'])
             pass
 
-        # -- Callback for storing costs at batch-level
-        class LossHistory(Callback):
-            """Call back for logging losses for each training batch."""
-            def __init__ (self, lossnames=['loss'], step=1):
-                self.lossnames = lossnames
-                self.step = step
-                return
 
-            def on_train_begin(self, logs={}):
-                self.losses = {name: list() for name in self.lossnames}
-                return
-                
-            def on_batch_end(self, batch, logs={}):
-                if logs['batch'] % self.step != 0: return
-                for name in self.lossnames:
-                    self.losses[name].append(float(logs.get(name, np.nan)))
+        # Get indices for each fold in stratified k-fold training
+        # Adapted from [https://github.com/fchollet/keras/issues/1711#issuecomment-185801662]
+        skf = StratifiedKFold(n_splits=args.folds, shuffle=True)
+        histories = list()
+
+        # Perform stratified k-fold training
+        with Profiler("Stratified k-fold training"):
+            for fold, (train, test) in enumerate(skf.split(X,Y)):                
+                # Fit classifier model
+                with Profiler("Fold %d/%d" % (fold + 1, args.folds)):
+                    history = classifier.fit(X[train,:], Y[train], sample_weight=W[train], 
+                                             validation_data=(X[test,:], Y[test], W[test]), 
+                                             **cfg['classifier']['fit'])
+                    print ">>", history
+                    histories.append(history)
                     pass
-                return
+                pass
             pass
-                        
-        history = LossHistory(['loss', 'val_loss'], step=5)
-        
-        callbacks = [history]
-
-        with Profiler():
-            # Fit classifier model
-            classifier.fit(X, Y, sample_weight=W, callbacks=callbacks, **cfg['classifier']['fit'])
-            pass
+        return
 
         with Profiler():
             # Log history (?)
