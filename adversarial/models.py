@@ -79,11 +79,11 @@ def adversarial_model (classifier, architecture, num_posterior_components, num_p
     return Model(input=[classifier.input] + [input_decorrelation], output=[classifier.output, output_adversary], name='combined')
 
 
-def classifier_model (num_params, architecture, default=dict()):
+def classifier_model (num_params, architecture, default=dict(), name='classifier'):
     """Network model used for classifier/tagger."""
     
     # Input(s)
-    classifier_input = Input(shape=(num_params,), name='classifier__input')
+    classifier_input = Input(shape=(num_params,), name='{}__input'.format(name))
 
     # Layer(s)
     l = classifier_input
@@ -99,20 +99,20 @@ def classifier_model (num_params, architecture, default=dict()):
 
         # -- (Opt.) Add batch normalisation layer
         if batchnorm:
-            l = BatchNormalization(name='classifier__batch_normalisation_%d' % ilayer)(l)
+            l = BatchNormalization(name='{}__batch_normalisation_{}'.format(name, ilayer))(l)
             pass
 
         # -- Add dense layer according to optsifications
-        l = Dense(name='classifier__dense_%d' % ilayer, **opts)(l)
+        l = Dense(name='{}__dense_{}'.format(name, ilayer), **opts)(l)
 
         # -- (Opt.) Add dropout regularisation layer
         if dropout:
-            l = Dropout(dropout, name='classifier__dropout_%d' % ilayer)(l)
+            l = Dropout(dropout, name='{}__dropout_{}'.format(name, ilayer))(l)
             pass
         pass
 
     # Output(s)
-    classifier_output = Dense(1, activation='sigmoid', name='classifier__output')(l)
+    classifier_output = Dense(1, activation='sigmoid', name='{}__output'.format(name))(l)
 
     # Model
-    return Model(inputs=classifier_input, outputs=classifier_output, name='classifier')
+    return Model(inputs=classifier_input, outputs=classifier_output, name=name)
