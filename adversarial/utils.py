@@ -4,110 +4,106 @@
 """Utilities for training and evaluating adversarial neural networks for de-correlated jet tagging."""
 
 # Basic import(s)
-import re
-import sys
-import time
-from inspect import currentframe, getframeinfo, getouterframes
-from functools import wraps
+import os
+import psutil
+from .profiler import profile
 
 
-class Profiler:
-    """Profiler class, for measuring time elapsed running sections of code."""
+def print_memory ():
+    """Utility method for logging the current CPU memory usage."""
+    mem = psutil.virtual_memory()
+    print "CPU memory: {:.1f}GB / {:.1f}GB".format(mem.available * 1.0E-09,
+                                                   mem.total     * 1.0E-09)
+    return
 
-    # Static member keeping track of the number of class instances.
-    instances = 0
+
+@profile
+def initialise_backend (args):
+    """Method to initialise the chosen Keras backend according to the settings
+    specified in the command-line arguments `args`."""
     
-    def __init__ (self, title=None, depth=2):
-        """Constructor"""
-        self.__title = title
-        self.__depth = depth
-        self.__start = None
-        self.__end   = None
-        self.__filename  = None
-        self.__startline = None
-        self.__endline   = None
-
-        self.__prefix = '\033[38;2;74;176;245m\033[1m{title}\033[0m {icon} '.format(title=str(self.__class__).split('.')[-1], icon='⏱ ')
-        self.__width = 80
-
-        Profiler.instances += 1
-        pass
-
+    # Specify Keras backend and import module
+    os.environ['KERAS_BACKEND'] = "tensorflow" if args.tensorflow else "theano"
     
-    def __del__ (self):
-        """Destructor"""
-        Profiler.instances -= 1
-        return
-
-
-    def get_calling_frameinfo (self):
-        return getframeinfo(getouterframes(currentframe())[self.__depth][0])
-
-    
-    def indent (self):
-        return (Profiler.instances - 1) * 2
-
-    
-    def indent_string (self, delim='·'):
-        return delim * self.indent() + (' ' if self.indent() > 0 else '')
-
-    
-    def prefix (self, **kwargs):
-        return self.__prefix + self.indent_string(**kwargs)
-
-    
-    def length (self, string):
-        regex = re.compile(r"\x1b.*?m")
-        return len(regex.sub("", string))
-
-
-    def __enter__ (self):
-        # Extract information
-        frameinfo = self.get_calling_frameinfo()
-        self.__start = time.time()
-        self.__startline = frameinfo.lineno
-        self.__filename  = frameinfo.filename
-
-        # Print notice of new, named profiling block
-        if self.__title is not None:
-            print self.prefix() + 'Starting \033[1m{title}\033[0m'.format(title=self.__title)
-            pass
-        return
-
-
-    def __exit__ (self, *args):
-        # Extract information
-        frameinfo = self.get_calling_frameinfo()
-        self.__end = time.time()
-        self.__endline = frameinfo.lineno
-        assert self.__filename == frameinfo.filename, "Discrepancy in deduced file names"
-        duration = self.__end - self.__start
-
-        # Print summary        
-        title = self.__title or "%s:L%d-%d" % (self.__filename, self.__startline, self.__endline)
-        left  = self.prefix() + "Time elapsed in \033[1m{title}\033[0m: ".format(title=title)
-        right = '\033[1m{:.1f}s\033[0m'.format(duration)
+    # Configure backends
+    if args.tensorflow:
         
-        # '-2' due to icon in 'prefix'
-        # '+indent' due to choice of non-standard '·' character
-        # Last term takes formatting of duration into accound
-        width = self.__width \
-                - (self.length(left) - 2) \
-                + self.indent() \
-                + (len(right) - self.length(right))
+        # Set print level to avoid unecessary warnings, e.g.
+        #  $ The TensorFlow library wasn't compiled to use <SSE4.1, ...>
+        #  $ instructions, but these are available on your machine and could
+        #  $ speed up CPU computations.
+        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+        
+        # Switch: CPU/GPU
+        if args.gpu:
+            
+            # Set this environment variable to "0,1,...", to make Tensorflow
+            # use the first N available GPUs
+            os.environ['CUDA_VISIBLE_DEVICES'] = ','.join(map(str,range(args.threads)))
 
-        print "{:s}{:.>{width}s}".format(left, ' ' + right, width=width)
-        return
-
-    pass
-
-
-def profile (fn):
-    """Implement Profiler class as function decorator."""
-    @wraps(fn)
-    def wrapper (*args, **kwargs):
-        with Profiler(title='@' + fn.__name__, depth=3):
-            result = fn(*args, **kwargs)
+        else:
+            # Setting this enviorment variable to "" makes all GPUs
+            # invisible to tensorflow, thus forcing it to run on CPU (on as
+            # many cores as possible)
+            os.environ['CUDA_VISIBLE_DEVICES'] = ""
             pass
-        return result
-    return wrapper
+        
+        # Load the tensorflow module here to make sure only the correct
+        # GPU devices are set up
+        import tensorflow as tf
+
+        # @TODO: Some smart selection of GPUs to used based on actual
+        # utilisation?
+        
+        # Manually configure Tensorflow session
+        config = tf.ConfigProto(intra_op_parallelism_threads=1,
+                                inter_op_parallelism_threads=1,
+                                allow_soft_placement=True,
+                                device_count = {args.mode.upper(): args.threads},
+                                #log_device_placement=True,
+                                gpu_options=tf.GPUOptions(per_process_gpu_memory_fraction=0.1,
+                                                          allow_growth=True
+                                                          ),
+                                )
+        session = tf.Session(config=config)
+        
+    else:
+        
+        if args.gpu:
+            if args.threads > 1:
+                log.warning("Currently it is not possible to specify more than one GPU thread for \
+                Theano backend.")
+                pass
+        else:
+            # Set number of OpenMP threads to use; even if 1, set to force
+            # use of OpenMP which doesn't happen otherwise, for some
+            # reason. Gives speed-up of factor of ca. 6-7. (60 sec./epoch ->
+            # 9 sec./epoch)
+            os.environ['OMP_NUM_THREADS'] = str(args.threads)
+            pass
+
+        
+        # Switch: CPU/GPU
+        cuda_version = '8.0.61'
+        standard_flags = [
+            'device={}'.format('cuda' if args.gpu else 'cpu'),
+            'openmp=True',
+            ]
+        dnn_flags = [
+            'dnn.enabled=True',
+            'dnn.include_path=/exports/applications/apps/SL7/cuda/{}/include/'.format(cuda_version),
+            'dnn.library_path=/exports/applications/apps/SL7/cuda/{}/lib64/'  .format(cuda_version),
+            ]
+        os.environ["THEANO_FLAGS"] = ','.join(standard_flags + (dnn_flags if args.gpu else []))
+        pass
+    
+    # Import Keras backend
+    import keras.backend as K
+    K.set_floatx('float32')
+    
+    if args.tensorflow:
+        # Set global Tensorflow session
+        K.set_session(session)
+        pass
+    
+    return
