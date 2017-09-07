@@ -7,9 +7,10 @@
 
 # Check if valid Kerberos ticket exists
 KTICKET=`klist | grep /CERN.CH`
+KFILE=krb5cc_ticket
 if [ -z "$KTICKET" ]; then
     echo "No valid Kerberos ticket was found. Please create one:"
-    kinit -f asogaard@CERN.CH
+    kinit -f asogaard@CERN.CH -c .kerberos/$KFILE || { echo "Wrong password"; return 1; }
 else
     echo "Found a valid Kerberos ticket:"
     echo "  $KTICKET"
@@ -50,13 +51,6 @@ if [ -z "$LXPLUS" ]; then
 else
     echo "Using lxplus node '${LXPLUS}'"
 fi
-
-# Copy kerberos ticket to current directory (to allow rsync + ssh to access it from cwd)
-KCACHE=`echo $KRB5CCNAME | cut -d ":" -f2`
-mkdir -p .kerberos
-rm -f .kerberos/*
-scp $KCACHE .kerberos/
-KFILE=`echo $KCACHE | cut -d "/" -f3`
 
 # Define common unique indicators
 #VERSION=2017-06-22              # AnalysisTools outputObjdef cache
