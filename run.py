@@ -20,6 +20,7 @@ from numpy.lib.recfunctions import append_fields
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import StratifiedKFold
 import matplotlib.pyplot as plt
+plt.style.use('edinburgh')
 
 # -- Explicitly ignore DeprecationWarning from scikit-learn, which we can't do 
 #    anything about anyway.
@@ -102,124 +103,15 @@ def main ():
         import keras
         import keras.backend as K
         from keras.models import Model
+        from keras.layers import Input
+        from keras.layers.core import Lambda
+        from keras.layers.merge import Concatenate
         from keras.callbacks import Callback
         from keras.utils.vis_utils import plot_model
 
         if args.tensorflow:
             import tensorflow as tf
             pass
-
-        # ========== BEGIN: initialise
-        """
-        # Specify Keras backend and import module
-        os.environ['KERAS_BACKEND'] = "tensorflow" if args.tensorflow else "theano"
-
-        print_memory()
-
-        # Configure backends
-        if args.tensorflow:
-
-            # Set print level to avoid unecessary warnings, e.g.
-            #  $ The TensorFlow library wasn't compiled to use <SSE4.1, ...>
-            #  $ instructions, but these are available on your machine and could
-            #  $ speed up CPU computations.
-            #os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-
-            # Switch: CPU/GPU 
-            if args.gpu:
-
-                # Set this environment variable to "0,1,...", to make Tensorflow
-                # use the first N available GPUs
-                # @NOTE: No discernible improvement with multiple GPUs... Maybe 
-                # under more demanding conditions? Or maybe we have to manually
-                #  use the different devices through Tensorflow scoping.
-                os.environ['CUDA_VISIBLE_DEVICES'] = ','.join(map(str,range(args.threads)))
-                #if 'CUDA_VISIBLE_DEVICES' in  os.environ:
-                #    del os.environ['CUDA_VISIBLE_DEVICES']
-                #    pass
-            else:
-                # Setting this enviorment variable to "" makes all GPUs 
-                # invisible to tensorflow, thus forcing it to run on CPU (on as 
-                # many cores as possible)
-                os.environ['CUDA_VISIBLE_DEVICES'] = ""
-                pass
-
-            # Reload the tensorflow module here to make sure only the correct
-            # GPU devices are set up
-            import tensorflow as tf
-
-            # Get list of all available GPUs
-            from tensorflow.python.client import device_lib
-            local_device_protos = device_lib.list_local_devices()
-            gpus = [x.name for x in local_device_protos if x.device_type == 'GPU']
-            
-            # Cap the thread count if too few GPUs are available
-            if len(gpus) < args.threads:
-                log.warning("Requested more threads than there are available GPUs ({} vs. {}). Restricting.".format(args.threads, len(gpus)))
-                args.threads = len(gpus)
-                pass
-                
-            # @TODO: Some smart selection of GPUs to used based on actual
-            # utilisation?
-
-            # Manually configure Tensorflow session
-            #log.info("STDERR 2: " + "=" * 80)
-            config = tf.ConfigProto(intra_op_parallelism_threads=1, 
-                                    inter_op_parallelism_threads=1,
-                                    allow_soft_placement=True, 
-                                    device_count = {args.mode.upper(): args.threads},
-                                    #log_device_placement=True,
-                                    gpu_options=tf.GPUOptions(per_process_gpu_memory_fraction=0.1,
-                                                              #allow_growth=True
-                                                          ),
-                                )
-            session = tf.Session(config=config)
-
-        else:
-
-            if args.gpu:
-                if args.threads > 1:
-                    log.warning("Currently it is not possible to specify more than one GPU thread for Theano backend.")
-                    pass
-            else:
-                # Set number of OpenMP threads to use; even if 1, set to force use
-                # of OpenMP which doesn't happen otherwise, for some reason. Gives 
-                # speed-up of factor of ca. 6-7. (60 sec./epoch -> 9 sec./epoch)
-                os.environ['OMP_NUM_THREADS'] = str(args.threads)
-                pass
-
-            # Switch: CPU/GPU
-            cuda_version = '8.0.61'
-            dnn_flags = [
-                'dnn.enabled=True',
-                'dnn.include_path=/exports/applications/apps/SL7/cuda/{}/include/'.format(cuda_version),
-                'dnn.library_path=/exports/applications/apps/SL7/cuda/{}/lib64/'.format(cuda_version)
-                ]
-            os.environ["THEANO_FLAGS"] = "device={},floatX=float32,openmp=True{}".format('cuda' if args.gpu else 'cpu', ','.join([''] + dnn_flags) if args.gpu else '')
-
-            pass
-        
-        # Import Keras
-        #log.info("STDERR 3: " + "=" * 80)
-        print_memory()
-        import keras
-        import keras.backend as K
-        from keras.callbacks import Callback
-        from keras.utils.vis_utils import plot_model
-        from keras.models import Model # For merged, stratified k-fold training
-        K.set_floatx('float32')
-        if args.tensorflow:
-            K.set_session(session)
-            pass
-
-        #log.info("STDERR 4: " + "=" * 80)
-        print_memory()
-
-        # Check backend
-        assert K.backend() == os.environ['KERAS_BACKEND'], \
-            "Wrong Keras backend was loaded (%s vs. %s)." % (K.backend(), os.environ['KERAS_BACKEND'])
-        """
-        # ========== END: initialise
         
         # Print setup information
         log.info("Running '%s'" % __file__)
@@ -245,6 +137,13 @@ def main ():
         with open(args.output + 'config.json', 'wb') as f:
             json.dump(cfg, f, indent=4, sort_keys=True)
             pass
+
+        pass
+
+
+    # Loading data
+    # --------------------------------------------------------------------------
+    with Profiler("Loading data"):
         
         # Get paths for files to use
         with Profiler():
@@ -311,7 +210,6 @@ def main ():
 
         pass
 
-    print_memory()
 
     # Re-weighting to flatness (1D)
     # --------------------------------------------------------------------------
@@ -383,7 +281,6 @@ def main ():
 
         pass
 
-    print_memory()
 
     # Plotting: Re-weighting
     # --------------------------------------------------------------------------
@@ -441,8 +338,6 @@ def main ():
         plt.savefig(args.output + 'priors_2d.pdf')
         pass
 
-    print "=" * 80
-    print_memory()
 
     # Prepare arrays for training
     # --------------------------------------------------------------------------
@@ -472,31 +367,34 @@ def main ():
         X_sig = np.vstack(tuple(sig[var] for var in names)).T
         X_bkg = np.vstack(tuple(bkg[var] for var in names)).T
         
-        # De-correlation variable(s): These have already been manually define above
-        #P_sig = np.vstack(tuple(sig[var] for var in decorrelation_vars)).T
-        #P_bkg = np.vstack(tuple(bkg[var] for var in decorrelation_vars)).T
-        
         # Data pre-processing
-        # @NOTE: If we're using batch normalisation after the input layer, this 
-        # scaling should be done automatically. But no harm in doing it either way? 
-        # Depends on whether we _want_ batch normalisation. That should probably be
-        # left for the hyperparameter optimisation to decide. In that case, we 
-        # should probably perform the manual scaling either way.
+        # @NOTE: This is already done manually for P_{sig,bkg} above.
         substructure_scaler = StandardScaler().fit(X_bkg)
         X_sig = substructure_scaler.transform(X_sig)
         X_bkg = substructure_scaler.transform(X_bkg)
         
-        # This is already done by hand above
-        #decorrelation_scaler = StandardScaler().fit(P_bkg)
-        #P_sig = decorrelation_scaler.transform(P_sig)
-        #P_bkg = decorrelation_scaler.transform(P_bkg)
-        
         # Concatenate signal and background samples
         X = np.vstack((X_sig, X_bkg)).astype(K.floatx())
         P = np.vstack((P_sig, P_bkg)).astype(K.floatx())
+
+        # Convenient short-hands
+        num_samples, num_features = X.shape
+
+        # Manually shuffle input, once and for all
+        np.random.seed(21)
+
+        indices = np.arange(num_samples, dtype=int)
+        np.random.shuffle(indices)
+
+        X = X[indices,:]
+        P = P[indices,:]
+        Y = Y[indices]
+        W = W[indices]
+        U = U[indices]
+
+        np.random.seed(None)
         pass
 
-    print_memory()
 
     # Classifier-only fit
     # --------------------------------------------------------------------------
@@ -516,165 +414,88 @@ def main ():
         #else:
 
         # Get indices for each fold in stratified k-fold training
-        # Adapted from [https://github.com/fchollet/keras/issues/1711#issuecomment-185801662]
         skf = StratifiedKFold(n_splits=args.folds, shuffle=True)
         histories = list()
 
         # Get minimal number of samples for each fold, to ensure proper
         # batching. This will on average lead to a loss of around `args.folds /
         # 2` samples per classifier, which is something we can live with.
-        train_samples = min(len(train) for train, _ in skf.split(X,Y))
-        test_samples  = min(len(test)  for _, test  in skf.split(X,Y))
+        #train_samples = min(len(train) for train, _ in skf.split(X,Y))
+        #test_samples  = min(len(test)  for _, test  in skf.split(X,Y))
 
         # Importe module creator methods and optimiser options
         from adversarial.models import opts, classifier_model, adversarial_model
 
-        # Create a dummy device/context manager, for Theano
-        class DummyDevice (object):
-            def __init__ (self, *args, **kwargs): return
-            def __enter__(self, *args, **kwargs): return
-            def __exit__ (self, *args, **kwargs): return
-            pass
+        # @TODO: Implement _data-parallel_ training. In this way, the same model
+        # is trained on different slices of data on different nodes. That way we
+        # can speed up running for all training cases, not just for statified
+        # k-fold training.
+        # [https://www.tensorflow.org/deploy/distributed#create_a_cluster]
+        #
+        # @NOTE: Need to make sure that the parameres (W,b) for the classifier
+        # live on the same parameter server (PS)/CPU, and that only the
+        # computations are distributed across GPU.
+        #
+        # Resources:
+        #  [https://github.com/fchollet/keras/issues/7515]
+        #  [https://stackoverflow.com/questions/43821786/data-parallelism-in-keras]
+        #  [https://stackoverflow.com/a/44771313]
 
-        # Crate 'folds' classifiers to train separately. If using Tensorflow, 
-        # create the classifier on each of the 'threads' available GPUs.
-        # ... @TODO
+        #
         classifiers = list()
-        train_inputs, train_targets, train_weights = list(), list(), list()
-        test_inputs,  test_targets,  test_weights  = list(), list(), list()
-        #train_generator, test_generator = list(), list()
-        for fold, (train, test) in enumerate(skf.split(X,Y)):
-            
-            # Choose device on which the model should live
-            #device = tf.device('/{mode}:{idx}'.format(mode='gpu' if args.gpu
-            #else 'cpu', idx=fold % args.threads)) if args.tensorflow else
-            #DummyDevice ...
-
-            device_name = '/{mode}:{idx}'.format(mode=args.mode, idx=fold%args.threads)
-            device      = tf.device if args.tensorflow else DummyDevice
-
-            with device(device_name):
-                log.info("Creating classifier {} on device '{}'".format(fold + 1, device_name))
-            
-                # Create new classifier model instance
-                classifier = classifier_model(X.shape[1],
-                                              default=cfg['classifier']['default'], 
-                                              architecture=cfg['classifier']['architecture'],
-                                              name='classifier_{}'.format(fold))
-            
-                # Explicitly move data to the target GPU
-                ###train_inputs .append(tf.constant(X[train[:train_samples],:]))
-                ###train_targets.append(tf.constant(Y[train[:train_samples]]))
-                ###train_weights.append(tf.constant(W[train[:train_samples]]))
-                ###
-                ###test_inputs  .append(tf.constant(X[test [:test_samples],:]))
-                ###test_targets .append(tf.constant(Y[test [:test_samples]]))
-                ###test_weights .append(tf.constant(W[test [:test_samples]]))
+        
+        # Loop `k` folds
+        for fold, (train, validation) in enumerate(skf.split(X,Y)):
+            with Profiler("Fold {}/{}".format(fold + 1, args.folds)):
                 
-                ###train_generator.append((tf.constant(              X[train[:train_samples],:]),
-                ###tf.constant(np.atleast_2d(Y[train[:train_samples]]).T),
-                ###tf.constant(              W[train[:train_samples]])))
-                ###
-                ###test_inputs  .append((tf.constant(              X[test [:test_samples],:]),
-                ###tf.constant(np.atleast_2d(Y[test [:test_samples]]).T),
-                ###tf.constant(              W[test [:test_samples]])))
+                # Get classifier
+                classifier = classifier_model(num_features,
+                                              name='classifier_{}'.format(fold),
+                                              **cfg['classifier']['model'])
                 
-                #pass
-
                 # Compile with optimiser configuration
-                classifier.compile(**opts['classifier'])        
+                classifier.compile(**opts['classifier'])
+                
+                # Save classifier model diagram to file
+                if fold == 0:
+                    plot_model(classifier, to_file=args.output + 'classifier.png', show_shapes=True)
+                    pass                
+                
+                # Fit classifier model
+                hist = classifier.fit(X[train,:], Y[train], sample_weight=W[train], validation_data=(X[validation,:], Y[validation], W[validation]), **cfg['classifier']['fit'])
+                histories.append(hist.history)
 
-                # Save to list
+                # Add to list of classifiers
                 classifiers.append(classifier)
                 pass
-
-
-            # Save classifier model diagram to file
-            if fold == 0:
-                plot_model(classifier, to_file=args.output + 'classifier.png', show_shapes=True)
-                pass                
-            pass
-
-        print_memory()
-        # Perform stratified k-fold training
-        with Profiler("Classifier-only training"):
-            '''
-            # Create merged model
-            merged = Model(inputs =[clf.input  for clf in classifiers], 
-                           outputs=[clf.output for clf in classifiers], 
-                           name='StratifiedTraining')
-            # Compile
-            merged.compile(**opts['classifier'])        
-            
-            # Save
-            plot_model(merged, to_file=args.output + 'merged.png', show_shapes=True)
-            
-            # Concatenate inputs, targets, and weights, and ensure that they all
-            # have the same number of samples (to allow form proper
-            # batching). 
-            #train_samples, test_samples = np.min([(len(train), len(test)) for train, test in skf.split(X,Y)], axis=0)
-
-            #train_inputs = list()
-            #train_targets = list()
-            #train_weights = list()
-            
-            #test_inputs = list()
-            #test_targets = list()
-            #test_weights = list()
-            
-            train_inputs  = [X[train[:train_samples],:] for train,_ in skf.split(X,Y)]
-            train_targets = [Y[train[:train_samples]]   for train,_ in skf.split(X,Y)]
-            train_weights = [W[train[:train_samples]]   for train,_ in skf.split(X,Y)]
-            
-            test_inputs   = [X[test[:test_samples],:]   for _,test  in skf.split(X,Y)]
-            test_targets  = [Y[test[:test_samples]]     for _,test  in skf.split(X,Y)]
-            test_weights  = [W[test[:test_samples]]     for _,test  in skf.split(X,Y)]
-            
-            # Ensure same number of samples
-            ###train_samples = np.min(M.shape[0] for M in train_targets)
-            ###test_samples  = np.min(M.shape[0] for M in test_targets)
-            ###
-            ###train_inputs  = [M[:train_samples,:] for M in train_inputs]
-            ###train_targets = [M[:train_samples]   for M in train_targets]
-            ###train_weights = [M[:train_samples]   for M in train_weights]
-            ###
-            ###test_inputs   = [M[:test_samples,:]  for M in test_inputs]
-            ###test_targets  = [M[:test_samples]    for M in test_targets]
-            ###test_weights  = [M[:test_samples]    for M in test_weights]
-            
-            # Fit
-            hist = merged.fit(train_inputs, train_targets, sample_weight=train_weights, validation_data=(test_inputs, test_targets, test_weights), **cfg['classifier']['fit'])
-            #hist = merged.fit_generator(train_generator, 1, validation_data=test_generator)#, **cfg['classifier']['fit'])
-            '''
-            # ----- @TODO -----
-            #'''
-            for fold, (train, test) in enumerate(skf.split(X,Y)):                
-
-                # Fit classifier model
-                with Profiler("Fold %d/%d" % (fold + 1, args.folds)):
-                    print "- " * 40
-                    print_memory()
-                    hist = classifiers[fold].fit(X[train,:], Y[train], sample_weight=W[train], validation_data=(X[test,:], Y[test], W[test]), **cfg['classifier']['fit'])
-                    histories.append(hist.history)
-                    pass
-                pass        
-            #'''
-
-            pass
+            pass                
 
         print histories
 
+        with Profiler():
+            # Log history
+            fig, ax = plt.subplots()
+            linestyles = ['-', '--', '-.', ':']
+            for fold, hist in enumerate(histories):
+                n = len(hist['loss'])
+                linestyle = linestyles[fold]
+                plt.plot(range(n), hist['loss'],     color='red',  linestyle=linestyle, label='Fold {}'.format(fold + 1))
+                plt.plot(range(n), hist['val_loss'], color='blue', linestyle=linestyle)
+                pass
+            plt.xlabel("Epochs")
+            plt.ylabel("Logistic loss")
+            plt.legend()
+            plt.savefig(args.output + 'costlog.pdf')
+            pass
+
         return
 
-        with Profiler():
-            # Log history (?)
-            fig, ax = plt.subplots()
-            plt.plot(range(len(history.losses['loss'])), history.losses['loss'])
-            plt.savefig(args.output + 'costlog.pdf')
-            
-            # Save classifier model to file
-            classifier.save('trained/classifier.h5')
-            pass
+        # Train _final_ classifier on all data
+        # @TODO ...
+        
+        # Save classifier model to file
+        classifier.save('trained/classifier.h5')
+
         pass
 
     return
