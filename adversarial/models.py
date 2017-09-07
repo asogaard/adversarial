@@ -79,7 +79,7 @@ def adversarial_model (classifier, architecture, num_posterior_components, num_p
     return Model(input=[classifier.input] + [input_decorrelation], output=[classifier.output, output_adversary], name='combined')
 
 
-def classifier_model (num_params, architecture, default=dict(), name='classifier'):
+def classifier_model (num_params, architecture=[], default=dict(), name='classifier'):
     """Network model used for classifier/tagger."""
     
     # Input(s)
