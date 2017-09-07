@@ -20,7 +20,7 @@ $ pip install root_numpy
 $ pip install hep_ml
 $ pip install pydot-ng
 $ pip install graphviz
-$ pip install psutil #@TODO: for *-cpu as well
+$ pip install psutil
 $ source deactivate
 ```
 
@@ -38,13 +38,20 @@ which will submit data staging, training/evaluation, and finalisation jobs, in t
 
 To perform interactive test, login to nodes with specific a parallel environment and configuration. This is done like e.g.
 ```
-$ qlogin -pe gpu 4 -l gpu=4 -l h_vmem=8G # CPU running
-$ qlogin -pe sharedmem 4    -l h_vmem=8G # GPU
+$ qlogin -pe sharedmem 4    -l h_vmem=8G # CPU running
+$ qlogin -pe gpu 4 -l gpu=4 -l h_vmem=8G # GPU 
 ```
-where the integer argument to the parallel environment argument (`-pe`) is the
-number of CPU cores requested. The value of the `gpu` variable is the number of
-requeste GPUs, and the value of the `h_vmem` is the requested amount of memory
-per CPU.  
+where the integer argument to the parallel environment argument (`-pe`) is the number of CPU cores requested. The value of the `gpu` variable is the number of requeste GPUs, and the value of the `h_vmem` is the requested amount of memory per CPU.  
+To quickly setup the interactive environment, do e.g.
+```
+$ source setup.sh          # Sets up CPU environment by default
+$ source setup.sh gpu test # 'test' flag sets INPUTDIR and OUTPUTDIR environment variables
+$ ./run.py -i $INPUTDIR -o $OUTPUTDIR --tensorflow --gpu
+```
+To unset the current environment, do
+```
+$ source setup.sh unset
+```
 
 
 ### `matplotlib` fonts
