@@ -20,6 +20,7 @@ $ pip install root_numpy
 $ pip install hep_ml
 $ pip install pydot-ng
 $ pip install graphviz
+$ pip install psutil #@TODO: for *-cpu as well
 $ source deactivate
 ```
 
@@ -40,4 +41,19 @@ To perform interactive test, login to nodes with specific a parallel environment
 $ qlogin -pe gpu 4 -l gpu=4 -l h_vmem=8G # CPU running
 $ qlogin -pe sharedmem 4    -l h_vmem=8G # GPU
 ```
-where the integer argument to the parallel environment argument (`-pe`) is the number of CPU cores requested. The value of the `gpu` variable is the number of requeste GPUs, and the value of the `h_vmem` is the requested amount of memory per CPU.
+where the integer argument to the parallel environment argument (`-pe`) is the
+number of CPU cores requested. The value of the `gpu` variable is the number of
+requeste GPUs, and the value of the `h_vmem` is the requested amount of memory
+per CPU.  
+
+
+### `matplotlib` fonts
+
+Add custom `.ttf` fonts to
+```
+/exports/csce/eddie/ph/groups/PPE/asogaard/anaconda/adversarial-{cpu,gpu}/lib/python2.7/site-packages/matplotlib/mpl-data/fonts/ttf/
+```
+and remember to clear fonts cache
+```
+$ rm ~/.cache/matplotlib/fontList.cache
+```
