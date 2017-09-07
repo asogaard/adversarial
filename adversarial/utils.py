@@ -6,6 +6,7 @@
 # Basic import(s)
 import os
 import psutil
+import logging as log
 from .profiler import profile
 
 
@@ -21,6 +22,10 @@ def print_memory ():
 def initialise_backend (args):
     """Method to initialise the chosen Keras backend according to the settings
     specified in the command-line arguments `args`."""
+
+    # Check(s)
+    if args.gpu and args.threads > 1:
+        raise NotImplementedError("Distributed training on GPUs is current not enabled.")
     
     # Specify Keras backend and import module
     os.environ['KERAS_BACKEND'] = "tensorflow" if args.tensorflow else "theano"
@@ -52,12 +57,13 @@ def initialise_backend (args):
         # GPU devices are set up
         import tensorflow as tf
 
-        # @TODO: Some smart selection of GPUs to used based on actual
-        # utilisation?
+        # @TODO: - Some smart selection of GPUs to used based on actual #
+        # utilisation?  - Data parallism/data on GPU/some way to avoid starving
+        # GPU of data?
         
         # Manually configure Tensorflow session
-        config = tf.ConfigProto(intra_op_parallelism_threads=1,
-                                inter_op_parallelism_threads=1,
+        config = tf.ConfigProto(intra_op_parallelism_threads=0, # Automatically decide
+                                inter_op_parallelism_threads=0, # Automatically decide
                                 allow_soft_placement=True,
                                 device_count = {args.mode.upper(): args.threads},
                                 #log_device_placement=True,
