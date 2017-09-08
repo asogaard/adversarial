@@ -46,11 +46,11 @@
 # Set up correct environment
 echo "Setting up python environment"
 . /etc/profile.d/modules.sh
-. ./setup.sh
+. ./setup.sh gpu
 
 # Run python program
-echo "Reading data from ${INPUTDIR}/*.root"
-echo "Writing to ${OUTPUTDIR}/"
+echo "Reading data from $INPUTDIR/*.root"
+echo "Writing to $OUTPUTDIR/"
 mkdir -p $OUTPUTDIR
 echo ""
 
@@ -59,6 +59,28 @@ echo "Adding '$GROUPPATH' to PYTHONPATH"
 export PYTHONPATH=$PYTHONPATH:$GROUPPATH
 echo ""
 
-echo "Running program"
-./run.py -i $INPUTDIR -o $OUTPUTDIR --tensorflow --gpu 2>&1 | tee $OUTPUTDIR/log.txt
+# Set up command-line arguments to the python script
+FLAGS="-i $INPUTDIR -o $OUTPUTDIR"
+if [ "$GPU" == true ]; then
+    FLAGS="$FLAGS --gpu"
+fi
+if [ "$TRAIN" == true ]; then
+    FLAGS="$FLAGS --train"
+fi
+if [ "$TENSORFLOW" == true ]; then
+    FLAGS="$FLAGS --tensorflow"
+fi
+if [ ! -z "$CONFIG" ]; then 
+    FLAGS="$FLAGS --config $CONFIG"
+fi
+if [ ! -z "$PATCH" ]; then 
+    read -r -a PATCH_ARRAY <<< "$PATCH"
+    for THIS_PATCH in "${PATCH_ARRAY[@]}"; do
+	FLAGS="$FLAGS --patch $THIS_PATCH"
+    done
+fi
+
+echo "Running program with flags:"
+echo "  $FLAGS"
+./run.py $FLAGS 2>&1 | tee $OUTPUTDIR/log.txt
 echo "Done"
