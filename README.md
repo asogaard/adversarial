@@ -29,9 +29,10 @@ $ source deactivate
 
 To submit jobs to batch, do
 ```
-$ . scripts/submit.sh
+$ ./submit.sh
 ```
-which will submit data staging, training/evaluation, and finalisation jobs, in that order.
+which will submit data staging, training/evaluation, and finalisation jobs, in
+that order. Used `TAB` to auto-complete and see available command-line arguments.
 
 
 ### Interactive sessions
@@ -46,8 +47,9 @@ To quickly setup the interactive environment, do e.g.
 ```
 $ source setup.sh          # Sets up CPU environment by default
 $ source setup.sh gpu test # 'test' flag sets INPUTDIR and OUTPUTDIR environment variables
-$ ./run.py -i $INPUTDIR -o $OUTPUTDIR --tensorflow --gpu
+$ run.py -i $INPUTDIR -o $OUTPUTDIR --tensorflow --gpu
 ```
+Tab-completion is enabled for `run.py`.
 To unset the current environment, do
 ```
 $ source setup.sh unset
