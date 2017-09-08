@@ -47,7 +47,7 @@ To quickly setup the interactive environment, do e.g.
 ```
 $ source setup.sh          # Sets up CPU environment by default
 $ source setup.sh gpu test # 'test' flag sets INPUTDIR and OUTPUTDIR environment variables
-$ run.py -i $INPUTDIR -o $OUTPUTDIR --tensorflow --gpu
+$ ./run.py -i $INPUTDIR -o $OUTPUTDIR --tensorflow --gpu
 ```
 Tab-completion is enabled for `run.py`.
 To unset the current environment, do
