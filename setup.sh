@@ -62,6 +62,6 @@ if [ "$TEST" == true ]; then
 fi
 
 # Enable auto-complete for command-line arguments
-source autocomplete.sh
+source scripts/autocomplete.sh
 
 return
