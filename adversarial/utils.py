@@ -7,6 +7,9 @@
 import os
 import psutil
 import logging as log
+import collections
+
+# Project import(s)
 from .profiler import profile
 
 
@@ -17,6 +20,18 @@ def print_memory ():
                                                    mem.total     * 1.0E-09)
     return
 
+def apply_patch (d, u):
+    """Update nested dictionary without overwriting previous levels.
+    From [https://stackoverflow.com/a/3233356]"""
+    for k, v in u.iteritems():
+        if isinstance(v, collections.Mapping):
+            r = apply_patch(d.get(k, {}), v)
+            d[k] = r
+        else:
+            d[k] = u[k]
+            pass
+        pass
+    return d
 
 @profile
 def initialise_backend (args):

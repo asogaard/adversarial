@@ -17,9 +17,13 @@ import itertools
 # Scientific import(s)
 import numpy as np
 from numpy.lib.recfunctions import append_fields
+np.random.seed(21) # For reproducibility
+
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import StratifiedKFold
+
 import matplotlib.pyplot as plt
+plt.switch_backend('pdf')
 plt.style.use('edinburgh')
 
 # -- Explicitly ignore DeprecationWarning from scikit-learn, which we can't do 
@@ -54,7 +58,9 @@ parser.add_argument('-o', '--output', dest='output',  action='store', type=str,
                     default='./', help='Output directory, to which to write results.')
 parser.add_argument('-c', '--config', dest='config',  action='store', type=str,
                     default='./configs/default.json', help='Configuration file.')
-parser.add_argument('--threads',      dest='threads', action='store', type=int,
+parser.add_argument('-p', '--patch', dest='patches', action='append', type=str,
+                    help='Patch file(s) with which to update configuration file.')
+parser.add_argument('--threads',     dest='threads', action='store', type=int,
                     default=1, help='Number of (CPU) threads to use with Theano.')
 parser.add_argument('--folds',       dest='folds',    action='store', type=int,
                     default=2, help='Number of folds to use for stratified cross-validation.')
@@ -66,6 +72,8 @@ parser.add_argument('-g', '--gpu',  dest='gpu',        action='store_const',
                     const=True, default=False, help='Run on GPU')
 parser.add_argument('--tensorflow', dest='tensorflow', action='store_const',
                     const=True, default=False, help='Use Tensorflow backend')
+parser.add_argument('--train', dest='train', action='store_const',
+                    const=True, default=False, help='Perform training')
 
 
 # Main function definition
@@ -97,12 +105,22 @@ def main ():
             cfg = json.load(f)
             pass
 
+        # Apply patches
+        for patch_file in args.patches:
+            log.info("Applying patch '{}'".format(patch_file))
+            with open(patch_file, 'r') as f:
+                patch = json.load(f)
+                pass
+            apply_patch(cfg, patch)
+            pass
+
         # Initialise Keras backend
         initialise_backend(args)
 
         import keras
         import keras.backend as K
         from keras.models import Model
+        from keras.models import load_model
         from keras.layers import Input
         from keras.layers.core import Lambda
         from keras.layers.merge import Concatenate
@@ -161,9 +179,18 @@ def main ():
         datatreename = 'BoostedJet+ISRgamma/Nominal/EventSelection/Pass/NumLargeRadiusJets/Postcut'
         infotreename = 'BoostedJet+ISRgamma/Nominal/outputTree'
         prefix = 'Jet_'
-        # @TODO: Is it easier/better to drop the prefix, list the names explicitly, and then rename manually afterwards? Or should the 'loadData' method support a 'rename' argument, using regex, with support for multiple such operations? That last one is probably the way to go, actually... In that case, I should probably also allow for regex support for branches? Like branches=['Jet_.*', 'leading_Photons_.*'], rename=[('Jet_', ''),]
+        # @TODO: Is it easier/better to drop the prefix, list the names
+        # explicitly, and then rename manually afterwards? Or should the
+        # 'loadData' method support a 'rename' argument, using regex, with
+        # support for multiple such operations? That last one is probably the
+        # way to go, actually... In that case, I should probably also allow for
+        # regex support for branches? Like branches=['Jet_.*',
+        # 'leading_Photons_.*'], rename=[('Jet_', ''),]
 
-        #branches = ['m', 'pt', 'C2', 'D2', 'ECF1', 'ECF2', 'ECF3', 'Split12', 'Split23', 'Split34', 'eta', 'leading_Photons_E', 'leading_Photons_eta', 'leading_Photons_phi', 'leading_Photons_pt', 'nTracks', 'phi', 'rho', 'tau21']
+        #branches = ['m', 'pt', 'C2', 'D2', 'ECF1', 'ECF2', 'ECF3', 'Split12',
+        #'Split23', 'Split34', 'eta', 'leading_Photons_E',
+        #'leading_Photons_eta', 'leading_Photons_phi', 'leading_Photons_pt',
+        #'nTracks', 'phi', 'rho', 'tau21']
 
         log.info("Reading data from '%s' with prefix '%s'" % (datatreename, prefix))
         log.info("Reading info from '%s'" % (infotreename))
@@ -381,8 +408,6 @@ def main ():
         num_samples, num_features = X.shape
 
         # Manually shuffle input, once and for all
-        np.random.seed(21)
-
         indices = np.arange(num_samples, dtype=int)
         np.random.shuffle(indices)
 
@@ -391,8 +416,6 @@ def main ():
         Y = Y[indices]
         W = W[indices]
         U = U[indices]
-
-        np.random.seed(None)
         pass
 
 
@@ -414,8 +437,7 @@ def main ():
         #else:
 
         # Get indices for each fold in stratified k-fold training
-        skf = StratifiedKFold(n_splits=args.folds, shuffle=True)
-        histories = list()
+        skf = StratifiedKFold(n_splits=args.folds, shuffle=True, random_state=True)
 
         # Get minimal number of samples for each fold, to ensure proper
         # batching. This will on average lead to a loss of around `args.folds /
@@ -424,7 +446,7 @@ def main ():
         #test_samples  = min(len(test)  for _, test  in skf.split(X,Y))
 
         # Importe module creator methods and optimiser options
-        from adversarial.models import opts, classifier_model, adversarial_model
+        from adversarial.models import compiler_options, classifier_model, adversarial_model
 
         # @TODO: Implement _data-parallel_ training. In this way, the same model
         # is trained on different slices of data on different nodes. That way we
@@ -441,47 +463,94 @@ def main ():
         #  [https://stackoverflow.com/questions/43821786/data-parallelism-in-keras]
         #  [https://stackoverflow.com/a/44771313]
 
-        #
+        # Collection of classifiers and their associated training histories
         classifiers = list()
-        
-        # Loop `k` folds
-        for fold, (train, validation) in enumerate(skf.split(X,Y)):
-            with Profiler("Fold {}/{}".format(fold + 1, args.folds)):
-                
-                # Get classifier
-                classifier = classifier_model(num_features,
-                                              name='classifier_{}'.format(fold),
-                                              **cfg['classifier']['model'])
-                
-                # Compile with optimiser configuration
-                classifier.compile(**opts['classifier'])
-                
-                # Save classifier model diagram to file
-                if fold == 0:
-                    plot_model(classifier, to_file=args.output + 'classifier.png', show_shapes=True)
-                    pass                
-                
-                # Fit classifier model
-                hist = classifier.fit(X[train,:], Y[train], sample_weight=W[train], validation_data=(X[validation,:], Y[validation], W[validation]), **cfg['classifier']['fit'])
-                histories.append(hist.history)
+        histories   = list()
 
-                # Add to list of classifiers
-                classifiers.append(classifier)
+        # Train or load classifiers
+        if args.train:
+            log.info("Training classifiers")
+            
+            # Loop `k` folds
+            for fold, (train, validation) in enumerate(skf.split(X,Y)):
+                with Profiler("Fold {}/{}".format(fold + 1, args.folds)):
+
+                    # Define unique tag and name for current classifier
+                    tag = '{}of{}'.format(fold+1, args.folds)
+                    name = 'crossval_classifier__{}'.format(tag)
+                    
+                    # Get classifier
+                    classifier = classifier_model(num_features, name=name,
+                                                  **cfg['classifier']['model'])
+                    
+                    # Compile with optimiser configuration
+                    #classifier.compile(**compiler_options['classifier'])
+                    opts = dict(**cfg['classifier']['compile'])
+                    opts['optimizer'] = eval("keras.optimizers.{optimizer}(lr={lr}, decay={decay})" \
+                                             .format(optimizer = opts['optimizer'],
+                                                     lr        = opts.pop('lr'),
+                                                     decay     = opts.pop('decay')))
+                    classifier.compile(**opts)
+                    
+                    # Save classifier model diagram to file
+                    if fold == 0:
+                        plot_model(classifier, to_file=args.output + 'classifier.png', show_shapes=True)
+                        pass                
+                    
+                    # Fit classifier model
+                    hist = classifier.fit(X[train,:], Y[train], sample_weight=W[train],
+                                          validation_data=(X[validation,:], Y[validation], W[validation]),
+                                          **cfg['classifier']['fit'])
+                    histories.append(hist.history)
+                    
+                    # Save classifier model to file
+                    classifier.save('trained/{}.h5'.format(name))
+
+                    # Save training history to file, both in unique output
+                    # directory and in the directory for pre-trained classifiers
+                    for destination in [args.output, 'trained/']:
+                        with open(destination + 'history__{}.json'.format(name), 'wb') as f:
+                            json.dump(hist.history, f)
+                            pass
+                        pass
+                    
+                    # Add to list of classifiers
+                    classifiers.append(classifier)
+                    pass
                 pass
-            pass                
+        else:
+            log.info("Loading classifiers from file")
+            
+            # Load pre-trained classifiers
+            classifier_files = sorted(glob.glob('trained/crossval_classifier__*of{}.h5'.format(args.folds)))
+            assert len(classifier_files) == args.folds, "Number of pre-trained classifiers ({}) does not match number of requested folds ({})".format(len(classifier_files), args.folds)
+            for classifier_file in classifier_files:
+                classifiers.append(load_model(classifier_file))
+                pass
 
-        print histories
+            # Load associated training histories
+            history_files = sorted(glob.glob('trained/history__crossval_classifier__*of{}.json'.format(args.folds)))
+            assert len(history_files) == args.folds, "Number of training histories for pre-trained classifiers ({}) does not match number of requested folds ({})".format(len(history_files), args.folds)
+            for history_file in history_files:
+                with open(history_file, 'r') as f:
+                    histories.append(json.load(f))
+                    pass
+                pass
 
+            pass # end: train/load
+        
         with Profiler():
             # Log history
             fig, ax = plt.subplots()
-            linestyles = ['-', '--', '-.', ':']
+            colours = map(lambda d: d['color'], list(plt.rcParams["axes.prop_cycle"]))
             for fold, hist in enumerate(histories):
-                n = len(hist['loss'])
-                linestyle = linestyles[fold]
-                plt.plot(range(n), hist['loss'],     color='red',  linestyle=linestyle, label='Fold {}'.format(fold + 1))
-                plt.plot(range(n), hist['val_loss'], color='blue', linestyle=linestyle)
+                epochs = 1 + np.arange(len(hist['loss']))
+                train_plot      = plt.plot(epochs, hist['loss'],     color=colours[0],
+                                           label='Training'   if fold == 0 else None)
+                validation_plot = plt.plot(epochs, hist['val_loss'], color=colours[1],
+                                           label='Validation' if fold == 0 else None)
                 pass
+            plt.title('Classifier-only, stratified {}-fold training'.format(args.folds), fontweight='medium')
             plt.xlabel("Epochs")
             plt.ylabel("Logistic loss")
             plt.legend()
@@ -493,8 +562,6 @@ def main ():
         # Train _final_ classifier on all data
         # @TODO ...
         
-        # Save classifier model to file
-        classifier.save('trained/classifier.h5')
 
         pass
 
@@ -543,7 +610,7 @@ def main ():
     # -- Callback for updating learning rate(s)
     damp = np.power(1.0E-04, 1./float(fit_opts['nb_epoch']))
     def schedule (epoch):
-        """ Update the learning rate of the two optimisers. """
+        "" " Update the learning rate of the two optimisers. "" "
         if 0 < damp and damp < 1:
             K_.set_value(adv_optim.lr, damp * K_.get_value(adv_optim.lr))
             pass
