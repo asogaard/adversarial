@@ -26,7 +26,7 @@ clf_optim = Adam(lr=params['lr'], decay=1E-03)
 adv_optim = Adam(lr=params['lr'], decay=1E-03)
 
 # Define compiler options
-opts = {
+compiler_options = {
 
     # Classifier
     'classifier' : {
