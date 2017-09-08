@@ -11,7 +11,7 @@ _submit()
         return 0
     fi
 }
-complete -F _submit submit.sh
+complete -F _submit ./submit.sh
 
 _run() 
 {
@@ -26,4 +26,4 @@ _run()
         return 0
     fi
 }
-complete -F _run run.py
+complete -F _run ./run.py
