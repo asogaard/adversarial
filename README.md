@@ -5,7 +5,7 @@ Main wiki page: https://www.wiki.ed.ac.uk/display/ResearchServices/Eddie
 
 ### Environment
 
-This tool is used in the University of Edinburgh Eddie3 cluster, within the two following environments
+This tool is used on the University of Edinburgh Eddie3 cluster, within the two following environments
 ```
 $ module load anaconda cuda/8.0.61 root/6.06.02
 $ conda config --add envs_dirs /exports/csce/eddie/ph/groups/PPE/asogaard/anaconda
@@ -25,6 +25,27 @@ $ source deactivate
 ```
 
 
+### Interactive sessions
+
+To perform interactive test, login to nodes with specific a parallel environment and configuration. This is done like e.g.
+```
+$ qlogin -pe sharedmem 4 -l h_vmem=8G # CPU running
+$ qlogin -pe gpu 4       -l h_vmem=8G # GPU 
+```
+where the integer argument to the parallel environment argument (`-pe`) is the number of CPU cores requested. The value of the `gpu` variable is the number of requeste GPUs, and the value of the `h_vmem` is the requested amount of memory per CPU.  
+To quickly setup the interactive environment, do e.g.
+```
+$ source setup.sh          # Sets up CPU environment by default
+$ source setup.sh gpu test # 'test' flag sets INPUTDIR and OUTPUTDIR environment variables
+$ ./run.py -i $INPUTDIR -o $OUTPUTDIR --tensorflow --gpu --devices 4
+```
+Tab-completion is enabled for `run.py`.
+To unset the current environment, do
+```
+$ source setup.sh unset
+```
+
+
 ### Submitting jobs
 
 To submit jobs to batch, do
@@ -33,27 +54,6 @@ $ ./submit.sh
 ```
 which will submit data staging, training/evaluation, and finalisation jobs, in
 that order. Used `TAB` to auto-complete and see available command-line arguments.
-
-
-### Interactive sessions
-
-To perform interactive test, login to nodes with specific a parallel environment and configuration. This is done like e.g.
-```
-$ qlogin -pe sharedmem 4    -l h_vmem=8G # CPU running
-$ qlogin -pe gpu 4 -l gpu=4 -l h_vmem=8G # GPU 
-```
-where the integer argument to the parallel environment argument (`-pe`) is the number of CPU cores requested. The value of the `gpu` variable is the number of requeste GPUs, and the value of the `h_vmem` is the requested amount of memory per CPU.  
-To quickly setup the interactive environment, do e.g.
-```
-$ source setup.sh          # Sets up CPU environment by default
-$ source setup.sh gpu test # 'test' flag sets INPUTDIR and OUTPUTDIR environment variables
-$ ./run.py -i $INPUTDIR -o $OUTPUTDIR --tensorflow --gpu
-```
-Tab-completion is enabled for `run.py`.
-To unset the current environment, do
-```
-$ source setup.sh unset
-```
 
 
 ### `matplotlib` fonts
