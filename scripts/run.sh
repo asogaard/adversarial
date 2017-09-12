@@ -24,16 +24,19 @@
 # Specify requested amount of memory per core
 #$ -l h_vmem=8G
 #
-# IF CPU: Specify requested number of compute cores
-#----$ -pe sharedmem 2
-#
 # Specify hard runtime limit
 #$ -l h_rt=10:00:00
 
+# @NOTE Will this work?
+if [ "$GPU" == true ]; then
 # IF GPU: Request 'gpu' parallel environment with 2 CPU cores (necessary to have
-# enough memory ca. 11GB < 2 x 8GB) and N GPUs
-#$ -pe gpu 2
-#$ -l gpu=2
+# enough memory ca. 11GB < 8 x 8GB) and N GPUs
+#$ -pe gpu 8
+else
+# IF CPU: Specify requested number of compute cores
+#$ -pe sharedmem 4
+#
+fi
 
 # Send mail to these users
 #$ -M andreas.sogaard@ed.ac.uk
@@ -69,6 +72,9 @@ if [ "$TRAIN" == true ]; then
 fi
 if [ "$TENSORFLOW" == true ]; then
     FLAGS="$FLAGS --tensorflow"
+fi
+if [ ! -z "$FOLDS" ]; then 
+    FLAGS="$FLAGS --folds $FOLDS"
 fi
 if [ ! -z "$CONFIG" ]; then 
     FLAGS="$FLAGS --config $CONFIG"
