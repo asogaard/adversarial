@@ -37,6 +37,8 @@ rsync -rl -vv -e ssh ${SOURCE} ${DESTINATION}
 if [ "$?" -eq "0" ]; then
     echo "Done, all went well"
 else
-    echo "Something went wrong"
-    exit 100
+    echo "+----------------------+"
+    echo "| Something went wrong |"
+    echo "+----------------------+"
+    #exit 100
 fi
