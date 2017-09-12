@@ -106,12 +106,14 @@ def main ():
             pass
 
         # Apply patches
-        for patch_file in args.patches:
-            log.info("Applying patch '{}'".format(patch_file))
-            with open(patch_file, 'r') as f:
-                patch = json.load(f)
+        if args.patches is not None:
+            for patch_file in args.patches:
+                log.info("Applying patch '{}'".format(patch_file))
+                with open(patch_file, 'r') as f:
+                    patch = json.load(f)
+                    pass
+                apply_patch(cfg, patch)
                 pass
-            apply_patch(cfg, patch)
             pass
 
         # Initialise Keras backend
@@ -159,6 +161,9 @@ def main ():
         pass
 
 
+    # @TODO: Turn 'Loading data', 'Re-weighting', 'Data preparation' into
+    # utility function(s), for use with separate `evaluate.py` script
+    
     # Loading data
     # --------------------------------------------------------------------------
     with Profiler("Loading data"):
@@ -173,6 +178,9 @@ def main ():
                 cls = 'signal' if p in sig_paths else ('background' if p in bkg_paths else None)
                 log.debug("  " + p + (" (%s)" % cls if cls else "" ))
                 pass
+
+            sig_paths = [sig_paths[0]]
+            log.info("Using signal sample: '{}'".format(sig_paths[0]))
             pass
         
         # Get data- and info arrays
@@ -238,9 +246,9 @@ def main ():
         pass
 
 
-    # Re-weighting to flatness (1D)
+    # Re-weighting to flatness
     # --------------------------------------------------------------------------
-    with Profiler("Re-weighting (1D)"):
+    with Profiler("Re-weighting"):
         # @NOTE: This is the crucial point: If the target is flat in (m,pt) the
         # re-weighted background _won't_ be flat in (log m, log pt), and vice 
         # versa. It should go without saying, but draw target samples from a 
@@ -280,7 +288,7 @@ def main ():
         with Profiler():
             log.debug("Performing re-weighting using GBReweighter")
             reweighter_filename = 'trained/reweighter.pkl.gz'
-            if False:
+            if False: # @TODO: Make flag
                 reweighter = GBReweighter(n_estimators=80, max_depth=7)
                 reweighter.fit(P_bkg, target=P_tar, original_weight=bkg['weight'])
                 log.debug("Saving re-weighting object to file '%s'" % reweighter_filename)
@@ -300,10 +308,10 @@ def main ():
             log.debug("Getting new weights for uniform prior(s)")
             new_weights  = reweighter.predict_weights(P_bkg, original_weight=bkg['weight'])
             new_weights *= np.sum(bkg['weight']) / np.sum(new_weights)
-            bkg = append_fields(bkg, 'reweight', new_weights, dtypes=float)
+            bkg = append_fields(bkg, 'reweight', new_weights, dtypes=K.floatx())
 
             # Appending similary ("dummy") 'reweight' field to signal sample, for consistency
-            sig = append_fields(sig, 'reweight', sig['weight'], dtypes=float)
+            sig = append_fields(sig, 'reweight', sig['weight'], dtypes=K.floatx())
             pass
 
         pass
@@ -313,7 +321,7 @@ def main ():
     # --------------------------------------------------------------------------
     with Profiler("Plotting: Re-weighting"):
         
-        # Plotting 1D priors for log(m) and log(pt)
+
         fig, ax = plt.subplots(2, 4, figsize=(12,6))
 
         w_bkg  = bkg['weight']
@@ -324,23 +332,26 @@ def main ():
             edges = np.linspace(0, np.max(bkg[var]), 60 + 1, endpoint=True)
             nbins  = len(edges) - 1
 
-            v_bkg  = bkg[var]     # Original    mass/pt values for the background
+            v_bkg  = bkg[var]     # Background  mass/pt values for the background
             rv_bkg = P_bkg[:,row] # Transformed mass/pt values for the background
             rv_tar = P_tar[:,row] # Transformed mass/pt values for the targer
 
-            ax[row,0].hist(v_bkg,  bins=edges, weights=w_bkg,  alpha=0.5, label='Original')
-            ax[row,1].hist(v_bkg,  bins=edges, weights=rw_bkg, alpha=0.5, label='Original')
-            ax[row,2].hist(rv_bkg, bins=nbins, weights=rw_bkg, alpha=0.5, label='Original')
+            ax[row,0].hist(v_bkg,  bins=edges, weights=w_bkg,  alpha=0.5, label='Background')
+            ax[row,1].hist(v_bkg,  bins=edges, weights=rw_bkg, alpha=0.5, label='Background')
+            ax[row,2].hist(rv_bkg, bins=nbins, weights=w_bkg,  alpha=0.5, label='Background') # =rw_bkg
             ax[row,2].hist(rv_tar, bins=nbins, weights=w_tar,  alpha=0.5, label='Target')
-            ax[row,3].hist(rv_bkg, bins=nbins, weights=rw_bkg, alpha=0.5, label='Original')
+            ax[row,3].hist(rv_bkg, bins=nbins, weights=rw_bkg, alpha=0.5, label='Background')
             ax[row,3].hist(rv_tar, bins=nbins, weights=w_tar,  alpha=0.5, label='Target')
 
             for col in range(4):
-                if col < 3:
+                if col < 4: # 3
                     ax[row,col].set_yscale('log')
                     ax[row,col].set_ylim(1E+01, 1E+06)
+                    if row == 1:
+                        ax[row,col].set_ylim(1E-01, 1E+05)
+                        pass
                     pass
-                ax[row,col].set_xlabel("Jet %s%s" % (var, " (transformed)" if col > 1 else ''))
+                ax[row,col].set_xlabel("Jet %s%s%s" % (var, " (transformed)" if col > 1 else '', " (re-weighted)" if (col + 1) % 2 == 0 else ''))
                 if col == 0:
                     ax[row,col].set_ylabel("Jets / {:.1f} GeV".format(np.diff(edges)[0]))
                     pass
@@ -388,7 +399,8 @@ def main ():
         U = np.hstack((U_sig, U_bkg)).astype(K.floatx())
         
         # Labels
-        Y = np.hstack((np.ones(N_sig, dtype=int), np.zeros(N_bkg, dtype=int)))
+        #Y = np.hstack((np.ones(N_sig, dtype=int), np.zeros(N_bkg, dtype=int)))
+        Y = np.hstack((np.ones(N_sig), np.zeros(N_bkg))).astype(K.floatx())
         
         # Input(s)
         X_sig = np.vstack(tuple(sig[var] for var in names)).T
@@ -408,23 +420,22 @@ def main ():
         num_samples, num_features = X.shape
 
         # Manually shuffle input, once and for all
-        indices = np.arange(num_samples, dtype=int)
-        np.random.shuffle(indices)
+        #shuffle_indices = np.arange(num_samples, dtype=int)
+        #np.random.shuffle(shuffle_indices)
 
-        X = X[indices,:]
-        P = P[indices,:]
-        Y = Y[indices]
-        W = W[indices]
-        U = U[indices]
+        #X = X[shuffle_indices,:]
+        #P = P[shuffle_indices,:]
+        #Y = Y[shuffle_indices]
+        #W = W[shuffle_indices]
+        #U = U[shuffle_indices]
         pass
 
 
     # Classifier-only fit
     # --------------------------------------------------------------------------
     # Adapted from: https://github.com/asogaard/AdversarialSubstructure/blob/master/train.py
-    with Profiler("Classifier-only fit"):
-        # @TODO: - Add 'train' flag
-        #        - Implement checkpointing
+    with Profiler("Classifier-only fit, cross-validation"):
+        # @TODO: - Implement checkpointing
         #        - Tons of stuf...
         
         # Fit non-adversarial neural network
@@ -463,6 +474,10 @@ def main ():
         #  [https://stackoverflow.com/questions/43821786/data-parallelism-in-keras]
         #  [https://stackoverflow.com/a/44771313]
 
+        # Create unique set of random indices to use with stratification
+        random_indices = np.arange(num_samples)
+        np.random.shuffle(random_indices)
+
         # Collection of classifiers and their associated training histories
         classifiers = list()
         histories   = list()
@@ -475,16 +490,21 @@ def main ():
             for fold, (train, validation) in enumerate(skf.split(X,Y)):
                 with Profiler("Fold {}/{}".format(fold + 1, args.folds)):
 
+                    # StratifiedKFold provides stratification, but since the
+                    # input arrays are not randomised, neither will the
+                    # folds. Therefore, the fold should be taken with respect to
+                    # a set of randomised indices rather than range(N).
+                    train      = random_indices[train]
+                    validation = random_indices[validation]
+
                     # Define unique tag and name for current classifier
-                    tag = '{}of{}'.format(fold+1, args.folds)
+                    tag  = '{}of{}'.format(fold + 1, args.folds)
                     name = 'crossval_classifier__{}'.format(tag)
-                    
+
                     # Get classifier
-                    classifier = classifier_model(num_features, name=name,
-                                                  **cfg['classifier']['model'])
+                    classifier = classifier_model(num_features, **cfg['classifier']['model'])
                     
                     # Compile with optimiser configuration
-                    #classifier.compile(**compiler_options['classifier'])
                     opts = dict(**cfg['classifier']['compile'])
                     opts['optimizer'] = eval("keras.optimizers.{optimizer}(lr={lr}, decay={decay})" \
                                              .format(optimizer = opts['optimizer'],
@@ -538,33 +558,144 @@ def main ():
                 pass
 
             pass # end: train/load
+
+
+    # Classifier-only fit
+    # --------------------------------------------------------------------------
+    # Optimal number of trainin epochs
+    opt_epochs = None
+    
+    with Profiler("Plotting: Classifier-only fit, cross-val."):        
+        # Log history
+        fig, ax = plt.subplots()
+        colours = map(lambda d: d['color'], list(plt.rcParams["axes.prop_cycle"]))
         
-        with Profiler():
-            # Log history
-            fig, ax = plt.subplots()
-            colours = map(lambda d: d['color'], list(plt.rcParams["axes.prop_cycle"]))
-            for fold, hist in enumerate(histories):
-                epochs = 1 + np.arange(len(hist['loss']))
-                train_plot      = plt.plot(epochs, hist['loss'],     color=colours[0],
-                                           label='Training'   if fold == 0 else None)
-                validation_plot = plt.plot(epochs, hist['val_loss'], color=colours[1],
-                                           label='Validation' if fold == 0 else None)
-                pass
-            plt.title('Classifier-only, stratified {}-fold training'.format(args.folds), fontweight='medium')
-            plt.xlabel("Epochs")
-            plt.ylabel("Logistic loss")
-            plt.legend()
-            plt.savefig(args.output + 'costlog.pdf')
+        # @NOTE Assuming no early stopping
+        epochs = 1 + np.arange(len(histories[0]['loss']))
+        
+        for fold, hist in enumerate(histories): 
+            plt.plot(epochs, hist['val_loss'], color=colours[1], linewidth=0.6, alpha=0.3,
+                     label='Validation (fold)' if fold == 0 else None)
             pass
-
-        return
-
-        # Train _final_ classifier on all data
-        # @TODO ...
         
+        val_avg = np.mean([hist['val_loss'] for hist in histories], axis=0)
+        plt.plot(epochs, val_avg,   color=colours[1], label='Validation (avg.)')
 
+        # Store the optimal number of training epochs        
+        opt_epochs = epochs[np.argmin(val_avg)]
+        log.info("Using optimal number of {:d} training epochs".format(opt_epochs))
+        
+        for fold, hist in enumerate(histories):
+            plt.plot(epochs, hist['loss'],     color=colours[0], linewidth=1.0, alpha=0.3,
+                     label='Training (fold)'   if fold == 0 else None)
+            pass
+        
+        train_avg = np.mean([hist['loss'] for hist in histories], axis=0)
+        plt.plot(epochs, train_avg, color=colours[0], label='Train (avg.)')
+        
+        plt.title('Classifier-only, stratified {}-fold training'.format(args.folds), fontweight='medium')
+        plt.xlabel("Epochs",        horizontalalignment='right', x=1.0)
+        plt.ylabel("Logistic loss", horizontalalignment='right', y=1.0)
+        
+        epochs = [0] + list(epochs)
+        step = max(int(np.floor(len(epochs) / 10.)), 1)
+        
+        plt.xticks(filter(lambda x: x % step == 0, epochs))
+        plt.legend()
+        plt.savefig(args.output + 'costlog.pdf')
         pass
 
+
+    # Classifier-only fit, full
+    # --------------------------------------------------------------------------
+    with Profiler("Classifier-only fit, full"):
+
+        # @TODO Train _final_ classifier on all data
+        # Get classifier
+        classifier = classifier_model(num_features, **cfg['classifier']['model'])
+        
+        # Compile with optimiser configuration
+        opts = dict(**cfg['classifier']['compile'])
+        opts['optimizer'] = eval("keras.optimizers.{optimizer}(lr={lr}, decay={decay})" \
+                                 .format(optimizer = opts['optimizer'],
+                                         lr        = opts.pop('lr'),
+                                         decay     = opts.pop('decay')))
+        classifier.compile(**opts)
+
+        # Overwrite number of training epochs with optimal number found from
+        # cross-validation
+        cfg['classifier']['fit']['epochs'] = opt_epochs
+
+        # Train final classifier
+        #classifier.fit(X, Y, sample_weight=W, **cfg['classifier']['fit'])
+        train_in_series(classifier, {'input': X, 'target': Y, 'weights': W},
+                        config=cfg['classifier'])
+
+        train_in_parallel(classifier, {'input': X, 'target': Y, 'weights': W},
+                          config=cfg['classifier'], num_gpus=args.threads, seed=21)
+
+        return
+        
+        # ...
+        
+        # Store classifier output as tagger variables. @NOTE This works only
+        # _provided_ the input array X has the same ordering as sig/bkg.
+        msk_sig = (Y == 1.)
+        sig = append_fields(sig, 'NN', classifier.predict(X[ msk_sig], batch_size=1024).flatten(), dtypes=K.floatx())
+        bkg = append_fields(bkg, 'NN', classifier.predict(X[~msk_sig], batch_size=1024).flatten(), dtypes=K.floatx())
+        pass
+
+    
+    # Plotting: Distributions/ROC
+    # --------------------------------------------------------------------------
+    with Profiler("Plotting: Distributions/ROC"):
+
+        # Tagger variables
+        variables = ['tau21', 'tau21DDT', 'NN']
+
+        # Plotted 1D tagger variable distributions
+        fig, ax = plt.subplots(1, len(variables), figsize=(len(variables) * 4, 4))
+
+        w_sig  = sig['weight']
+        w_bkg  = bkg['weight']
+
+        for ivar, var in enumerate(variables):
+            nbins  = 50
+
+            v_sig  = sig[var]
+            v_bkg  = bkg[var]
+
+            _, edges, _ = \
+            ax[ivar].hist(v_bkg, bins=nbins, weights=w_bkg, alpha=0.5, normed=True, label='Background')
+            ax[ivar].hist(v_sig, bins=edges, weights=w_sig, alpha=0.5, normed=True, label='Signal')
+
+            ax[ivar].set_xlabel("Jet {}".format(var),                      horizontalalignment='right', x=1.0)
+            ax[ivar].set_ylabel("Jets / {:.3f}".format(np.diff(edges)[0]), horizontalalignment='right',     y=1.0)
+            pass
+
+        plt.legend()
+        plt.savefig(args.output + 'tagger_distributions.pdf')
+
+        # Plotted ROCs
+        fig, ax = plt.subplots(figsize=(5,5))
+
+        ax.plot([0,1],[0,1], 'k--', linewidth=1.0, alpha=0.2)
+        for ivar, var in enumerate(reversed(variables)):
+            eff_sig, eff_bkg = roc_efficiencies(sig[var], bkg[var], sig['weight'], bkg['weight'])
+            try:
+                auc = roc_auc(eff_sig, eff_bkg)
+            except: # Efficiencies not monotonically increasing
+                auc = 0.
+                pass
+            ax.plot(eff_bkg, eff_sig, label='{} (AUC: {:.3f})'.format(var, auc))
+            pass
+
+        plt.xlabel("Background efficiency", horizontalalignment='right', x=1.0)
+        plt.ylabel("Signal efficiency",     horizontalalignment='right', y=1.0)
+        plt.legend()
+        plt.savefig(args.output + 'tagger_ROCs.pdf')
+        pass
+    
     return
 
     # ==========================================================================
