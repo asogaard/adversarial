@@ -5,9 +5,13 @@
 
 # Basic import(s)
 import os
+import sys
 import psutil
 import logging as log
 import collections
+
+# Scientific import(s)
+import numpy as np
 
 # Project import(s)
 from .profiler import profile
@@ -19,6 +23,7 @@ def print_memory ():
     print "CPU memory: {:.1f}GB / {:.1f}GB".format(mem.available * 1.0E-09,
                                                    mem.total     * 1.0E-09)
     return
+
 
 def apply_patch (d, u):
     """Update nested dictionary without overwriting previous levels.
@@ -33,13 +38,301 @@ def apply_patch (d, u):
         pass
     return d
 
+
+def roc_efficiencies (sig, bkg, sig_weight=None, bkg_weight=None):
+    """Compute the signal and background efficiencies for successive cuts.
+    Adapted from: https://github.com/asogaard/AdversarialSubstructure/blob/master/utils.py"""
+    
+    # Check(s)
+    if sig_weight is None:
+        sig_weight = np.ones_like(sig)
+        pass
+    
+    if bkg_weight is None:
+        bkg_weight = np.ones_like(bkg)
+        pass
+    
+    # Store and sort 2D array
+    sig2 = np.vstack((sig.ravel(), sig_weight.ravel(), np.zeros_like(sig.ravel()))).T
+    bkg2 = np.vstack((bkg.ravel(), np.zeros_like(bkg.ravel()), bkg_weight.ravel())).T
+    sig_bkg      = np.vstack((sig2, bkg2))
+    sig_bkg_sort = sig_bkg[sig_bkg[:,0].argsort()]
+    
+    # Accumulated (weighted) counts
+    eff_sig = np.cumsum(sig_bkg_sort[:,1]) / np.sum(sig_weight)
+    eff_bkg = np.cumsum(sig_bkg_sort[:,2]) / np.sum(bkg_weight)
+    
+    # Make sure that cut direction is correct
+    if np.sum(eff_sig < eff_bkg) > len(eff_sig) / 2:
+        eff_sig = 1. - eff_sig
+        eff_bkg = 1. - eff_bkg
+        pass
+    
+    return eff_sig, eff_bkg
+
+
+def roc_auc (eff_sig, eff_bkg):
+    """Compute the ROC area-under-the-curve for provided signal and background efficiencies."""
+
+    # Check(s)
+    assert len(eff_sig) == len(eff_bkg), "Number of signal ({}) and background ({}) efficiencies do not agree".format(len(eff_sig), len(eff_bkg))
+
+    # Ensure efficiencies are increasing
+    if eff_sig[0] > eff_sig[-1]:
+        eff_sig = eff_sig[::-1]
+        eff_bkg = eff_bkg[::-1]
+        pass
+    
+    # Compute AUC as the average signal efficiency times the difference in
+    # background efficiencies, summed of all ROC segments.
+    auc = np.sum((eff_sig[:-1] + 0.5 * np.diff(eff_sig)) * np.diff(eff_bkg))
+
+    return auc
+
+
+def split_indices (num_samples, num_splits, shuffle=True, seed=None):
+    """Method to (shuffle and) split indices into a fixes number of batches
+
+    Ensures that there is the same number of indices in each split, which will
+    discared `N % splits` indices at random.
+
+    Args:
+        num_samples : Either the total number of samples, or some container
+            (list or numpy array), from which to deduce the number of sampes.
+        num_splits : Number of splits/batches for which to get indices
+        shuffle : Whether to shuffle the indices before splitting.
+        seed : The seed to use for the random number generation.
+
+    Returns:
+        A list containing the indices to be used for each split/batch.
+    """
+
+    # Check(s)
+    if   type(num_samples) is list:
+        num_samples = len(list)
+    elif type(num_samples) is np.ndarray:
+        num_samples = num_samples.shape[0]
+    else:
+        num_samples = int(num_samples)
+        pass
+
+    assert type(num_splits) is int, "`num_splits` of type " + str(type(num_splits)) + " is not accepted"
+            
+    # Create array if indices
+    indices = np.arange(num_samples)
+
+    # Shuffle
+    if shuffle:
+        np.random.seed(seed)
+        np.random.shuffle(indices)
+        pass
+
+    # Perform splits
+    num_samples_per_split = num_samples // num_splits
+    result = [split[:num_samples_per_split] for split in np.array_split(indices, num_splits)]
+    
+    return result
+
+
+def validate_training_input (data_train, data_validation):
+    """Make sure that the format of the data dicts makes sense.
+
+    Args:
+        data_train : Dictonary containing the training data, with fields
+            'input', 'target', and (optionally) 'weights'  
+        data_validation : Dictonary containing the validation data, with
+            fields 'input', 'target', and (optionally) 'weights'
+
+    Raises:
+        AssertionError : If the format of the data dicts are not valid
+
+    Returns:
+        None
+    """
+
+    # Check that only supported fields were provided
+    supported_fields = ['input', 'target', 'weights']
+    unsupported_fields = list(set(data_train.keys()) - set(supported_fields))
+    assert len(unsupported_fields) == 0, "Training data dict has fields which are not supported: {}".format(', '.join(unsupported_fields))
+    unsupported_fields = list(set(data_validation.keys()) - set(supported_fields))
+    assert len(unsupported_fields) == 0, "Validation data dict has fields which are not supported: {}".format(', '.join(unsupported_fields))
+
+    # Check that necessary fields were provided
+    assert 'input'  in data_train, "Training data dict should have 'input' field"
+    assert 'target' in data_train, "Training data dict should have 'target' field"
+    if data_validation:
+        assert 'input'  in data_validation, "Validation data dict should have 'input' field"
+        assert 'target' in data_validation, "Validation data dict should have 'target' field"
+        pass
+
+    # Check that shapes of provided arrays are compatible
+    shapes = [x.shape[0] for x in data_train.values()]
+    assert all(shape == shapes[0] for shape in shapes), "Training sample counts are incompatible: [{}]".format(', '.join(map(str, shapes)))
+    shapes = [x.shape[0] for x in data_validation.values()]
+    assert all(shape == shapes[0] for shape in shapes), "Validation sample counts are incompatible: [{}]".format(', '.join(map(str, shapes)))
+
+    return
+
+
+
+@profile
+def train_in_series (model, data_train, data_validation={}, config={}):
+    """Train a model in standard Keras fashion, using a syntax similar to train_in_parallel.
+
+    Description...
+
+    Args:
+        model: Keras model to be trained.
+        ...
+
+    Returns:
+        The trained model.
+
+    Raises:
+        Exception: If the Keras backend is not Tensorflow.
+    """
+
+    # Check(s)
+    validate_training_input(data_train, data_validation)
+
+    # Define variables
+    use_validation = bool(data_validation)
+
+    # @NOTE: Assuming model is already compiled. @TODO: Check this?
+
+    # Format inputs
+    X = data_train['input']
+    Y = data_train['target']
+    W = data_train['weights'] if 'weights' in data_train else None
+    
+    validation_data = (
+        data_validation['input'],
+        data_validation['target'],
+        data_validation['weights'] if 'weights' in data_validation else None
+        ) if use_validation else None
+
+    # Perform fit
+    hist = model.fit(X, Y, sample_weight=W, validation_data=validation_data, **config['fit'])
+
+    return {'model': model, 'history': hist.history}
+
+
+@profile
+def train_in_parallel (model, data_train, data_validation={}, config={}, num_gpus=1, seed=None):
+    """Method to use data parallelism to train a model across multiple GPUs.
+
+    Description...
+
+    Args:
+        model: Keras model to be trained in parallel. Assumes single input and output layers
+        ...
+
+    Returns:
+        The trained model.
+
+    Raises:
+        Exception: If the Keras backend is not Tensorflow.
+    """
+
+    # @TODO: - Make Data Namespace-type, with '.train, .validation, .test'
+    # fields, etc.
+
+    # Check(s)
+    validate_training_input(data_train, data_validation)
+
+    # Check backend for compatibility
+    import keras.backend as K
+    if K.backend() != 'tensorflow':
+        log.warning("train_in_parallel only works for Tensorflow. Falling back to train_in_series")
+        train_in_series(data_train, data_validation, config=config)
+        return
+
+    # Local imports (make sure Keras backend is set before elsewhere)
+    import tensorflow as tf
+    import keras
+    from keras.models import Model
+    from keras.layers import Input
+    from keras.layers.merge import Concatenate
+    from keras.utils.vis_utils import plot_model
+
+    # Define variables
+    use_validation = bool(data_validation)
+
+    # Get indices of batches of data to be used on each GPU.
+    gpu_splits_train      = split_indices(data_train     ['input'], num_gpus)
+    gpu_splits_validation = split_indices(data_validation['input'], num_gpus) if use_validation else None
+
+    # Get batched data
+    gpu_data_train = [{key: data_train[key][split] for key in data_train.keys()} for split in gpu_splits_train]
+    if use_validation:
+        gpu_data_validation = [{key: data_validation[key][split] for key in data_validation.keys()} for split in gpu_splits_validation]
+        pass
+
+    # Create parallelised model
+    # -- Put inputs on CPU (PS)
+    with tf.device('/cpu:0'):
+        inputs = list()
+        for gpu in range(num_gpus):
+            inputs.append(Input(gpu_data_train[gpu]['input'].shape[1:],
+                                name=model.input_names[0] + "_{}of{}".format(gpu + 1, num_gpus)))
+            pass
+        pass
+
+    # -- Create replicae classifiers on GPUs
+    layers = model.layers[1:]
+    towers = list()
+    for gpu in range(num_gpus):
+        with tf.device('/gpu:' + str(gpu)):
+            towers.append(model(inputs[gpu]))
+            pass
+        pass
+
+    # -- Put concatenates outputs on CPU
+    #with tf.device('/cpu:0'):
+    #    #outputs = [Concatenate(axis=0)(towers)]
+    #    pass
+
+    # -- Create parallelised model
+    parallelised = Model(inputs=inputs, outputs=towers, name=model.name + '_parallelised')
+    plot_model(parallelised, to_file='parallelised.png', show_shapes=True) # @TEMP
+
+    # Compile with optimiser configuration
+    try:
+        opts = dict(**config['compile'])
+        opts['optimizer'] = eval("keras.optimizers.{optimizer}(lr={lr}, decay={decay})" \
+                                 .format(optimizer = opts['optimizer'],
+                                         lr        = opts.pop('lr'),
+                                         decay     = opts.pop('decay')))
+    except KeyError as e:
+        print e.strerror
+        opts = dict()
+        pass
+    parallelised.compile(**opts)
+    
+    # Train parallelised model
+    X = [data['input']   for data in gpu_data_train]
+    Y = [data['target']  for data in gpu_data_train]
+    W = [data['weights'] for data in gpu_data_train] if 'weights' in data_train else None
+
+    validation_data = (
+        [data['input']   for data in gpu_data_validation],
+        [data['target']  for data in gpu_data_validation],
+        [data['weights'] for data in gpu_data_validation] if 'weights' in data_validation else None
+        ) if use_validation else None
+
+    # -- Perform fit
+    hist = parallelised.fit(X, Y, sample_weight=W, validation_data=validation_data, **config['fit'])
+    
+    return {'model': model, 'history': hist.history}
+
+
 @profile
 def initialise_backend (args):
     """Method to initialise the chosen Keras backend according to the settings
     specified in the command-line arguments `args`."""
 
     # Check(s)
-    if args.gpu and args.threads > 1:
+    if args.gpu and not args.tensorflow and args.threads > 1:
         raise NotImplementedError("Distributed training on GPUs is current not enabled.")
     
     # Specify Keras backend and import module
