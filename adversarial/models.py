@@ -55,35 +55,35 @@ def adversarial_model (classifier, architecture, num_posterior_components, num_p
     l = GradientReversalLayer(params['lambda'] / float(params['lr_ratio']))(classifier.output)
 
     # -- De-correlation inputs
-    input_decorrelation = Input(shape=(num_posterior_dimensions,), name='input_adversary')
+    input_decorrelation = Input(shape=(num_posterior_dimensions,))
 
     # -- Intermediate layer(s)
     for ilayer, (nodes, activation) in enumerate(architecture):
-        l = Dense(nodes, activation=activation, name='dense_adversary_%d' % ilayer)(l)
+        l = Dense(nodes, activation=activation)(l)
         pass
 
     # -- Posterior p.d.f. parameters
-    r_coeffs = Dense(num_posterior_components, name='coeffs_adversary', activation='softmax')(l)
+    r_coeffs = Dense(num_posterior_components, activation='softmax')(l)
     r_means  = list()
     r_widths = list()
     for i in xrange(num_posterior_dimensions):
-        r_means .append( Dense(num_posterior_components, name='mean_adversary_P%d'  % i)(l) )
+        r_means .append( Dense(num_posterior_components)(l) )
         pass
     for i in xrange(num_posterior_dimensions):
-        r_widths.append( Dense(num_posterior_components, name='width_adversary_P%d' % i, activation='softplus')(l) )
+        r_widths.append( Dense(num_posterior_components, activation='softplus')(l) )
         pass
 
     # -- Posterior probability layer
-    output_adversary = Posterior(num_posterior_components, num_posterior_dimensions, name='adversary')([r_coeffs] + r_means + r_widths + [input_decorrelation])
+    output_adversary = Posterior(num_posterior_components, num_posterior_dimensions)([r_coeffs] + r_means + r_widths + [input_decorrelation])
     
-    return Model(input=[classifier.input] + [input_decorrelation], output=[classifier.output, output_adversary], name='combined')
+    return Model(input=[classifier.input] + [input_decorrelation], output=[classifier.output, output_adversary])
 
 
-def classifier_model (num_params, architecture=[], default=dict(), name='classifier'):
+def classifier_model (num_params, architecture=[], default=dict()):
     """Network model used for classifier/tagger."""
     
     # Input(s)
-    classifier_input = Input(shape=(num_params,), name='{}__input'.format(name))
+    classifier_input = Input(shape=(num_params,))
 
     # Layer(s)
     l = classifier_input
@@ -99,20 +99,23 @@ def classifier_model (num_params, architecture=[], default=dict(), name='classif
 
         # -- (Opt.) Add batch normalisation layer
         if batchnorm:
-            l = BatchNormalization(name='{}__batch_normalisation_{}'.format(name, ilayer))(l)
+            l = BatchNormalization()(l)
             pass
 
-        # -- Add dense layer according to optsifications
-        l = Dense(name='{}__dense_{}'.format(name, ilayer), **opts)(l)
+        # -- Add dense layer according to specifications
+        l = Dense(**opts)(l)
 
         # -- (Opt.) Add dropout regularisation layer
         if dropout:
-            l = Dropout(dropout, name='{}__dropout_{}'.format(name, ilayer))(l)
+            l = Dropout(dropout)(l)
             pass
         pass
 
     # Output(s)
-    classifier_output = Dense(1, activation='sigmoid', name='{}__output'.format(name))(l)
+    classifier_output = Dense(1, activation='sigmoid')(l)
 
-    # Model
-    return Model(inputs=classifier_input, outputs=classifier_output, name=name)
+    # Build model
+    model = Model(inputs=classifier_input, outputs=classifier_output)
+    
+    # Return
+    return model
