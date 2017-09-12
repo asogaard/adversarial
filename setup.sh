@@ -57,7 +57,9 @@ source activate adversarial-$MODE
 # Set up paths for interactive testing
 if [ "$TEST" == true ]; then
     echo "Setting I/O environment variables for interactive testing"
-    export INPUTDIR="/exports/eddie/scratch/s1562020/adversarial/data/2017-08-25-ANN/"
+    #export
+    #INPUTDIR="/exports/eddie/scratch/s1562020/adversarial/data/2017-08-25-ANN/"
+    export INPUTDIR="/exports/eddie/scratch/s1562020/adversarial/data/2017-09-08-ANN/"
     export OUTPUTDIR="/exports/eddie/scratch/s1562020/adversarial/output/test/"
 fi
 
