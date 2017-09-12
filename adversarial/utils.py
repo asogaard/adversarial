@@ -8,6 +8,7 @@ import os
 import sys
 import psutil
 import logging as log
+import subprocess
 import collections
 
 # Scientific import(s)
@@ -176,7 +177,7 @@ def validate_training_input (data_train, data_validation):
 
 
 @profile
-def train_in_series (model, data_train, data_validation={}, config={}):
+def train_in_sequence (model, data_train, data_validation={}, config={}):
     """Train a model in standard Keras fashion, using a syntax similar to train_in_parallel.
 
     Description...
@@ -218,8 +219,8 @@ def train_in_series (model, data_train, data_validation={}, config={}):
 
 
 @profile
-def train_in_parallel (model, data_train, data_validation={}, config={}, num_gpus=1, seed=None):
-    """Method to use data parallelism to train a model across multiple GPUs.
+def train_in_parallel (model, data_train, data_validation={}, config={}, mode=None, num_devices=1, seed=None):
+    """Method to use data parallelism to train a model across multiple DEVICEs.
 
     Description...
 
@@ -239,12 +240,13 @@ def train_in_parallel (model, data_train, data_validation={}, config={}, num_gpu
 
     # Check(s)
     validate_training_input(data_train, data_validation)
-
+    assert mode in ['gpu', 'cpu'], "Requested mode '{}' not recognised".format(mode)
+        
     # Check backend for compatibility
     import keras.backend as K
     if K.backend() != 'tensorflow':
-        log.warning("train_in_parallel only works for Tensorflow. Falling back to train_in_series")
-        train_in_series(data_train, data_validation, config=config)
+        log.warning("train_in_parallel only works for Tensorflow. Falling back to train_in_sequence")
+        train_in_sequence(model, data_train, data_validation, config=config)
         return
 
     # Local imports (make sure Keras backend is set before elsewhere)
@@ -258,32 +260,31 @@ def train_in_parallel (model, data_train, data_validation={}, config={}, num_gpu
     # Define variables
     use_validation = bool(data_validation)
 
-    # Get indices of batches of data to be used on each GPU.
-    gpu_splits_train      = split_indices(data_train     ['input'], num_gpus)
-    gpu_splits_validation = split_indices(data_validation['input'], num_gpus) if use_validation else None
+    # Get indices of batches of data to be used on each DEVICE.
+    device_splits_train      = split_indices(data_train     ['input'], num_devices)
+    device_splits_validation = split_indices(data_validation['input'], num_devices) if use_validation else None
 
     # Get batched data
-    gpu_data_train = [{key: data_train[key][split] for key in data_train.keys()} for split in gpu_splits_train]
+    device_data_train = [{key: data_train[key][split] for key in data_train.keys()} for split in device_splits_train]
     if use_validation:
-        gpu_data_validation = [{key: data_validation[key][split] for key in data_validation.keys()} for split in gpu_splits_validation]
+        device_data_validation = [{key: data_validation[key][split] for key in data_validation.keys()} for split in device_splits_validation]
         pass
 
     # Create parallelised model
-    # -- Put inputs on CPU (PS)
+    # -- Put inputs on main CPU (PS)
     with tf.device('/cpu:0'):
         inputs = list()
-        for gpu in range(num_gpus):
-            inputs.append(Input(gpu_data_train[gpu]['input'].shape[1:],
-                                name=model.input_names[0] + "_{}of{}".format(gpu + 1, num_gpus)))
+        for device in range(num_devices):
+            inputs.append(Input(device_data_train[device]['input'].shape[1:],
+                                name=model.input_names[0] + "_{}/{}".format(device + 1, num_devices)))
             pass
         pass
 
-    # -- Create replicae classifiers on GPUs
-    layers = model.layers[1:]
-    towers = list()
-    for gpu in range(num_gpus):
-        with tf.device('/gpu:' + str(gpu)):
-            towers.append(model(inputs[gpu]))
+    # -- Create replicae classifiers on devices
+    outputs = list()
+    for device in range(num_devices):
+        with tf.device('/{}:{}'.format(mode, device)):
+            outputs.append(model(inputs[device]))
             pass
         pass
 
@@ -293,7 +294,7 @@ def train_in_parallel (model, data_train, data_validation={}, config={}, num_gpu
     #    pass
 
     # -- Create parallelised model
-    parallelised = Model(inputs=inputs, outputs=towers, name=model.name + '_parallelised')
+    parallelised = Model(inputs=inputs, outputs=outputs, name=model.name + '_parallelised')
     plot_model(parallelised, to_file='parallelised.png', show_shapes=True) # @TEMP
 
     # Compile with optimiser configuration
@@ -305,25 +306,35 @@ def train_in_parallel (model, data_train, data_validation={}, config={}, num_gpu
                                          decay     = opts.pop('decay')))
     except KeyError as e:
         print e.strerror
-        opts = dict()
+        for key in ['optimizer', 'lr', 'decay']:
+            opts.pop(key, None)
+            pass
         pass
     parallelised.compile(**opts)
     
     # Train parallelised model
-    X = [data['input']   for data in gpu_data_train]
-    Y = [data['target']  for data in gpu_data_train]
-    W = [data['weights'] for data in gpu_data_train] if 'weights' in data_train else None
+    X = [data['input']   for data in device_data_train]
+    Y = [data['target']  for data in device_data_train]
+    W = [data['weights'] for data in device_data_train] if 'weights' in data_train else None
 
     validation_data = (
-        [data['input']   for data in gpu_data_validation],
-        [data['target']  for data in gpu_data_validation],
-        [data['weights'] for data in gpu_data_validation] if 'weights' in data_validation else None
+        [data['input']   for data in device_data_validation],
+        [data['target']  for data in device_data_validation],
+        [data['weights'] for data in device_data_validation] if 'weights' in data_validation else None
         ) if use_validation else None
 
     # -- Perform fit
     hist = parallelised.fit(X, Y, sample_weight=W, validation_data=validation_data, **config['fit'])
+
+    # Divide loss by number of devices, to take average
+    history = hist.history
+    for name in ['loss', 'val_loss']:
+        if name in history:
+            history[name] = [l / float(num_devices) for l in history[name]]
+            pass
+        pass
     
-    return {'model': model, 'history': hist.history}
+    return {'model': model, 'history': history}
 
 
 @profile
@@ -332,12 +343,23 @@ def initialise_backend (args):
     specified in the command-line arguments `args`."""
 
     # Check(s)
-    if args.gpu and not args.tensorflow and args.threads > 1:
+    if args.gpu and not args.tensorflow and args.devices > 1:
         raise NotImplementedError("Distributed training on GPUs is current not enabled.")
     
     # Specify Keras backend and import module
     os.environ['KERAS_BACKEND'] = "tensorflow" if args.tensorflow else "theano"
     
+    # Get number of cores on CPU(s)
+    num_cpus = len(filter(lambda line: line.startswith('cpu cores'),
+                          subprocess.check_output(["cat", "/proc/cpuinfo"]).split('\n')))
+    name_cpu = filter(lambda line: line.startswith('model name'),
+                      subprocess.check_output(["cat", "/proc/cpuinfo"]).split('\n'))[0] \
+                      .split(':')[-1].strip()
+    num_cores = int(filter(lambda line: line.startswith('cpu cores'),
+                           subprocess.check_output(["cat", "/proc/cpuinfo"]).split('\n'))[0] \
+                    .split(':')[-1].strip())
+    log.info("Found {} {} devices with {} cores".format(num_cpus, name_cpu, num_cores))
+
     # Configure backends
     if args.tensorflow:
         
@@ -352,7 +374,7 @@ def initialise_backend (args):
             
             # Set this environment variable to "0,1,...", to make Tensorflow
             # use the first N available GPUs
-            os.environ['CUDA_VISIBLE_DEVICES'] = ','.join(map(str,range(args.threads)))
+            os.environ['CUDA_VISIBLE_DEVICES'] = ','.join(map(str,range(args.devices)))
 
         else:
             # Setting this enviorment variable to "" makes all GPUs
@@ -366,37 +388,35 @@ def initialise_backend (args):
         import tensorflow as tf
 
         # @TODO: - Some smart selection of GPUs to used based on actual #
-        # utilisation?  - Data parallism/data on GPU/some way to avoid starving
+        # utilisation?  - Some way to avoid starving
         # GPU of data?
         
         # Manually configure Tensorflow session
-        config = tf.ConfigProto(intra_op_parallelism_threads=0, # Automatically decide
-                                inter_op_parallelism_threads=0, # Automatically decide
+        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.1,
+                                    allow_growth=True)
+            
+        config = tf.ConfigProto(intra_op_parallelism_threads=num_cores * 2, # Automatically decide
+                                inter_op_parallelism_threads=num_cores * 2, # Automatically decide
                                 allow_soft_placement=True,
-                                device_count = {args.mode.upper(): args.threads},
-                                #log_device_placement=True,
-                                gpu_options=tf.GPUOptions(per_process_gpu_memory_fraction=0.1,
-                                                          allow_growth=True
-                                                          ),
+                                device_count={'GPU': args.devices if args.gpu else 0},
+                                gpu_options=gpu_options if args.gpu else None
                                 )
         session = tf.Session(config=config)
         
     else:
         
-        if args.gpu:
-            if args.threads > 1:
-                log.warning("Currently it is not possible to specify more than one GPU thread for \
-                Theano backend.")
-                pass
-        else:
+        if args.devices > 1:
+            log.warning("Currently it is not possible to specify more than one devices for Theano backend.")
+            pass
+
+        if not args.gpu:
             # Set number of OpenMP threads to use; even if 1, set to force
             # use of OpenMP which doesn't happen otherwise, for some
             # reason. Gives speed-up of factor of ca. 6-7. (60 sec./epoch ->
             # 9 sec./epoch)
-            os.environ['OMP_NUM_THREADS'] = str(args.threads)
+            os.environ['OMP_NUM_THREADS'] = str(num_cores * 2)
             pass
 
-        
         # Switch: CPU/GPU
         cuda_version = '8.0.61'
         standard_flags = [
