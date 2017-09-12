@@ -60,8 +60,8 @@ parser.add_argument('-c', '--config', dest='config',  action='store', type=str,
                     default='./configs/default.json', help='Configuration file.')
 parser.add_argument('-p', '--patch', dest='patches', action='append', type=str,
                     help='Patch file(s) with which to update configuration file.')
-parser.add_argument('--threads',     dest='threads', action='store', type=int,
-                    default=1, help='Number of (CPU) threads to use with Theano.')
+parser.add_argument('--devices',     dest='devices', action='store', type=int,
+                    default=1, help='Number of CPU/GPU devices to use with Tensorflow.')
 parser.add_argument('--folds',       dest='folds',    action='store', type=int,
                     default=2, help='Number of folds to use for stratified cross-validation.')
 
@@ -434,45 +434,19 @@ def main ():
     # Classifier-only fit
     # --------------------------------------------------------------------------
     # Adapted from: https://github.com/asogaard/AdversarialSubstructure/blob/master/train.py
+    # Resources:
+    #  [https://github.com/fchollet/keras/issues/7515]
+    #  [https://stackoverflow.com/questions/43821786/data-parallelism-in-keras]
+    #  [https://stackoverflow.com/a/44771313]
+    
     with Profiler("Classifier-only fit, cross-validation"):
         # @TODO: - Implement checkpointing
-        #        - Tons of stuf...
         
-        # Fit non-adversarial neural network
-        #if not retrain_classifier:
-        #print "\n== Loading classifier model."
-        #
-        ## Load existing classifier model from file
-        #classifier = load_model('classifier.h5')
-        #
-        #else:
-
         # Get indices for each fold in stratified k-fold training
         skf = StratifiedKFold(n_splits=args.folds, shuffle=True, random_state=True)
 
-        # Get minimal number of samples for each fold, to ensure proper
-        # batching. This will on average lead to a loss of around `args.folds /
-        # 2` samples per classifier, which is something we can live with.
-        #train_samples = min(len(train) for train, _ in skf.split(X,Y))
-        #test_samples  = min(len(test)  for _, test  in skf.split(X,Y))
-
         # Importe module creator methods and optimiser options
         from adversarial.models import compiler_options, classifier_model, adversarial_model
-
-        # @TODO: Implement _data-parallel_ training. In this way, the same model
-        # is trained on different slices of data on different nodes. That way we
-        # can speed up running for all training cases, not just for statified
-        # k-fold training.
-        # [https://www.tensorflow.org/deploy/distributed#create_a_cluster]
-        #
-        # @NOTE: Need to make sure that the parameres (W,b) for the classifier
-        # live on the same parameter server (PS)/CPU, and that only the
-        # computations are distributed across GPU.
-        #
-        # Resources:
-        #  [https://github.com/fchollet/keras/issues/7515]
-        #  [https://stackoverflow.com/questions/43821786/data-parallelism-in-keras]
-        #  [https://stackoverflow.com/a/44771313]
 
         # Create unique set of random indices to use with stratification
         random_indices = np.arange(num_samples)
@@ -517,11 +491,17 @@ def main ():
                         plot_model(classifier, to_file=args.output + 'classifier.png', show_shapes=True)
                         pass                
                     
-                    # Fit classifier model
-                    hist = classifier.fit(X[train,:], Y[train], sample_weight=W[train],
-                                          validation_data=(X[validation,:], Y[validation], W[validation]),
-                                          **cfg['classifier']['fit'])
-                    histories.append(hist.history)
+                    # Fit classifier model                    
+                    result = train_in_parallel(classifier,
+                                               {'input':   X[train, :],
+                                                'target':  Y[train],
+                                                'weights': W[train]},
+                                               {'input':   X[validation, :],
+                                                'target':  Y[validation],
+                                                'weights': W[validation]},
+                                               config=cfg['classifier'],
+                                               num_devices=args.devices, mode=args.mode)
+                    histories.append(result['history'])
                     
                     # Save classifier model to file
                     classifier.save('trained/{}.h5'.format(name))
@@ -530,7 +510,7 @@ def main ():
                     # directory and in the directory for pre-trained classifiers
                     for destination in [args.output, 'trained/']:
                         with open(destination + 'history__{}.json'.format(name), 'wb') as f:
-                            json.dump(hist.history, f)
+                            json.dump(result['history'], f)
                             pass
                         pass
                     
@@ -604,7 +584,8 @@ def main ():
         plt.legend()
         plt.savefig(args.output + 'costlog.pdf')
         pass
-
+    
+    return
 
     # Classifier-only fit, full
     # --------------------------------------------------------------------------
@@ -627,13 +608,11 @@ def main ():
         cfg['classifier']['fit']['epochs'] = opt_epochs
 
         # Train final classifier
-        #classifier.fit(X, Y, sample_weight=W, **cfg['classifier']['fit'])
-        train_in_series(classifier, {'input': X, 'target': Y, 'weights': W},
-                        config=cfg['classifier'])
+        print "==> len:", len(classifier.layers[2].get_weights())
+        weights_before = classifier.layers[2].get_weights()[0]
 
-        train_in_parallel(classifier, {'input': X, 'target': Y, 'weights': W},
-                          config=cfg['classifier'], num_gpus=args.threads, seed=21)
-
+        result = train_in_parallel(classifier, {'input': X, 'target': Y, 'weights': W},
+                                   config=cfg['classifier'], mode=args.mode, num_devices=args.devices)
         return
         
         # ...
@@ -651,7 +630,7 @@ def main ():
     with Profiler("Plotting: Distributions/ROC"):
 
         # Tagger variables
-        variables = ['tau21', 'tau21DDT', 'NN']
+        variables = ['tau21', 'D2', 'NN']
 
         # Plotted 1D tagger variable distributions
         fig, ax = plt.subplots(1, len(variables), figsize=(len(variables) * 4, 4))
