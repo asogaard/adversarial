@@ -4,7 +4,7 @@ _submit()
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
-    opts="-h --help --gpu --train --tensorflow --config --patch --tag --username"
+    opts="-h --help --gpu --train --tensorflow --folds --config --patch --tag --username"
 
     if [[ ${cur} == -* ]] ; then
         COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
