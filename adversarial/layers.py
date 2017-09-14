@@ -18,24 +18,39 @@ from keras.engine.topology import Layer
 
 
 def gaussian (x, coeff, mean, width):
-    """Compute a unit gaussian using Keras-backend methods.""" 
+    """Compute a unit gaussian using Keras-backend methods.
+
+    Args:
+        x: Variable value(s) at which to evaluate unit gaussian(s).
+        coeff: Normalisation constant(s) for unit gaussian(s).
+        mean: Mean(s) of unit gaussian(s).
+        width: Width(s) of unit gaussian(s).
+
+    Returns
+        Function value of unit gaussian(s) evaluated at `x`.
+    """ 
     return coeff * K.exp( - K.square(x - mean) / 2. / K.square(width)) / K.sqrt( 2. * K.square(width) * np.pi) 
 
 
-def gaussian_integral_on_unit_interval (means, widths):
+def gaussian_integral_on_unit_interval (mean, width):
     """Compute the integral of unit gaussians on the unit interval.
 
     Args:
-        ...
+        mean: Mean(s) of unit gaussian(s).
+        width: Width(s) of unit gaussian(s).
 
     Returns:
-        ...
+        Integral of unit gaussian on [0,1]
     """
-    return norm.cdf(1, loc=means, scale=widths) - norm.cdf(0, loc=means, scale=widths)
+    return norm.cdf(1, loc=mean, scale=width) - norm.cdf(0, loc=mean, scale=width)
 
 
 class PosteriorLayer (Layer):
     """Custom layer, modelling the posterior probability distribution for the jet mass using a gaussian mixture model (GMM)"""
+
+    # @TODO:
+    # - Check that K.sum((x < 0) || (x > 1)) == 0
+    # - Normalise to unity on ([0,1])^gmm_dimensions    
 
     def __init__ (self, gmm_components, gmm_dimensions, **kwargs):
         self.output_dim = 1 # Probability
@@ -65,25 +80,18 @@ class PosteriorLayer (Layer):
         pdf = gaussian(inputs[:,0], coeffs[:,0], means[0][:,0], widths[0][:,0])
         for d in range(1, self.gmm_dimensions):
             pdf *= gaussian(inputs[:,d], 1, means[d][:,0], widths[d][:,0])
-            #pdf /= guassian_integral_on_unit_interval(means[d][:,0], widths[d][:,0])
+            pdf /= guassian_integral_on_unit_interval(means[d][:,0], widths[d][:,0])
             pass
         for c in range(1, self.gmm_components):
             this_pdf = gaussian(inputs[:,0], coeffs[:,c], means[0][:,c], widths[0][:,c])
             for d in range(1, self.gmm_dimensions):
                 this_pdf *= gaussian(inputs[:,d], 1, means[d][:,c], widths[d][:,c])
-                #this_pdf /= guassian_integral_on_unit_interval(means[d][:,c], widths[d][:,c])
+                this_pdf /= guassian_integral_on_unit_interval(means[d][:,c], widths[d][:,c])
                 pass
             pdf += this_pdf
             pass
 
-        # @TODO:
-        # - Check that K.sum((x < 0) || (x > 1)) == 0
-        # - Normalise to unity on ([0,1])^gmm_dimensions
-        
         return K.reshape(pdf, (K.shape(pdf)[0], 1))
-
-    #def get_output_shape_for (self, input_shape):
-    #    return (input_shape[0], self.output_dim)
 
     def compute_output_shape (self, input_shape):
         return (input_shape[0], self.output_dim)
@@ -186,10 +194,7 @@ class GradientReversalLayer (Layer):
     
     def call (self, x, mask=None):
         return self.gr_op(x)
-    
-    #def get_output_shape_for (self, input_shape):
-    #    return input_shape
-    
+        
     def compute_output_shape (self, input_shape):
         return input_shape
     
