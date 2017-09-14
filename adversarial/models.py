@@ -15,7 +15,7 @@ from keras.layers import Dense, Input, Dropout
 from keras.layers.normalization import BatchNormalization
 
 # Project import(s)
-from layers import *
+from .layers import *
 
 # @TODO:
 # - Factorise `adversary_model` and `combined_model`?

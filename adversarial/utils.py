@@ -15,7 +15,7 @@ import collections
 import numpy as np
 
 # Project import(s)
-from .profiler import profile, Profile
+from .profile import profile, Profile
 
 
 def print_memory ():

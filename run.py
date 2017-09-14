@@ -40,8 +40,8 @@ from rootplotting import ap
 from rootplotting.tools import loadData, loadXsec, scale_weights
 
 # Project import(s)
-from adversarial.utils    import *
-from adversarial.profiler import *
+from adversarial.utils   import *
+from adversarial.profile import *
 
 # Get ROOT to stop hogging the command-line options
 import ROOT
