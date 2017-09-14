@@ -8,6 +8,8 @@ HELP=""
 GPU=false
 TRAIN=false
 TENSORFLOW=false
+DEVICES=""
+FOLDS=""
 CONFIG=""
 PATCH=""
 TAG=""
@@ -36,6 +38,14 @@ case $key in
     CONFIG="$2"
     shift # past argument
     ;;
+    --devices)
+    DEVICES="$2"
+    shift # past argument
+    ;;
+    --folds)
+    FOLDS="$2"
+    shift # past argument
+    ;;
     --patch)
     # Allow for more than one '--patch <path>' argument; trim delimiters
     PATCH="$(echo "$PATCH $2" | sed 's/^ *//g;s/ *$//g')" 
@@ -58,12 +68,14 @@ shift # past argument or value
 done
 
 if [ ! -z "$HELP" ]; then
-    echo "usage: ./submit.sh [--gpu] [--train] [--tensorflow] [--config <path>] [--patch <path>] [--patch <path>] ... [--tag <name>] [--username <name>]"
+    echo "usage: ./submit.sh [--gpu] [--train] [--tensorflow] [--devices <num>] [--folds <num>] [--config <path>] [--patch <path>] [--patch <path>] ... [--tag <name>] [--username <name>]"
     echo "Options and arguments:"
     echo "  -h, --help        : print this help message and exit"
     echo "  --gpu             : run on GPU(s)"
     echo "  --train           : perform training"
     echo "  --tensorflow      : whether to use Tensorflow backend"
+    echo "  --devices <num>   : number of CPU/GPU devices to use"
+    echo "  --folds <num>     : number of cross-validation folds"
     echo "  --config <path>   : configuration file"
     echo "  --patch <path>    : patch applied the default configuration. May be used multiple times"
     echo "  --tag <name>      : unique tag for the job being submitted"
@@ -127,7 +139,8 @@ fi
 
 # Define common unique indicators
 #VERSION=2017-06-22              # AnalysisTools outputObjdef cache
-VERSION=2017-08-25-ANN
+#VERSION=2017-08-25-ANN
+VERSION=2017-09-08-ANN
 
 # Tag to uniquely distinguish runs
 if [ -z "$TAG" ]; then
@@ -138,6 +151,7 @@ fi
 
 # Define common patch
 EOS=asogaard@$LXPLUS.cern.ch:/eos/atlas/user/a/asogaard/Analysis/2016/BoostedJetISR/outputObjdef
+#EOS=asogaard@$LXPLUS.cern.ch:/eos/atlas/atlascerngroupdisk/perf-jets/JSS/TopBosonTagAnalysis2016/FlatNTuples/20170530/MLTrainingTesting
 DATASTORE=/exports/csce/datastore/ph/groups/PPE/atlas/users/$USER/adversarial
 SCRATCH=/exports/eddie/scratch/$USER/adversarial
 
@@ -146,20 +160,22 @@ SCRATCH=/exports/eddie/scratch/$USER/adversarial
 # ------------------------------------------------------------------------------
 
 # Submit all jobs in the correct order with the necessary environment variables
-#qsub -v SOURCE="$EOS/$VERSION" \
-#     -v DESTINATION="$SCRATCH/data" \
-#     -v KRB5CCNAME="FILE:$KFILE" \
-#     scripts/stagein.sh
+qsub -v SOURCE="$EOS/$VERSION" \
+     -v DESTINATION="$SCRATCH/data" \
+     -v KRB5CCNAME="FILE:$KFILE" \
+     scripts/stagein.sh
 
 qsub -v INPUTDIR="$SCRATCH/data/$VERSION" \
      -v OUTPUTDIR="$SCRATCH/output/$TAG" \
      -v GPU="$GPU" \
      -v TRAIN="$TRAIN" \
      -v TENSORFLOW="$TENSORFLOW" \
+     -v DEVICES="$DEVICES" \
+     -v FOLDS="$FOLDS" \
      -v CONFIG="$CONFIG" \
      -v PATCH="$PATCH" \
      scripts/run.sh
 
-#qsub -v SOURCE="$SCRATCH/output/$TAG" \
-#     -v DESTINATION="$DATASTORE/output" \
-#     scripts/stageout.sh
+qsub -v SOURCE="$SCRATCH/output/$TAG" \
+     -v DESTINATION="$DATASTORE/output" \
+     scripts/stageout.sh
