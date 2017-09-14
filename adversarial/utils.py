@@ -236,7 +236,8 @@ def train_in_sequence (model, data_train, data_validation={}, config={}):
     # Define variables
     use_validation = bool(data_validation)
 
-    # @NOTE: Assuming model is already compiled. @TODO: Check this?
+    # @NOTE: Assuming model is already compiled.
+    # @TODO: Check this?
 
     # Format inputs
     X = data_train['input']
@@ -272,8 +273,8 @@ def train_in_parallel (model, data_train, data_validation={}, config={}, mode=No
         Exception: If the Keras backend is not Tensorflow.
     """
 
-    # @TODO: - Make Data Namespace-type, with '.train, .validation, .test'
-    # fields, etc.
+    # @TODO:
+    # - Make Data Namespace-type, with '.train, .validation, .test' fields, etc.
 
     # Check(s)
     validate_training_input(data_train, data_validation)
@@ -301,18 +302,7 @@ def train_in_parallel (model, data_train, data_validation={}, config={}, mode=No
     device_splits_validation = split_indices(data_validation['input'], num_devices) \
                                if use_validation else None
     
-    # device_splits_train = [ [1, 2, 3, ..., N], [N + 1, N + 2, ..., 2 * N], ... ]
-    # device_data_train = [ {
-    #     key: np.ndarray
-    #         -- OR --
-    #     key: [np.ndarray, np.ndarray, ...]
-    # }, ...]
-    
     # Get batched data
-    #    device_data_train = [{key: data_train[key][split] for key in data_train.keys()} for split in device_splits_train]
-    #    if use_validation:
-    #        device_data_validation = [{key: data_validation[key][split] for key in data_validation.keys()} for split in device_splits_validation]
-    #        pass
     device_data_train      = [apply_slice(data_train,      idx) for idx in device_splits_train]
     device_data_validation = [apply_slice(data_validation, idx) for idx in device_splits_validation] if use_validation else None
     
@@ -321,9 +311,6 @@ def train_in_parallel (model, data_train, data_validation={}, config={}, mode=No
     with tf.device('/cpu:0'):
         inputs = list()
         for device in range(num_devices):
-            # inputs.append(Input(device_data_train[device]['input'].shape[1:],
-            #                    name=model.input_names[0] + tag))
-            
             # Loop inputs (possibly one or zero)
             device_inputs = list()
             for matrix in flatten([device_data_train[device]['input']]):
@@ -337,36 +324,13 @@ def train_in_parallel (model, data_train, data_validation={}, config={}, mode=No
     outputs = list()
     for device in range(num_devices):
         with tf.device('/{}:{}'.format(mode, device)):
-            #outputs.append(model(inputs[device]))
             outputs.append(model(inputs[device]))
             pass
         pass
     
-    # -- Put concatenates outputs on CPU
-    # with tf.device('/cpu:0'):
-    #    #outputs = [Concatenate(axis=0)(towers)]
-    #    pass
-    
     # -- Create parallelised model
     parallelised = Model(inputs=list(flatten(inputs)), outputs=list(flatten(outputs)), name=model.name + '_parallelised')
-    plot_model(parallelised, to_file='parallelised.png', show_shapes=True) # @TEMP
     
-    # @NOTE: Assume 'optimizer' has already been evaluated
-    ## Compile with optimiser configuration
-    #try:
-    #    opts = dict(**config['compile'])
-    #    opts['optimizer'] = eval("keras.optimizers.{optimizer}(lr={lr}, decay={decay})" \
-    #                             .format(optimizer = opts['optimizer'],
-    #                                     lr        = opts.pop('lr'),
-    #                                     decay     = opts.pop('decay')))
-    #except KeyError as e:
-    #    print e
-    #    for key in ['optimizer', 'lr', 'decay']:
-    #        opts.pop(key, None)
-    #        pass
-    #    pass
-    #parallelised.compile(**opts)
-
     # Replicate fields which are specific to each output node
     for field in ['loss', 'loss_weights']:
         if field in config['compile'] and isinstance(config['compile'][field], (list, tuple)):
@@ -465,8 +429,8 @@ def initialise_backend (args):
         gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.1,
                                     allow_growth=True)
             
-        config = tf.ConfigProto(intra_op_parallelism_threads=num_cores * 2, # Automatically decide
-                                inter_op_parallelism_threads=num_cores * 2, # Automatically decide
+        config = tf.ConfigProto(intra_op_parallelism_threads=num_cores * 2,
+                                inter_op_parallelism_threads=num_cores * 2,
                                 allow_soft_placement=True,
                                 device_count={'GPU': args.devices if args.gpu else 0},
                                 gpu_options=gpu_options if args.gpu else None)
