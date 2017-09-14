@@ -13,39 +13,13 @@ import re
 from keras.models import Model
 from keras.layers import Dense, Input, Dropout
 from keras.layers.normalization import BatchNormalization
-#from keras.optimizers import SGD, Adam
 
 # Project import(s)
 from layers import *
 
-# Learning configurations
-#params = {
-#    'lambda':    1000.,
-#    'lr':        1E-03, # Learning rate (LR) in the classifier model
-#    'lr_ratio':  1E+03, # Ratio of the LR in adversarial model to that in the classifier
-#}
+# @TODO:
+# - Factorise `adversary_model` and `combined_model`?
 
-# Create optimisers for each main model
-#clf_optim = Adam(lr=params['lr'], decay=1E-03)
-#adv_optim = Adam(lr=params['lr'], decay=1E-03)
-
-## Define compiler options
-#compiler_options = {
-#
-#    # Classifier
-#    'classifier' : {
-#        'loss': 'binary_crossentropy',
-#        'optimizer': clf_optim, #'SGD',
-#    },
-#
-#    # Adversarial (combined)
-#    'adversarial' : {
-#        'loss': ['binary_crossentropy', 'binary_crossentropy'],
-#        'optimizer': adv_optim,
-#        'loss_weights': [1, params['lr_ratio']],
-#    },
-#
-#}
 
 def snake_case (string):
     """ ... """
@@ -53,11 +27,21 @@ def snake_case (string):
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
 
 
-def get_layer_name_factory (scope):
+def layer_name_factory (scope):
     """ ... """
-    def get_layer_name (cls):
-        return '{}{}_{}'.format((scope + '/') if scope else '', snake_case(cls), K.get_uid(cls))
-    return get_layer_name
+    def layer_name (name):
+        if scope:
+            return '{}/{}'.format(scope, name)
+        return name
+    return layer_name
+
+
+def keras_layer_name_factory (scope):
+    """ ... """
+    layer_name = layer_name_factory(scope)
+    def keras_layer_name (cls):
+        return layer_name('{}_{}'.format(snake_case(cls), K.get_uid(cls)))
+    return keras_layer_name
 
 
 def stack_layers (input_layer, architecture, default, scope=None):
@@ -83,8 +67,8 @@ def stack_layers (input_layer, architecture, default, scope=None):
         The last Keras layer in the stack.
     """
 
-    # Method to get name of layers
-    get_layer_name = get_layer_name_factory(scope)
+    # Method(s) to get name of layers
+    keras_layer_name = keras_layer_name_factory(scope)
 
     # Prepare first layer
     l = input_layer
@@ -102,15 +86,15 @@ def stack_layers (input_layer, architecture, default, scope=None):
         
         # 1: (Opt.) Add batch normalisation layer before dense layer
         if batchnorm:
-            l = BatchNormalization(name=get_layer_name('BatchNormalization'))(l)
+            l = BatchNormalization(name=keras_layer_name('BatchNormalization'))(l)
             pass
         
         # 2: Add dense layer according to specifications
-        l = Dense(name=get_layer_name('Dense'), **opts)(l)
+        l = Dense(name=keras_layer_name('Dense'), **opts)(l)
         
         # 3: (Opt.) Add dropout regularisation layer after dense layer
         if dropout:
-            l = Dropout(dropout, name=get_layer_name('Dropout'))(l)
+            l = Dropout(dropout, name=keras_layer_name('Dropout'))(l)
             pass
         
         pass
@@ -118,9 +102,7 @@ def stack_layers (input_layer, architecture, default, scope=None):
     return l
 
 
-# @TODO: - Factorise `adversary_model` and `combined_model`?
-
-def adversary_model (classifier, gmm_dimensions, gmm_components=None, lambda_reg=None, lr_ratio=None, architecture=[], default=dict()):
+def adversary_model (classifier, gmm_dimensions, gmm_components=None, lambda_reg=None, lr_ratio=None, architecture=[], default=dict(), scope='adversary'):
     """Combined adversarial network model.
 
     This method creates an adversarial network model based on the provided
@@ -146,74 +128,43 @@ def adversary_model (classifier, gmm_dimensions, gmm_components=None, lambda_reg
             quickly than the classifier, to ensure stability of the final result.
         architecture: List of dicts specifying the architecture of the deep,
             sequential section of the adversary's network. See `stack_layers`.
-        defalult: Default configuration of each layer in the deep, sequential
+        default: Default configuration of each layer in the deep, sequential
             section of the adversary's network. See `stack_layers`.
+        scope: Name of scope in which the layers should be created.
 
     Returns:
         Keras model of the combined adversarial network.
     """
 
-    # Define variables
-    scope = 'adversary'
-
-    # Method to get name of layers
-    get_layer_name = get_layer_name_factory(scope)
+    # Method(s) to get name of layers
+    keras_layer_name = keras_layer_name_factory(scope)
+    layer_name       = layer_name_factory(scope)
 
     # Classifier
     classifier.trainable = True
 
     # Gradient reversal layer
-    gradient_reversal = GradientReversalLayer(lambda_reg / float(lr_ratio), name=get_layer_name('GradientReversalLayer'))(classifier.outputs[0])
+    gradient_reversal = GradientReversalLayer(lambda_reg / float(lr_ratio), name=keras_layer_name('GradientReversalLayer'))(classifier.outputs[0])
 
     ## Intermediate layer(s)
     adversary_stack = stack_layers(gradient_reversal, architecture, default, scope=scope)
-#    l = adversary_input
-#    for ilayer, spec in enumerate(architecture):
-#
-#        # -- Update the specifications of the current layer to include any defaults
-#        opts = dict(**default)
-#        opts.update(spec)
-#
-#        # -- Extract non-standard keyword arguments
-#        batchnorm = opts.pop('batchnorm', False)
-#        dropout   = opts.pop('dropout',   None)
-#
-#        # -- (Opt.) Add batch normalisation layer
-#        if batchnorm:
-#            l = BatchNormalization()(l)
-#            pass
-#
-#        # -- Add dense layer according to specifications
-#        l = Dense(**opts)(l)
-#
-#        # -- (Opt.) Add dropout regularisation layer
-#        if dropout:
-#            l = Dropout(dropout)(l)
-#            pass
-#        pass
-
-
 
     # Posterior p.d.f. parameters
-#    r_coeffs = Dense(gmm_components, activation='softmax')(l)
-    r_coeffs = Dense(gmm_components, name='{}/{}'.format(scope, 'coeffs'), activation='softmax')(adversary_stack)
+    r_coeffs = Dense(gmm_components, name=layer_name('coeffs'), activation='softmax')(adversary_stack)
     r_means  = list()
     r_widths = list()
-    for i in xrange(gmm_dimensions):
-#        r_means .append( Dense(gmm_components)(l) )
-        r_means .append( Dense(gmm_components, name='{}/{}_{}'.format(scope, 'means', i+1))(adversary_stack) )
+    for i in xrange(1, gmm_dimensions + 1):
+        r_means .append( Dense(gmm_components, name=layer_name('means_{}'.format(i)))(adversary_stack) )
         pass
-    for i in xrange(gmm_dimensions):
-#        r_widths.append( Dense(gmm_components, activation='softplus')(l) )
-        r_widths.append( Dense(gmm_components, name='{}/{}_{}'.format(scope, 'widths', i+1), activation='softplus')(adversary_stack) )
+    for i in xrange(1, gmm_dimensions + 1):
+        r_widths.append( Dense(gmm_components, name=layer_name('widths_{}'.format(i)), activation='softplus')(adversary_stack) )
         pass
 
     # De-correlation inputs (only used as input to GMM evaluation)
-    adversary_input = Input(shape=(gmm_dimensions,), name='{}/{}'.format(scope, 'input'))
+    adversary_input = Input(shape=(gmm_dimensions,), name=layer_name('input'))
    
-
     # Posterior probability layer
-    adversary_output = PosteriorLayer(gmm_components, gmm_dimensions, name='{}/{}'.format(scope, 'output'))([r_coeffs] + r_means + r_widths + [adversary_input])
+    adversary_output = PosteriorLayer(gmm_components, gmm_dimensions, name=layer_name('output'))([r_coeffs] + r_means + r_widths + [adversary_input])
 
     # Build model
     model = Model(inputs= classifier.inputs  + [adversary_input],
@@ -224,7 +175,7 @@ def adversary_model (classifier, gmm_dimensions, gmm_components=None, lambda_reg
     return model
 
 
-def classifier_model (num_params, architecture=[], default=dict()):
+def classifier_model (num_params, architecture=[], default=dict(), scope='classifier'):
     """Network model used for classifier/tagger.
 
     Args:
@@ -233,47 +184,24 @@ def classifier_model (num_params, architecture=[], default=dict()):
             sequential section of the adversary's network. See `stack_layers`.
         defalult: Default configuration of each layer in the deep, sequential
             section of the adversary's network. See `stack_layers`.
-
+        scope: Name of scope in which the layers should be created.
+        
     Returns:
         Keras model of the classifier network.
     """    
 
-    # Define variables
-    scope = 'classifier'
+    # Method(s) to get name of layers
+    keras_layer_name = keras_layer_name_factory(scope)
+    layer_name       = layer_name_factory(scope)
 
     # Input(s)
-    classifier_input = Input(shape=(num_params,), name='{}/{}'.format(scope, 'input'))
+    classifier_input = Input(shape=(num_params,), name=layer_name('input'))
 
     # Layer(s)
     classifier_stack = stack_layers(classifier_input, architecture, default, scope=scope)
-#    l = classifier_input
-#    for ilayer, spec in enumerate(architecture):
-#
-#        # -- Update the specifications of the current layer to include any defaults
-#        opts = dict(**default)
-#        opts.update(spec)
-#
-#        # -- Extract non-standard keyword arguments
-#        batchnorm = opts.pop('batchnorm', False)
-#        dropout   = opts.pop('dropout',   None)
-#
-#        # -- (Opt.) Add batch normalisation layer
-#        if batchnorm:
-#            l = BatchNormalization()(l)
-#            pass
-#
-#        # -- Add dense layer according to specifications
-#        l = Dense(**opts)(l)
-#
-#        # -- (Opt.) Add dropout regularisation layer
-#        if dropout:
-#            l = Dropout(dropout)(l)
-#            pass
-#        pass
 
     # Output(s)
-    #classifier_output = Dense(1, activation='sigmoid')(l)
-    classifier_output = Dense(1, activation='sigmoid', name='{}/{}'.format(scope, 'output'))(classifier_stack)
+    classifier_output = Dense(1, activation='sigmoid', name=layer_name('output'))(classifier_stack)
 
     # Build model
     model = Model(inputs=classifier_input, outputs=classifier_output, name=scope)
