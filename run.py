@@ -17,7 +17,8 @@ import itertools
 # Scientific import(s)
 import numpy as np
 from numpy.lib.recfunctions import append_fields
-np.random.seed(21) # For reproducibility
+seed = 21 # For reproducibility
+np.random.seed(seed)
 
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import StratifiedKFold
@@ -26,7 +27,7 @@ import matplotlib.pyplot as plt
 plt.switch_backend('pdf')
 plt.style.use('edinburgh')
 
-# -- Explicitly ignore DeprecationWarning from scikit-learn, which we can't do 
+# -- Explicitly ignore DeprecationWarning from scikit-learn, which we can't do
 #    anything about anyway.
 stderr = sys.stderr
 with open(os.devnull, 'w') as sys.stderr:
@@ -82,12 +83,10 @@ def main ():
 
     # Initialisation
     # --------------------------------------------------------------------------
-    with Profiler("Initialisation"):
+    with Profile("Initialisation"):
 
         # Parse command-line arguments
-        with Profiler():
-            args = parser.parse_args()
-            pass
+        args = parser.parse_args()
 
         # Add 'mode' field manually
         args = argparse.Namespace(mode='gpu' if args.gpu else 'cpu', **vars(args))
@@ -99,6 +98,10 @@ def main ():
         #  Modify input/output directory names to conform to convention
         if not args.input .endswith('/'): args.input  += '/'
         if not args.output.endswith('/'): args.output += '/'
+
+        # @TODO:
+        # - Make `args = prepare_args  (args)` method?
+        # - Make `cfg  = prepare_config(args)` method?
         
         # Load configuration file
         with open(args.config, 'r') as f:
@@ -116,22 +119,18 @@ def main ():
                 pass
             pass
 
+        # Set adversary learning rate (LR) ratio from ratio of loss_weights
+        cfg['adversary']['model']['lr_ratio'] = cfg['adversary']['compile']['loss_weights'][1] / \
+                                                cfg['adversary']['compile']['loss_weights'][0]
+
         # Initialise Keras backend
         initialise_backend(args)
 
         import keras
         import keras.backend as K
-        from keras.models import Model
         from keras.models import load_model
-        from keras.layers import Input
-        from keras.layers.core import Lambda
-        from keras.layers.merge import Concatenate
         from keras.callbacks import Callback
         from keras.utils.vis_utils import plot_model
-
-        if args.tensorflow:
-            import tensorflow as tf
-            pass
         
         # Print setup information
         log.info("Running '%s'" % __file__)
@@ -158,18 +157,27 @@ def main ():
             json.dump(cfg, f, indent=4, sort_keys=True)
             pass
 
-        pass
+        # Evaluate the 'optimizer' fields for each model, once and for all
+        for model in ['classifier', 'adversary']:
+            opts = cfg[model]['compile']
+            opts['optimizer'] = eval("keras.optimizers.{}(lr={}, decay={})" \
+                                     .format(opts['optimizer'],
+                                             opts.pop('lr'),
+                                             opts.pop('decay')))
+            pass
 
+        pass
+    
 
     # @TODO: Turn 'Loading data', 'Re-weighting', 'Data preparation' into
     # utility function(s), for use with separate `evaluate.py` script
     
     # Loading data
     # --------------------------------------------------------------------------
-    with Profiler("Loading data"):
+    with Profile("Loading data"):
         
         # Get paths for files to use
-        with Profiler():
+        with Profile():
             log.debug("ROOT files in input directory:")
             all_paths = sorted(glob.glob(args.input + '*.root'))
             sig_paths = sorted(glob.glob(args.input + 'objdef_MC_30836*.root'))
@@ -202,12 +210,12 @@ def main ():
 
         log.info("Reading data from '%s' with prefix '%s'" % (datatreename, prefix))
         log.info("Reading info from '%s'" % (infotreename))
-        with Profiler():
+        with Profile():
             sig_data = loadData(sig_paths, datatreename, prefix=prefix) # ..., branches=branches)
             sig_info = loadData(sig_paths, infotreename, stop=1)
             pass
 
-        with Profiler():
+        with Profile():
             bkg_data = loadData(bkg_paths, datatreename, prefix=prefix) # ..., branches=branches)
             bkg_info = loadData(bkg_paths, infotreename, stop=1)
             pass
@@ -216,7 +224,7 @@ def main ():
         log.info("Retrieved %d signal and %d background events." % (sig_data.shape[0], bkg_data.shape[0]))
         
         # Scale by cross section
-        with Profiler():
+        with Profile():
             log.debug("Scaling weights by cross-section and luminosity")
             xsec = loadXsec('share/sampleInfo.csv')
         
@@ -225,7 +233,7 @@ def main ():
             pass
         
         # Restricting phase space
-        with Profiler():
+        with Profile():
             # - min(pT) of 200 GeV imposed in AnalysisTool code
             # - min(m)  of   0 GeV required by physics and log(·)
             # - otherwise, we're free to choose whatever phasespace we want
@@ -248,14 +256,14 @@ def main ():
 
     # Re-weighting to flatness
     # --------------------------------------------------------------------------
-    with Profiler("Re-weighting"):
+    with Profile("Re-weighting"):
         # @NOTE: This is the crucial point: If the target is flat in (m,pt) the
         # re-weighted background _won't_ be flat in (log m, log pt), and vice 
         # versa. It should go without saying, but draw target samples from a 
         # uniform prior on the coordinates which are used for the decorrelation.
 
         # Performing pre-processing of de-correlation coordinates
-        with Profiler():
+        with Profile():
             log.debug("Performing pre-processing")
 
             # Get number of background events and number of target events (arb.)
@@ -285,7 +293,7 @@ def main ():
             pass
 
         # Fit, or load, regressor to achieve flatness using hep_ml library
-        with Profiler():
+        with Profile():
             log.debug("Performing re-weighting using GBReweighter")
             reweighter_filename = 'trained/reweighter.pkl.gz'
             if False: # @TODO: Make flag
@@ -304,7 +312,7 @@ def main ():
             pass
 
         # Re-weight for uniform prior(s)
-        with Profiler():
+        with Profile():
             log.debug("Getting new weights for uniform prior(s)")
             new_weights  = reweighter.predict_weights(P_bkg, original_weight=bkg['weight'])
             new_weights *= np.sum(bkg['weight']) / np.sum(new_weights)
@@ -319,7 +327,7 @@ def main ():
 
     # Plotting: Re-weighting
     # --------------------------------------------------------------------------
-    with Profiler("Plotting: Re-weighting"):
+    with Profile("Plotting: Re-weighting"):
         
 
         fig, ax = plt.subplots(2, 4, figsize=(12,6))
@@ -379,7 +387,7 @@ def main ():
 
     # Prepare arrays for training
     # --------------------------------------------------------------------------
-    with Profiler("Data preparation"):
+    with Profile("Data preparation"):
 
         # Remove unwanted fields from input array
         names = sig.dtype.names
@@ -430,6 +438,14 @@ def main ():
         #U = U[shuffle_indices]
         pass
 
+    # @TEMP Use subsection of data
+    #subsample = np.random.choice(num_samples, num_samples // 10, replace=False)
+    #X = X[subsample,:]
+    #P = P[subsample,:]
+    #Y = Y[subsample]
+    #W = W[subsample]
+    #U = U[subsample]
+
 
     # Classifier-only fit
     # --------------------------------------------------------------------------
@@ -439,14 +455,19 @@ def main ():
     #  [https://stackoverflow.com/questions/43821786/data-parallelism-in-keras]
     #  [https://stackoverflow.com/a/44771313]
     
-    with Profiler("Classifier-only fit, cross-validation"):
+    with Profile("Classifier-only fit, cross-validation"):
         # @TODO: - Implement checkpointing
+
+        # Define variables
+        basename = 'crossval_classifier'
         
         # Get indices for each fold in stratified k-fold training
-        skf = StratifiedKFold(n_splits=args.folds, shuffle=True, random_state=True)
+        skf = StratifiedKFold(n_splits=args.folds)
 
         # Importe module creator methods and optimiser options
-        from adversarial.models import compiler_options, classifier_model, adversarial_model
+        #from adversarial.models import compiler_options, classifier_model,
+        #adversary_model
+        from adversarial.models import classifier_model, adversary_model
 
         # Create unique set of random indices to use with stratification
         random_indices = np.arange(num_samples)
@@ -458,11 +479,11 @@ def main ():
 
         # Train or load classifiers
         if args.train:
-            log.info("Training classifiers")
+            log.info("Training cross-validation classifiers")
             
             # Loop `k` folds
             for fold, (train, validation) in enumerate(skf.split(X,Y)):
-                with Profiler("Fold {}/{}".format(fold + 1, args.folds)):
+                with Profile("Fold {}/{}".format(fold + 1, args.folds)):
 
                     # StratifiedKFold provides stratification, but since the
                     # input arrays are not randomised, neither will the
@@ -473,24 +494,20 @@ def main ():
 
                     # Define unique tag and name for current classifier
                     tag  = '{}of{}'.format(fold + 1, args.folds)
-                    name = 'crossval_classifier__{}'.format(tag)
+                    name = '{}__{}'.format(basename, tag)
 
                     # Get classifier
                     classifier = classifier_model(num_features, **cfg['classifier']['model'])
                     
                     # Compile with optimiser configuration
-                    opts = dict(**cfg['classifier']['compile'])
-                    opts['optimizer'] = eval("keras.optimizers.{optimizer}(lr={lr}, decay={decay})" \
-                                             .format(optimizer = opts['optimizer'],
-                                                     lr        = opts.pop('lr'),
-                                                     decay     = opts.pop('decay')))
-                    classifier.compile(**opts)
-                    
-                    # Save classifier model diagram to file
-                    if fold == 0:
-                        plot_model(classifier, to_file=args.output + 'classifier.png', show_shapes=True)
-                        pass                
-                    
+                    #opts = dict(**cfg['classifier']['compile'])
+                    #opts['optimizer'] = eval("keras.optimizers.{optimizer}(lr={lr}, decay={decay})" \
+                    #                         .format(optimizer = opts['optimizer'],
+                    #                                 lr        = opts.pop('lr'),
+                    #                                 decay     = opts.pop('decay')))
+                    #classifier.compile(**opts)
+                    classifier.compile(**cfg['classifier']['compile'])
+                                        
                     # Fit classifier model                    
                     result = train_in_parallel(classifier,
                                                {'input':   X[train, :],
@@ -500,15 +517,14 @@ def main ():
                                                 'target':  Y[validation],
                                                 'weights': W[validation]},
                                                config=cfg['classifier'],
-                                               num_devices=args.devices, mode=args.mode)
+                                               num_devices=args.devices, mode=args.mode, seed=seed)
                     histories.append(result['history'])
                     
-                    # Save classifier model to file
-                    classifier.save('trained/{}.h5'.format(name))
-
-                    # Save training history to file, both in unique output
-                    # directory and in the directory for pre-trained classifiers
+                    # Save classifier model and training history to file, both
+                    # in unique output directory and in the directory for
+                    # pre-trained classifiers
                     for destination in [args.output, 'trained/']:
+                        classifier.save(destination + '{}.h5'.format(name))
                         with open(destination + 'history__{}.json'.format(name), 'wb') as f:
                             json.dump(result['history'], f)
                             pass
@@ -519,17 +535,17 @@ def main ():
                     pass
                 pass
         else:
-            log.info("Loading classifiers from file")
+            log.info("Loading cross-validation classifiers from file")
             
             # Load pre-trained classifiers
-            classifier_files = sorted(glob.glob('trained/crossval_classifier__*of{}.h5'.format(args.folds)))
+            classifier_files = sorted(glob.glob('trained/{}__*of{}.h5'.format(basename, args.folds)))
             assert len(classifier_files) == args.folds, "Number of pre-trained classifiers ({}) does not match number of requested folds ({})".format(len(classifier_files), args.folds)
             for classifier_file in classifier_files:
                 classifiers.append(load_model(classifier_file))
                 pass
 
             # Load associated training histories
-            history_files = sorted(glob.glob('trained/history__crossval_classifier__*of{}.json'.format(args.folds)))
+            history_files = sorted(glob.glob('trained/history__{}__*of{}.json'.format(basename, args.folds)))
             assert len(history_files) == args.folds, "Number of training histories for pre-trained classifiers ({}) does not match number of requested folds ({})".format(len(history_files), args.folds)
             for history_file in history_files:
                 with open(history_file, 'r') as f:
@@ -538,19 +554,20 @@ def main ():
                 pass
 
             pass # end: train/load
+        pass
+        
 
-
-    # Classifier-only fit
+    # Plotting: Cost log for classifier-only fit
     # --------------------------------------------------------------------------
-    # Optimal number of trainin epochs
+    # Optimal number of training epochs
     opt_epochs = None
     
-    with Profiler("Plotting: Classifier-only fit, cross-val."):        
-        # Log history
+    with Profile("Plotting: Cost log, cross-val."):        
+
         fig, ax = plt.subplots()
         colours = map(lambda d: d['color'], list(plt.rcParams["axes.prop_cycle"]))
         
-        # @NOTE Assuming no early stopping
+        # @NOTE: Assuming no early stopping
         epochs = 1 + np.arange(len(histories[0]['loss']))
         
         for fold, hist in enumerate(histories): 
@@ -574,8 +591,8 @@ def main ():
         plt.plot(epochs, train_avg, color=colours[0], label='Train (avg.)')
         
         plt.title('Classifier-only, stratified {}-fold training'.format(args.folds), fontweight='medium')
-        plt.xlabel("Epochs",        horizontalalignment='right', x=1.0)
-        plt.ylabel("Logistic loss", horizontalalignment='right', y=1.0)
+        plt.xlabel("Training epochs",    horizontalalignment='right', x=1.0)
+        plt.ylabel("Objective function", horizontalalignment='right', y=1.0)
         
         epochs = [0] + list(epochs)
         step = max(int(np.floor(len(epochs) / 10.)), 1)
@@ -585,35 +602,74 @@ def main ():
         plt.savefig(args.output + 'costlog.pdf')
         pass
     
-    return
 
     # Classifier-only fit, full
     # --------------------------------------------------------------------------
-    with Profiler("Classifier-only fit, full"):
+    with Profile("Classifier-only fit, full"):
 
-        # @TODO Train _final_ classifier on all data
-        # Get classifier
-        classifier = classifier_model(num_features, **cfg['classifier']['model'])
-        
-        # Compile with optimiser configuration
-        opts = dict(**cfg['classifier']['compile'])
-        opts['optimizer'] = eval("keras.optimizers.{optimizer}(lr={lr}, decay={decay})" \
-                                 .format(optimizer = opts['optimizer'],
-                                         lr        = opts.pop('lr'),
-                                         decay     = opts.pop('decay')))
-        classifier.compile(**opts)
+        # Define variables
+        name = 'full_classifier'
 
-        # Overwrite number of training epochs with optimal number found from
-        # cross-validation
-        cfg['classifier']['fit']['epochs'] = opt_epochs
+        if args.train: # @TEMP or True
+            log.info("Training full classifier")
+            
+            # @TODO Train _final_ classifier on all data
+            # Get classifier
+            classifier = classifier_model(num_features, **cfg['classifier']['model'])
+            
+            # Compile with optimiser configuration
+            #opts = dict(**cfg['classifier']['compile'])
+            #opts['optimizer'] = eval("keras.optimizers.{optimizer}(lr={lr}, decay={decay})" \
+            #                         .format(optimizer = opts['optimizer'],
+            #                                 lr        = opts.pop('lr'),
+            #                                 decay     = opts.pop('decay')))
+            #classifier.compile(**opts)
+            classifier.compile(**cfg['classifier']['compile'])
 
-        # Train final classifier
-        print "==> len:", len(classifier.layers[2].get_weights())
-        weights_before = classifier.layers[2].get_weights()[0]
+            # Save classifier model diagram to file
+            plot_model(classifier, to_file=args.output + 'classifier.png', show_shapes=True)
+            
+            # Overwrite number of training epochs with optimal number found from
+            # cross-validation
+            cfg['classifier']['fit']['epochs'] = opt_epochs
+            
+            # Train final classifier
+            result = train_in_parallel(classifier,
+                                       {'input':   X,
+                                        'target':  Y,
+                                        'weights': W},
+                                       config=cfg['classifier'],
+                                       mode=args.mode,
+                                       num_devices=args.devices,
+                                       seed=seed)
 
-        result = train_in_parallel(classifier, {'input': X, 'target': Y, 'weights': W},
-                                   config=cfg['classifier'], mode=args.mode, num_devices=args.devices)
-        return
+            # Save classifier model and training history to file, both
+            # in unique output directory and in the directory for
+            # pre-trained classifiers
+            for destination in [args.output, 'trained/']:
+                classifier.save(destination + '{}.h5'.format(name))
+                with open(destination + 'history__{}.json'.format(name), 'wb') as f:
+                    json.dump(result['history'], f)
+                    pass
+                pass
+            
+        else:
+
+            log.info("Loading full classifier from file")
+            
+            # Load pre-trained classifiers
+            classifier_file = 'trained/{}.h5'.format(name)
+            #classifier_file = glob.glob('trained/{}.h5'.format(name))[0]
+            classifier = load_model(classifier_file)
+
+            # Load associated training histories
+            history_file = 'trained/history__{}.json'.format(name)
+            #history_file = glob.glob('trained/history__{}.json'.format(name))
+            with open(history_file, 'r') as f:
+                history = json.load(f)
+                pass
+
+            pass # end: train/load
         
         # ...
         
@@ -624,32 +680,237 @@ def main ():
         bkg = append_fields(bkg, 'NN', classifier.predict(X[~msk_sig], batch_size=1024).flatten(), dtypes=K.floatx())
         pass
 
+
+    # Combined fit, full (@TODO: Cross-val?)
+    # --------------------------------------------------------------------------
+    with Profile("Combined fit, full"):
+        # @TODO: - Make work
+        #        - Train/load
+        #        - Checkpointing
+        #        - Add per-epoch callback logging mean(s) and width(s) of GMM
+        #        component(s) for fixed percentiles of classifier output.
+
+        # Define variables
+        name = 'full_adversary'
+
+        if args.train:
+            log.info("Training full, combined model")
+            
+            # Set up combined, adversarial model
+            adversary = adversary_model(classifier,
+                                        gmm_dimensions=P.shape[1],
+                                        **cfg['adversary']['model'])
+            
+            # if resume: 
+            #    load_checkpoint(adversarial)
+            #    pass
+            
+            # adversarial.compile(**opts['adversarial'])
+            # Compile with optimiser configuration
+            # opts = dict(**cfg['adversary']['compile'])
+            # opts['optimizer'] = eval("keras.optimizers.{optimizer}(lr={lr}, decay={decay})" \
+            #                         .format(optimizer = opts['optimizer'],
+            #                                 lr        = opts.pop('lr'),
+            #                                 decay     = opts.pop('decay')))
+            # adversary.compile(**opts)
+            adversary.compile(**cfg['adversary']['compile'])
+            
+            # Save adversarial model diagram
+            plot_model(adversary, to_file=args.output + 'adversary.png', show_shapes=False)
+            
+            # Set fit options
+            # fit_opts = {
+            #    'shuffle':          True,
+            #    'validation_split': 0.2,
+            #    'batch_size':       4 * 1024,
+            #    'nb_epoch':         100,
+            #    'sample_weight':    [W_train, np.multiply(W_train, 1. - Y_train)]
+            #    }
+            
+            
+            # class LossHistory(Callback):
+            #    def on_train_begin(self, logs={}):
+            #        self.lossnames = ['loss', 'classifier_loss', 'adversary_loss']
+            #        self.losses = {name: list() for name in self.lossnames}
+            #        return
+            #    
+            #    def on_batch_end(self, batch, logs={}):
+            #        for name in self.lossnames:
+            #            self.losses[name].append(float(logs.get(name)))
+            #            pass
+            #        return
+            #    pass
+            # 
+            # history = LossHistory()
+            
+            # -- Callback for updating learning rate(s)
+            # damp = np.power(1.0E-04, 1./float(fit_opts['nb_epoch']))
+            # def schedule (epoch):
+            #    "" " Update the learning rate of the two optimisers. "" "
+            #    if 0 < damp and damp < 1:
+            #        K_.set_value(adv_optim.lr, damp * K_.get_value(adv_optim.lr))
+            #        pass
+            #    return float(K_.eval(adv_optim.lr))
+            #
+            # change_lr = LearningRateScheduler(schedule)
+            
+            # -- Callback for saving model checkpoints
+            # from keras.callbacks import ModelCheckpoint
+            # checkpointer = ModelCheckpoint(filepath=".adversary_checkpoint.h5", verbose=0, save_best_only=False)
+            
+            # -- Callback to reduce learning rate when validation loss plateaus
+            # reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, min_lr=1E-07)
+            
+            # Store callbacks in fit options
+            # fit_opts['callbacks'] = [history, change_lr, checkpointer]
+            
+            # Fit the combined, adversarial model
+            # adversary.fit([X_train, P_train], [Y_train, np.ones_like(Y_train)], **fit_opts)
+            #    'sample_weight':    [W_train, np.multiply(W_train, 1. - Y_train)]
+            # hist = history.losses
+            result = train_in_parallel(adversary,
+                                       {'input':   [X, P],
+                                        'target':  [Y, np.ones_like(Y)],
+                                        'weights': [U, np.multiply(U, 1 - Y)]},
+                                       config=cfg['adversary'],
+                                       mode=args.mode,
+                                       num_devices=args.devices,
+                                       seed=seed)
+            
+            # Save adversary model and training history to file, both
+            # in unique output directory and in the directory for
+            # pre-trained classifiers
+            history = result['history']
+            for destination in [args.output, 'trained/']:
+                adversary.save(destination + '{}.h5'.format(name))
+                with open(destination + 'history__{}.json'.format(name), 'wb') as f:
+                    json.dump(history, f)
+                    pass
+                pass
+            
+            # Save cost log to file
+            # with open('cost.log', 'a' if resume else 'w') as cost_log:
+            #    line  = "# "
+            #    line += ", ".join(['%s' % name for name in history.lossnames])
+            #    line += " \n"
+            #    cost_log.write(line) 
+            #    
+            #    cost_array = np.squeeze(np.array(zip(hist.values())))
+            #    for row in range(cost_array.shape[1]):
+            #        costs = list(cost_array[:,row])
+            #        line = ', '.join(['%.4e' % cost for cost in costs])
+            #        line += " \n"
+            #        cost_log.write(line)    
+            #        pass
+            #    pass
+            
+
+        else:
+
+            log.info("Loading full, combined model from file")
+            
+            # Load pre-trained adversary
+            adversary_file = 'trained/{}.h5'.format(name)
+            #adversary_file = glob.glob('trained/{}.h5'.format(name))[0]
+            adversary = load_model(adversary_file)
+            
+            # Load associated training histories
+            history_file = 'trained/history__{}.json'.format(name)
+            #history_file = glob.glob('trained/history__{}.json'.format(name))
+            with open(history_file, 'r') as f:
+                history = json.load(f)
+                pass
+            
+            pass
+            
+        # Store classifier output as tagger variables. @NOTE This works only
+        # _provided_ the input array X has the same ordering as sig/bkg.
+        msk_sig = (Y == 1.)
+        sig = append_fields(sig, 'ANN', classifier.predict(X[ msk_sig], batch_size=1024).flatten(), dtypes=K.floatx())
+        bkg = append_fields(bkg, 'ANN', classifier.predict(X[~msk_sig], batch_size=1024).flatten(), dtypes=K.floatx())
+        pass
+    
+
+    # Plotting: Cost log for adversarial fit
+    # --------------------------------------------------------------------------
+    with Profile("Plotting: Cost log, adversarial, full"):        
+
+        fig, ax = plt.subplots()
+        colours = map(lambda d: d['color'], list(plt.rcParams["axes.prop_cycle"]))
+        epochs = 1 + np.arange(len(history['loss']))
+        lambda_reg = cfg['adversary']['model']['lambda_reg']
+        lr_ratio   = cfg['adversary']['model']['lr_ratio']        
+                   
+        classifier_loss = np.mean([loss for key,loss in history.iteritems() if key.startswith('adversary') and int(key.split('_')[-1]) % 2 == 1 ], axis=0)
+        adversary_loss  = np.mean([loss for key,loss in history.iteritems() if key.startswith('adversary') and int(key.split('_')[-1]) % 2 == 0 ], axis=0) * lambda_reg
+        #combined_loss   = np.array(history['loss']) * lambda_reg /
+        #float(lr_ratio)
+        combined_loss   = classifier_loss + adversary_loss
+        
+        plt.plot(epochs, classifier_loss, color=colours[0],  linewidth=1.4,  label='Classifier')
+        plt.plot(epochs, adversary_loss,  color=colours[1],  linewidth=1.4,  label=r'Adversary (\lambda = {})'.format(lambda_reg))
+        plt.plot(epochs, combined_loss,   color=colours[-1], linestyle='--', label='Combined')
+
+        plt.title('Adversarial training', fontweight='medium')
+        plt.xlabel("Training epochs", horizontalalignment='right', x=1.0)
+        plt.ylabel("Objective function",   horizontalalignment='right', y=1.0)
+        ax.set_yscale('log')
+        
+        epochs = [0] + list(epochs)
+        step = max(int(np.floor(len(epochs) / 10.)), 1)
+        
+        plt.xticks(filter(lambda x: x % step == 0, epochs))
+        plt.legend()
+        plt.savefig(args.output + 'adversary_costlog.pdf')
+        pass
+
     
     # Plotting: Distributions/ROC
     # --------------------------------------------------------------------------
-    with Profiler("Plotting: Distributions/ROC"):
+    with Profile("Plotting: Distributions/ROC"):
 
         # Tagger variables
-        variables = ['tau21', 'D2', 'NN']
+        variables = ['tau21', 'D2', 'NN', 'ANN']
 
         # Plotted 1D tagger variable distributions
         fig, ax = plt.subplots(1, len(variables), figsize=(len(variables) * 4, 4))
 
-        w_sig  = sig['weight']
-        w_bkg  = bkg['weight']
 
         for ivar, var in enumerate(variables):
-            nbins  = 50
 
-            v_sig  = sig[var]
-            v_bkg  = bkg[var]
+            # Get axis limits
+            if var == 'D2':
+                edges = np.linspace(0, 5, 50 + 1, endpoint=True)
+            else:
+                edges = np.linspace(0, 1, 50 + 1, endpoint=True)
+                pass
 
-            _, edges, _ = \
-            ax[ivar].hist(v_bkg, bins=nbins, weights=w_bkg, alpha=0.5, normed=True, label='Background')
+            # Get value- and weight arrays
+            v_sig = np.array(sig[var])
+            v_bkg = np.array(bkg[var])
+
+            w_sig = np.array(sig['weight'])
+            w_bkg = np.array(bkg['weight'])
+
+            # Mask out NaN's
+            msk = ~np.isnan(v_sig)
+            v_sig = v_sig[msk]
+            w_sig = w_sig[msk]
+            
+            msk = ~np.isnan(v_bkg)
+            v_bkg = v_bkg[msk]
+            w_bkg = w_bkg[msk]
+
+
+            # Plot distributions
+            ax[ivar].hist(v_bkg, bins=edges, weights=w_bkg, alpha=0.5, normed=True, label='Background')
             ax[ivar].hist(v_sig, bins=edges, weights=w_sig, alpha=0.5, normed=True, label='Signal')
 
-            ax[ivar].set_xlabel("Jet {}".format(var),                      horizontalalignment='right', x=1.0)
-            ax[ivar].set_ylabel("Jets / {:.3f}".format(np.diff(edges)[0]), horizontalalignment='right',     y=1.0)
+            ax[ivar].set_xlabel("Jet {}".format(var),
+                                horizontalalignment='right', x=1.0)
+
+            ax[ivar].set_ylabel("Jets / {:.3f}".format(np.diff(edges)[0]),
+                                horizontalalignment='right', y=1.0)
             pass
 
         plt.legend()
@@ -674,94 +935,9 @@ def main ():
         plt.legend()
         plt.savefig(args.output + 'tagger_ROCs.pdf')
         pass
-    
-    return
 
-    # ==========================================================================
-    '''
-    
-    # Set up combined, adversarial model
-    adversarial = adversarial_model(classifier, architecture=[(64, 'tanh')] * 2, num_posterior_components=1, num_posterior_dimensions=P_train.shape[1])
-
-    if resume: 
-        load_checkpoint(adversarial)
-        pass
-
-    adversarial.compile(**opts['adversarial'])
-
-    # Save adversarial model diagram
-    plot(adversarial, to_file='adversarial.png', show_shapes=True)
-
-    # Set fit options
-    fit_opts = {
-        'shuffle':          True,
-        'validation_split': 0.2,
-        'batch_size':       4 * 1024,
-        'nb_epoch':         100,
-        'sample_weight':    [W_train, np.multiply(W_train, 1. - Y_train)]
-    }
-
-
-    class LossHistory(Callback):
-        def on_train_begin(self, logs={}):
-            self.lossnames = ['loss', 'classifier_loss', 'adversary_loss']
-            self.losses = {name: list() for name in self.lossnames}
-            return
-
-        def on_batch_end(self, batch, logs={}):
-            for name in self.lossnames:
-                self.losses[name].append(float(logs.get(name)))
-                pass
-            return
-        pass
-
-    history = LossHistory()
-
-    # -- Callback for updating learning rate(s)
-    damp = np.power(1.0E-04, 1./float(fit_opts['nb_epoch']))
-    def schedule (epoch):
-        "" " Update the learning rate of the two optimisers. "" "
-        if 0 < damp and damp < 1:
-            K_.set_value(adv_optim.lr, damp * K_.get_value(adv_optim.lr))
-            pass
-        return float(K_.eval(adv_optim.lr))
-
-    change_lr = LearningRateScheduler(schedule)
-
-    # -- Callback for saving model checkpoints
-    from keras.callbacks import ModelCheckpoint
-    checkpointer = ModelCheckpoint(filepath=".adversarial_checkpoint.h5", verbose=0, save_best_only=False)
-
-    # -- Callback to reduce learning rate when validation loss plateaus
-    reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, min_lr=1E-07)
-
-    # Store callbacks in fit options
-    fit_opts['callbacks'] = [history, change_lr, checkpointer]
-
-    # Fit the combined, adversarial model
-    adversarial.fit([X_train, P_train], [Y_train, np.ones_like(Y_train)], **fit_opts)
-    hist = history.losses
-
-    # Save cost log to file
-    with open('cost.log', 'a' if resume else 'w') as cost_log:
-        line  = "# "
-        line += ", ".join(['%s' % name for name in history.lossnames])
-        line += " \n"
-        cost_log.write(line) 
-
-        cost_array = np.squeeze(np.array(zip(hist.values())))
-        for row in range(cost_array.shape[1]):
-            costs = list(cost_array[:,row])
-            line = ', '.join(['%.4e' % cost for cost in costs])
-            line += " \n"
-            cost_log.write(line)    
-            pass
-        pass
-
-    '''
-       
     # ...
-        
+
     return 0
 
 
