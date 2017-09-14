@@ -10,8 +10,8 @@ import time
 from inspect import currentframe, getframeinfo, getouterframes
 from functools import wraps
 
-class Profiler:
-    """Profiler class, for measuring time elapsed running sections of code."""
+class Profile:
+    """Profile class, for measuring time elapsed running sections of code."""
 
     # Static member keeping track of the number of class instances.
     instances = 0
@@ -29,13 +29,13 @@ class Profiler:
         self.__prefix = '\033[38;2;74;176;245m\033[1m{title}\033[0m {icon} '.format(title=str(self.__class__).split('.')[-1], icon='⏱ ')
         self.__width = 80
 
-        Profiler.instances += 1
+        Profile.instances += 1
         pass
 
     
     def __del__ (self):
         """Destructor"""
-        Profiler.instances -= 1
+        Profile.instances -= 1
         return
 
 
@@ -44,7 +44,7 @@ class Profiler:
 
     
     def indent (self):
-        return (Profiler.instances - 1) * 2
+        return (Profile.instances - 1) * 2
 
     
     def indent_string (self, delim='·'):
@@ -103,10 +103,10 @@ class Profiler:
 
 
 def profile (fn):
-    """Implement Profiler class as function decorator."""
+    """Implement Profile class as function decorator."""
     @wraps(fn)
     def wrapper (*args, **kwargs):
-        with Profiler(title='@' + fn.__name__, depth=3):
+        with Profile(title='@' + fn.__name__, depth=3):
             result = fn(*args, **kwargs)
             pass
         return result
