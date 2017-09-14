@@ -33,12 +33,11 @@ echo "  ${SOURCE}"
 echo "to"
 echo "  ${DESTINATION}"
 rsync -rl -vv ${SOURCE} ${DESTINATION}
-echo "Done"
 
 # Check that all went well
 if [ "$?" -eq "0" ]; then
     echo "Done, all went well"
 else
     echo "Something went wrong"
-    exit 100
+    #exit 100
 fi
