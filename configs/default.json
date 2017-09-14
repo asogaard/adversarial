@@ -30,23 +30,32 @@
     "adversary": {
 	"model": {
 	    "default": {
-		"units":      16,
-		"activation": "tanh",
+		"units":      128,
+		"activation": "relu",
 		"batchnorm":  false,
-		"dropout":    null
+		"dropout":    0.2
 	    },
 	    "architecture": [
-		{"batchnorm": true},
-		{}
+		{},
+		{},
+		{},
+		{"batchnorm": false}
 	    ],
-	    "gmm_components": 5
+	    "gmm_components": 1,
+	    "lambda_reg": 100,
+	    "lr_ratio" : null
 	},
-	"fit" : {},
+	"fit" : {
+	    "epochs": 500,
+	    "batch_size" : 2048,
+	    "shuffle": true,
+	    "validation_split": 0.2
+	},
 	"compile" : {
             "loss":         ["binary_crossentropy", "binary_crossentropy"],
-	    "loss_weights": [1, 1E+03],
-            "lr":           1.0E-03,
-            "decay":        1.0E-03,
+	    "loss_weights": [1E-03, 1],
+            "lr":           1.0E-04,
+            "decay":        1.0E-02,
             "optimizer":    "Adam"
         }
     }
