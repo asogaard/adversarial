@@ -27,16 +27,15 @@
 # Specify hard runtime limit
 #$ -l h_rt=10:00:00
 
-# @NOTE Will this work?
-if [ "$GPU" == true ]; then
+# @NOTE Will this work? NO.
 # IF GPU: Request 'gpu' parallel environment with 2 CPU cores (necessary to have
 # enough memory ca. 11GB < 8 x 8GB) and N GPUs
-#$ -pe gpu 8
-else
+#---$ -pe gpu 8
+
 # IF CPU: Specify requested number of compute cores
-#$ -pe sharedmem 4
+#$ -pe sharedmem 8
 #
-fi
+
 
 # Send mail to these users
 #$ -M andreas.sogaard@ed.ac.uk
@@ -49,7 +48,9 @@ fi
 # Set up correct environment
 echo "Setting up python environment"
 . /etc/profile.d/modules.sh
-. ./setup.sh gpu
+. ./setup.sh 
+# @TODO Implement flag
+#. ./setup.sh gpu
 
 # Run python program
 echo "Reading data from $INPUTDIR/*.root"
@@ -72,6 +73,9 @@ if [ "$TRAIN" == true ]; then
 fi
 if [ "$TENSORFLOW" == true ]; then
     FLAGS="$FLAGS --tensorflow"
+fi
+if [ ! -z "$DEVICES" ]; then 
+    FLAGS="$FLAGS --devices $DEVICES"
 fi
 if [ ! -z "$FOLDS" ]; then 
     FLAGS="$FLAGS --folds $FOLDS"
