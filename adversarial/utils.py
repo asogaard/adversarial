@@ -15,20 +15,39 @@ import collections
 import numpy as np
 
 # Project import(s)
-from .profiler import profile
+from .profiler import profile, Profile
 
 
 def print_memory ():
-    """Utility method for logging the current CPU memory usage."""
+    """Log the current CPU memory usage."""
     mem = psutil.virtual_memory()
     print "CPU memory: {:.1f}GB / {:.1f}GB".format(mem.available * 1.0E-09,
                                                    mem.total     * 1.0E-09)
     return
 
 
+def flatten (container):
+    """Unravel nested lists and tuples.
+    
+    From [https://stackoverflow.com/a/10824420]
+    """
+    if isinstance(container, (list,tuple)):
+        for i in container:
+            if isinstance(i, (list,tuple)):
+                for j in flatten(i):
+                    yield j
+            else:
+                yield i
+            pass
+    else:
+        yield container
+    
+
 def apply_patch (d, u):
     """Update nested dictionary without overwriting previous levels.
-    From [https://stackoverflow.com/a/3233356]"""
+
+    From [https://stackoverflow.com/a/3233356]
+    """
     for k, v in u.iteritems():
         if isinstance(v, collections.Mapping):
             r = apply_patch(d.get(k, {}), v)
@@ -42,7 +61,9 @@ def apply_patch (d, u):
 
 def roc_efficiencies (sig, bkg, sig_weight=None, bkg_weight=None):
     """Compute the signal and background efficiencies for successive cuts.
-    Adapted from: https://github.com/asogaard/AdversarialSubstructure/blob/master/utils.py"""
+
+    Adapted from [https://github.com/asogaard/AdversarialSubstructure/blob/master/utils.py]
+    """
     
     # Check(s)
     if sig_weight is None:
@@ -109,8 +130,8 @@ def split_indices (num_samples, num_splits, shuffle=True, seed=None):
     """
 
     # Check(s)
-    if   type(num_samples) is list:
-        num_samples = len(list)
+    if   type(num_samples) in [list, tuple]:
+        return split_indices(num_samples[0], num_splits, shuffle, seed)
     elif type(num_samples) is np.ndarray:
         num_samples = num_samples.shape[0]
     else:
@@ -134,6 +155,22 @@ def split_indices (num_samples, num_splits, shuffle=True, seed=None):
     
     return result
 
+
+def apply_slice (x, idx):
+    """Apply slicing to numpy arrays in nested container."""
+    
+    if isinstance(x, dict):
+        return {key: apply_slice(val, idx) for (key,val) in x.iteritems()}
+    elif isinstance(x, (list, tuple)):
+        return [apply_slice(el,idx) for el in x]
+    elif isinstance(x, np.ndarray):
+        return x[idx]
+    else:
+        raise Exception("apply_slice: Input type '{}' not recognised".format(type(x)))
+    
+    # Should never reach here
+    return None
+    
 
 def validate_training_input (data_train, data_validation):
     """Make sure that the format of the data dicts makes sense.
@@ -167,9 +204,9 @@ def validate_training_input (data_train, data_validation):
         pass
 
     # Check that shapes of provided arrays are compatible
-    shapes = [x.shape[0] for x in data_train.values()]
+    shapes = [x.shape[0] for x in flatten(data_train.values())]
     assert all(shape == shapes[0] for shape in shapes), "Training sample counts are incompatible: [{}]".format(', '.join(map(str, shapes)))
-    shapes = [x.shape[0] for x in data_validation.values()]
+    shapes = [x.shape[0] for x in flatten(data_validation.values())]
     assert all(shape == shapes[0] for shape in shapes), "Validation sample counts are incompatible: [{}]".format(', '.join(map(str, shapes)))
 
     return
@@ -211,9 +248,9 @@ def train_in_sequence (model, data_train, data_validation={}, config={}):
         data_validation['target'],
         data_validation['weights'] if 'weights' in data_validation else None
         ) if use_validation else None
-
+    
     # Perform fit
-    hist = model.fit(X, Y, sample_weight=W, validation_data=validation_data, **config['fit'])
+    hist = model.fit(X, Y, sample_weight=W, validation_data=validation_data, verbose=2, **config['fit'])
 
     return {'model': model, 'history': hist.history}
 
@@ -241,20 +278,19 @@ def train_in_parallel (model, data_train, data_validation={}, config={}, mode=No
     # Check(s)
     validate_training_input(data_train, data_validation)
     assert mode in ['gpu', 'cpu'], "Requested mode '{}' not recognised".format(mode)
-        
+
     # Check backend for compatibility
     import keras.backend as K
     if K.backend() != 'tensorflow':
         log.warning("train_in_parallel only works for Tensorflow. Falling back to train_in_sequence")
         train_in_sequence(model, data_train, data_validation, config=config)
         return
-
+    
     # Local imports (make sure Keras backend is set before elsewhere)
     import tensorflow as tf
     import keras
     from keras.models import Model
     from keras.layers import Input
-    from keras.layers.merge import Concatenate
     from keras.utils.vis_utils import plot_model
 
     # Define variables
@@ -262,69 +298,98 @@ def train_in_parallel (model, data_train, data_validation={}, config={}, mode=No
 
     # Get indices of batches of data to be used on each DEVICE.
     device_splits_train      = split_indices(data_train     ['input'], num_devices)
-    device_splits_validation = split_indices(data_validation['input'], num_devices) if use_validation else None
-
+    device_splits_validation = split_indices(data_validation['input'], num_devices) \
+                               if use_validation else None
+    
+    # device_splits_train = [ [1, 2, 3, ..., N], [N + 1, N + 2, ..., 2 * N], ... ]
+    # device_data_train = [ {
+    #     key: np.ndarray
+    #         -- OR --
+    #     key: [np.ndarray, np.ndarray, ...]
+    # }, ...]
+    
     # Get batched data
-    device_data_train = [{key: data_train[key][split] for key in data_train.keys()} for split in device_splits_train]
-    if use_validation:
-        device_data_validation = [{key: data_validation[key][split] for key in data_validation.keys()} for split in device_splits_validation]
-        pass
-
+    #    device_data_train = [{key: data_train[key][split] for key in data_train.keys()} for split in device_splits_train]
+    #    if use_validation:
+    #        device_data_validation = [{key: data_validation[key][split] for key in data_validation.keys()} for split in device_splits_validation]
+    #        pass
+    device_data_train      = [apply_slice(data_train,      idx) for idx in device_splits_train]
+    device_data_validation = [apply_slice(data_validation, idx) for idx in device_splits_validation] if use_validation else None
+    
     # Create parallelised model
     # -- Put inputs on main CPU (PS)
     with tf.device('/cpu:0'):
         inputs = list()
         for device in range(num_devices):
-            inputs.append(Input(device_data_train[device]['input'].shape[1:],
-                                name=model.input_names[0] + "_{}/{}".format(device + 1, num_devices)))
+            # inputs.append(Input(device_data_train[device]['input'].shape[1:],
+            #                    name=model.input_names[0] + tag))
+            
+            # Loop inputs (possibly one or zero)
+            device_inputs = list()
+            for matrix in flatten([device_data_train[device]['input']]):
+                device_inputs.append(Input(matrix.shape[1:]))
+                pass
+            inputs.append(device_inputs)
             pass
         pass
-
-    # -- Create replicae classifiers on devices
+    
+    # -- Create replicate classifiers on devices
     outputs = list()
     for device in range(num_devices):
         with tf.device('/{}:{}'.format(mode, device)):
+            #outputs.append(model(inputs[device]))
             outputs.append(model(inputs[device]))
             pass
         pass
-
+    
     # -- Put concatenates outputs on CPU
-    #with tf.device('/cpu:0'):
+    # with tf.device('/cpu:0'):
     #    #outputs = [Concatenate(axis=0)(towers)]
     #    pass
-
+    
     # -- Create parallelised model
-    parallelised = Model(inputs=inputs, outputs=outputs, name=model.name + '_parallelised')
+    parallelised = Model(inputs=list(flatten(inputs)), outputs=list(flatten(outputs)), name=model.name + '_parallelised')
     plot_model(parallelised, to_file='parallelised.png', show_shapes=True) # @TEMP
+    
+    # @NOTE: Assume 'optimizer' has already been evaluated
+    ## Compile with optimiser configuration
+    #try:
+    #    opts = dict(**config['compile'])
+    #    opts['optimizer'] = eval("keras.optimizers.{optimizer}(lr={lr}, decay={decay})" \
+    #                             .format(optimizer = opts['optimizer'],
+    #                                     lr        = opts.pop('lr'),
+    #                                     decay     = opts.pop('decay')))
+    #except KeyError as e:
+    #    print e
+    #    for key in ['optimizer', 'lr', 'decay']:
+    #        opts.pop(key, None)
+    #        pass
+    #    pass
+    #parallelised.compile(**opts)
 
-    # Compile with optimiser configuration
-    try:
-        opts = dict(**config['compile'])
-        opts['optimizer'] = eval("keras.optimizers.{optimizer}(lr={lr}, decay={decay})" \
-                                 .format(optimizer = opts['optimizer'],
-                                         lr        = opts.pop('lr'),
-                                         decay     = opts.pop('decay')))
-    except KeyError as e:
-        print e.strerror
-        for key in ['optimizer', 'lr', 'decay']:
-            opts.pop(key, None)
+    # Replicate fields which are specific to each output node
+    for field in ['loss', 'loss_weights']:
+        if field in config['compile'] and isinstance(config['compile'][field], (list, tuple)):
+            config['compile'][field] = config['compile'][field] * num_devices
             pass
         pass
-    parallelised.compile(**opts)
+
+    # Compile parallelised model
+    parallelised.compile(**config['compile'])
     
-    # Train parallelised model
-    X = [data['input']   for data in device_data_train]
-    Y = [data['target']  for data in device_data_train]
-    W = [data['weights'] for data in device_data_train] if 'weights' in data_train else None
-
+    # Format data
+    X = list(flatten([data['input']   for data in device_data_train]))
+    Y = list(flatten([data['target']  for data in device_data_train]))
+    W = list(flatten([data['weights'] for data in device_data_train])) if 'weights' in data_train else None
+    
     validation_data = (
-        [data['input']   for data in device_data_validation],
-        [data['target']  for data in device_data_validation],
-        [data['weights'] for data in device_data_validation] if 'weights' in data_validation else None
+        list(flatten([data['input']   for data in device_data_validation])),
+        list(flatten([data['target']  for data in device_data_validation])),
+        list(flatten([data['weights'] for data in device_data_validation])) if 'weights' in data_validation else None
         ) if use_validation else None
-
-    # -- Perform fit
-    hist = parallelised.fit(X, Y, sample_weight=W, validation_data=validation_data, **config['fit'])
+    
+    # Perform fit
+    hist = parallelised.fit(X, Y, sample_weight=W, validation_data=validation_data, verbose=2, **config['fit'])
 
     # Divide loss by number of devices, to take average
     history = hist.history
@@ -339,8 +404,12 @@ def train_in_parallel (model, data_train, data_validation={}, config={}, mode=No
 
 @profile
 def initialise_backend (args):
-    """Method to initialise the chosen Keras backend according to the settings
-    specified in the command-line arguments `args`."""
+    """Initialise the Keras backend.
+
+    Args:
+        args: Namespace containing command-line arguments from argparse. These
+            settings specify which back-end should be configured, and how.
+    """
 
     # Check(s)
     if args.gpu and not args.tensorflow and args.devices > 1:
@@ -349,7 +418,8 @@ def initialise_backend (args):
     # Specify Keras backend and import module
     os.environ['KERAS_BACKEND'] = "tensorflow" if args.tensorflow else "theano"
     
-    # Get number of cores on CPU(s)
+    # Get number of cores on CPU(s), name of CPU devices, and number of physical
+    # cores in each device.
     num_cpus = len(filter(lambda line: line.startswith('cpu cores'),
                           subprocess.check_output(["cat", "/proc/cpuinfo"]).split('\n')))
     name_cpu = filter(lambda line: line.startswith('model name'),
@@ -358,7 +428,7 @@ def initialise_backend (args):
     num_cores = int(filter(lambda line: line.startswith('cpu cores'),
                            subprocess.check_output(["cat", "/proc/cpuinfo"]).split('\n'))[0] \
                     .split(':')[-1].strip())
-    log.info("Found {} {} devices with {} cores".format(num_cpus, name_cpu, num_cores))
+    log.info("Found {} {} devices with {} cores each.".format(num_cpus, name_cpu, num_cores))
 
     # Configure backends
     if args.tensorflow:
@@ -387,9 +457,9 @@ def initialise_backend (args):
         # GPU devices are set up
         import tensorflow as tf
 
-        # @TODO: - Some smart selection of GPUs to used based on actual #
-        # utilisation?  - Some way to avoid starving
-        # GPU of data?
+        # @TODO:
+        # - Some smart selection of GPUs to used based on actual utilisation?
+        # - Some way to avoid starving GPU of data?
         
         # Manually configure Tensorflow session
         gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.1,
@@ -399,8 +469,8 @@ def initialise_backend (args):
                                 inter_op_parallelism_threads=num_cores * 2, # Automatically decide
                                 allow_soft_placement=True,
                                 device_count={'GPU': args.devices if args.gpu else 0},
-                                gpu_options=gpu_options if args.gpu else None
-                                )
+                                gpu_options=gpu_options if args.gpu else None)
+        
         session = tf.Session(config=config)
         
     else:
