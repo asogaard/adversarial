@@ -2,14 +2,12 @@
     "classifier": {
 	"model": {
 	    "default": {
-		"units":      256,
+		"units":      64,
 		"activation": "relu",
 		"batchnorm":  true,
 		"dropout":    0.2
 	    },
 	    "architecture": [
-		{},
-		{},
 		{},
 		{},
 		{}
@@ -22,41 +20,46 @@
 	},
 	"compile" : {
 	    "loss":      "binary_crossentropy",
-	    "lr":        1.0E-02,
-	    "decay":     1.0E-03,
+	    "lr":        1.0E-03,
+	    "decay":     1.0E-04,
 	    "optimizer": "Adam"
 	}
     },
     "adversary": {
 	"model": {
 	    "default": {
-		"units":      128,
-		"activation": "relu",
-		"batchnorm":  false,
+		"units":      64,
+		"activation": "tanh",
+		"batchnorm":  true,
 		"dropout":    0.2
 	    },
 	    "architecture": [
 		{},
 		{},
-		{},
-		{"batchnorm": false}
+		{}
 	    ],
-	    "gmm_components": 1,
-	    "lambda_reg": 100,
+	    "gmm_components": 5
+	},
+	"fit": {},
+	"compile": {}
+    },
+    "combined": {
+	"model": {
+	    "lambda_reg": 10,
 	    "lr_ratio" : null
 	},
-	"fit" : {
-	    "epochs": 500,
+	"fit": {
+	    "epochs": 20,
 	    "batch_size" : 2048,
 	    "shuffle": true,
 	    "validation_split": 0.2
 	},
-	"compile" : {
-            "loss":         ["binary_crossentropy", "binary_crossentropy"],
-	    "loss_weights": [1E-03, 1],
-            "lr":           1.0E-04,
+	"compile": {
+            "loss":         ["binary_crossentropy", null],
+	    "loss_weights": [1.0E-03, 1.0E+00],
+            "lr":           1.0E-02,
             "decay":        1.0E-02,
             "optimizer":    "Adam"
-        }
+	}
     }
 }
