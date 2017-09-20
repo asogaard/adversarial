@@ -5,8 +5,6 @@
 
 # Basic import(s)
 import os
-import sys
-import psutil
 import logging as log
 import subprocess
 import collections
@@ -15,15 +13,7 @@ import collections
 import numpy as np
 
 # Project import(s)
-from .profile import profile, Profile
-
-
-def print_memory ():
-    """Log the current CPU memory usage."""
-    mem = psutil.virtual_memory()
-    print "CPU memory: {:.1f}GB / {:.1f}GB".format(mem.available * 1.0E-09,
-                                                   mem.total     * 1.0E-09)
-    return
+from .profile import profile
 
 
 def flatten (container):
@@ -113,17 +103,17 @@ def roc_auc (eff_sig, eff_bkg):
 
 
 def split_indices (num_samples, num_splits, shuffle=True, seed=None):
-    """Method to (shuffle and) split indices into a fixes number of batches
+    """Method to (shuffle and) split indices into a fixes number of batches.
 
     Ensures that there is the same number of indices in each split, which will
-    discared `N % splits` indices at random.
+    discard `N % splits` indices at random.
 
     Args:
-        num_samples : Either the total number of samples, or some container
+        num_samples: Either the total number of samples, or some container
             (list or numpy array), from which to deduce the number of sampes.
-        num_splits : Number of splits/batches for which to get indices
-        shuffle : Whether to shuffle the indices before splitting.
-        seed : The seed to use for the random number generation.
+        num_splits: Number of splits/batches for which to get indices
+        shuffle: Whether to shuffle the indices before splitting.
+        seed: The seed to use for the random number generation.
 
     Returns:
         A list containing the indices to be used for each split/batch.
@@ -176,20 +166,20 @@ def validate_training_input (data_train, data_validation):
     """Make sure that the format of the data dicts makes sense.
 
     Args:
-        data_train : Dictonary containing the training data, with fields
-            'input', 'target', and (optionally) 'weights'  
-        data_validation : Dictonary containing the validation data, with
-            fields 'input', 'target', and (optionally) 'weights'
+        data_train: Dictonary containing the training data, with fields
+            'input', 'target', and (optionally) 'weights'.
+        data_validation: Dictonary containing the validation data, with
+            fields 'input', 'target', and (optionally) 'weights'.
 
     Raises:
-        AssertionError : If the format of the data dicts are not valid
+        AssertionError: If the format of the data dicts are not valid.
 
     Returns:
         None
     """
 
     # Check that only supported fields were provided
-    supported_fields = ['input', 'target', 'weights']
+    supported_fields = ['input', 'target', 'weights', 'mask']
     unsupported_fields = list(set(data_train.keys()) - set(supported_fields))
     assert len(unsupported_fields) == 0, "Training data dict has fields which are not supported: {}".format(', '.join(unsupported_fields))
     unsupported_fields = list(set(data_validation.keys()) - set(supported_fields))
@@ -204,17 +194,26 @@ def validate_training_input (data_train, data_validation):
         pass
 
     # Check that shapes of provided arrays are compatible
-    shapes = [x.shape[0] for x in flatten(data_train.values())]
-    assert all(shape == shapes[0] for shape in shapes), "Training sample counts are incompatible: [{}]".format(', '.join(map(str, shapes)))
-    shapes = [x.shape[0] for x in flatten(data_validation.values())]
-    assert all(shape == shapes[0] for shape in shapes), "Validation sample counts are incompatible: [{}]".format(', '.join(map(str, shapes)))
+    #shapes = [data_train[key].shape[0] for key in list(set(flatten(data_train.keys())) - set(['mask']))]
+    #assert all(shape == shapes[0] for shape in shapes), "Training sample counts are incompatible: [{}]".format(', '.join(map(str, shapes))) 
+    #shapes = [data_validation[key].shape[0] for key in list(set(flatten(data_validation.keys())) - set(['mask'])) ]
+    #assert all(shape == shapes[0] for shape in shapes), "Validation sample counts are incompatible: [{}]".format(', '.join(map(str, shapes)))
 
-    return
-
+    # (Opt.) Apply mask
+    mask = data_train.pop('mask', None)
+    if mask is not None:
+        data_train = apply_slice(data_train, mask)
+        pass
+    mask = data_validation.pop('mask', None)
+    if mask is not None:
+        data_validation = apply_slice(data_validation, mask)
+        pass
+    
+    return data_train, data_validation
 
 
 @profile
-def train_in_sequence (model, data_train, data_validation={}, config={}):
+def train_in_sequence (model, data_train, data_validation={}, config={}, callbacks=[]):
     """Train a model in standard Keras fashion, using a syntax similar to train_in_parallel.
 
     Description...
@@ -224,20 +223,17 @@ def train_in_sequence (model, data_train, data_validation={}, config={}):
         ...
 
     Returns:
-        The trained model.
-
-    Raises:
-        Exception: If the Keras backend is not Tensorflow.
+        Dict containing the trained model and the training history.
     """
 
     # Check(s)
-    validate_training_input(data_train, data_validation)
+    data_train, data_validation = validate_training_input(data_train, data_validation)
 
     # Define variables
     use_validation = bool(data_validation)
 
-    # @NOTE: Assuming model is already compiled.
-    # @TODO: Check this?
+    # Compile sequential model
+    model.compile(**config['compile'])
 
     # Format inputs
     X = data_train['input']
@@ -251,13 +247,13 @@ def train_in_sequence (model, data_train, data_validation={}, config={}):
         ) if use_validation else None
     
     # Perform fit
-    hist = model.fit(X, Y, sample_weight=W, validation_data=validation_data, verbose=2, **config['fit'])
+    hist = model.fit(X, Y, sample_weight=W, validation_data=validation_data, verbose=1, callbacks=callbacks, **config['fit'])
 
     return {'model': model, 'history': hist.history}
 
 
 @profile
-def train_in_parallel (model, data_train, data_validation={}, config={}, mode=None, num_devices=1, seed=None):
+def train_in_parallel (model, data_train, data_validation={}, config={}, callbacks=[], mode=None, num_devices=1, seed=None):
     """Method to use data parallelism to train a model across multiple DEVICEs.
 
     Description...
@@ -267,17 +263,17 @@ def train_in_parallel (model, data_train, data_validation={}, config={}, mode=No
         ...
 
     Returns:
-        The trained model.
+        Dict containing the trained model and the training history.
 
     Raises:
         Exception: If the Keras backend is not Tensorflow.
     """
 
     # @TODO:
-    # - Make Data Namespace-type, with '.train, .validation, .test' fields, etc.
+    # - Make Data Namespace-type, with '.train, .validation, .test' fields, etc.?
 
     # Check(s)
-    validate_training_input(data_train, data_validation)
+    data_train, data_validation = validate_training_input(data_train, data_validation)
     assert mode in ['gpu', 'cpu'], "Requested mode '{}' not recognised".format(mode)
 
     # Check backend for compatibility
@@ -289,10 +285,9 @@ def train_in_parallel (model, data_train, data_validation={}, config={}, mode=No
     
     # Local imports (make sure Keras backend is set before elsewhere)
     import tensorflow as tf
-    import keras
+    #import keras
     from keras.models import Model
     from keras.layers import Input
-    from keras.utils.vis_utils import plot_model
 
     # Define variables
     use_validation = bool(data_validation)
@@ -353,9 +348,9 @@ def train_in_parallel (model, data_train, data_validation={}, config={}, mode=No
         ) if use_validation else None
     
     # Perform fit
-    hist = parallelised.fit(X, Y, sample_weight=W, validation_data=validation_data, verbose=2, **config['fit'])
+    hist = parallelised.fit(X, Y, sample_weight=W, validation_data=validation_data, verbose=1, callbacks=callbacks, **config['fit'])
 
-    # Divide loss by number of devices, to take average
+    # Divide losses by number of devices, to take average
     history = hist.history
     for name in ['loss', 'val_loss']:
         if name in history:
@@ -422,7 +417,6 @@ def initialise_backend (args):
         import tensorflow as tf
 
         # @TODO:
-        # - Some smart selection of GPUs to used based on actual utilisation?
         # - Some way to avoid starving GPU of data?
         
         # Manually configure Tensorflow session
