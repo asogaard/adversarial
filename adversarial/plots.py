@@ -18,7 +18,7 @@ plt.style.use('edinburgh')
 #from rootplotting import ap
 
 # Project import(s)
-from adversarial.profiler import *
+from adversarial.profile import *
 
 # Global variables
 linestyles = ['-', '--', '-.', ':']
