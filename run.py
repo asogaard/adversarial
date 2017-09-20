@@ -42,6 +42,7 @@ from rootplotting.tools import loadData, loadXsec, scale_weights
 # Project import(s)
 from adversarial.utils   import *
 from adversarial.profile import *
+from adversarial.plots   import plot_posterior, plot_profiles
 
 # Get ROOT to stop hogging the command-line options
 import ROOT
@@ -120,8 +121,8 @@ def main ():
             pass
 
         # Set adversary learning rate (LR) ratio from ratio of loss_weights
-        cfg['adversary']['model']['lr_ratio'] = cfg['adversary']['compile']['loss_weights'][1] / \
-                                                cfg['adversary']['compile']['loss_weights'][0]
+        cfg['combined']['model']['lr_ratio'] = cfg['combined']['compile']['loss_weights'][0] / \
+                                               cfg['combined']['compile']['loss_weights'][1]
 
         # Initialise Keras backend
         initialise_backend(args)
@@ -158,7 +159,7 @@ def main ():
             pass
 
         # Evaluate the 'optimizer' fields for each model, once and for all
-        for model in ['classifier', 'adversary']:
+        for model in ['classifier', 'combined']:
             opts = cfg[model]['compile']
             opts['optimizer'] = eval("keras.optimizers.{}(lr={}, decay={})" \
                                      .format(opts['optimizer'],
@@ -262,6 +263,8 @@ def main ():
         # versa. It should go without saying, but draw target samples from a 
         # uniform prior on the coordinates which are used for the decorrelation.
 
+        decorrelation_variables = ['m']#, 'pt']
+        
         # Performing pre-processing of de-correlation coordinates
         with Profile():
             log.debug("Performing pre-processing")
@@ -272,13 +275,15 @@ def main ():
             N_tar = len(bkg)
             
             # Initialise and fill coordinate arrays
-            P_sig = np.zeros((N_sig,2), dtype=float)
-            P_bkg = np.zeros((N_bkg,2), dtype=float)
-            P_sig[:,0] = np.log(sig['m'])
-            P_sig[:,1] = np.log(sig['pt'])
-            P_bkg[:,0] = np.log(bkg['m'])
-            P_bkg[:,1] = np.log(bkg['pt'])
-            P_tar = np.random.rand(N_tar, 2)
+            P_sig = np.zeros((N_sig, len(decorrelation_variables)), dtype=float)
+            P_bkg = np.zeros((N_bkg, len(decorrelation_variables)), dtype=float)
+            for col, var in enumerate(decorrelation_variables):
+                P_sig[:,col] = np.log(sig[var])
+                P_bkg[:,col] = np.log(bkg[var])
+                pass            
+            #P_sig[:,1] = np.log(sig['pt'])
+            #P_bkg[:,1] = np.log(bkg['pt'])
+            P_tar = np.random.rand(N_tar, len(decorrelation_variables))
             
             # Scale coordinates to range [0,1]
             log.debug("Scaling background coordinates to range [0,1]")
@@ -295,16 +300,16 @@ def main ():
         # Fit, or load, regressor to achieve flatness using hep_ml library
         with Profile():
             log.debug("Performing re-weighting using GBReweighter")
-            reweighter_filename = 'trained/reweighter.pkl.gz'
-            if False: # @TODO: Make flag
+            reweighter_filename = 'trained/reweighter_{}d.pkl.gz'.format(len(decorrelation_variables))
+            if not os.path.isfile(reweighter_filename):
                 reweighter = GBReweighter(n_estimators=80, max_depth=7)
                 reweighter.fit(P_bkg, target=P_tar, original_weight=bkg['weight'])
-                log.debug("Saving re-weighting object to file '%s'" % reweighter_filename)
+                log.info("Saving re-weighting object to file '%s'" % reweighter_filename)
                 with gzip.open(reweighter_filename, 'wb') as f:
                     pickle.dump(reweighter, f)
                     pass
             else:
-                log.debug("Loading re-weighting object from file '%s'" % reweighter_filename)
+                log.info("Loading re-weighting object from file '%s'" % reweighter_filename)
                 with gzip.open(reweighter_filename, 'r') as f:
                     reweighter = pickle.load(f)
                     pass
@@ -336,7 +341,7 @@ def main ():
         rw_bkg = bkg['reweight']
         w_tar  = np.ones((N_tar,)) * np.sum(bkg['weight']) / float(N_tar)
 
-        for row, var in enumerate(['m', 'pt']):
+        for row, var in enumerate(decorrelation_variables):
             edges = np.linspace(0, np.max(bkg[var]), 60 + 1, endpoint=True)
             nbins  = len(edges) - 1
 
@@ -370,18 +375,20 @@ def main ():
         plt.savefig(args.output + 'priors_1d.pdf')
 
         # Plot 2D prior before and after re-weighting
-        log.debug("Plotting 2D prior before and after re-weighting")
-        fig, ax = plt.subplots(1,2,figsize=(11,5), sharex=True, sharey=True)
-        h = ax[0].hist2d(P_bkg[:,0], P_bkg[:,1], bins=40, weights=bkg['weight'],   vmin=0, vmax=5, normed=True)
-        h = ax[1].hist2d(P_bkg[:,0], P_bkg[:,1], bins=40, weights=bkg['reweight'], vmin=0, vmax=5, normed=True)
-        ax[0].set_xlabel("Scaled log(m)")
-        ax[1].set_xlabel("Scaled log(m)")
-        ax[0].set_ylabel("Scaled log(pt)")
-        
-        fig.subplots_adjust(right=0.9)
-        cbar_ax = fig.add_axes([0.925, 0.15, 0.025, 0.7])
-        fig.colorbar(h[3], cax=cbar_ax)
-        plt.savefig(args.output + 'priors_2d.pdf')
+        if len(decorrelation_variables) == 2:
+            log.debug("Plotting 2D prior before and after re-weighting")
+            fig, ax = plt.subplots(1,2,figsize=(11,5), sharex=True, sharey=True)
+            h = ax[0].hist2d(P_bkg[:,0], P_bkg[:,1], bins=40, weights=bkg['weight'],   vmin=0, vmax=5, normed=True)
+            h = ax[1].hist2d(P_bkg[:,0], P_bkg[:,1], bins=40, weights=bkg['reweight'], vmin=0, vmax=5, normed=True)
+            ax[0].set_xlabel("Scaled log(m)")
+            ax[1].set_xlabel("Scaled log(m)")
+            ax[0].set_ylabel("Scaled log(pt)")
+            
+            fig.subplots_adjust(right=0.9)
+            cbar_ax = fig.add_axes([0.925, 0.15, 0.025, 0.7])
+            fig.colorbar(h[3], cax=cbar_ax)
+            plt.savefig(args.output + 'priors_2d.pdf')
+            pass
         pass
 
 
@@ -405,7 +412,8 @@ def main ():
         U_bkg = bkg['reweight'] / np.sum(bkg['reweight']) * float(bkg['reweight'].size) 
         W = np.hstack((W_sig, W_bkg)).astype(K.floatx())
         U = np.hstack((U_sig, U_bkg)).astype(K.floatx())
-        
+        U = W # @TEMP
+
         # Labels
         #Y = np.hstack((np.ones(N_sig, dtype=int), np.zeros(N_bkg, dtype=int)))
         Y = np.hstack((np.ones(N_sig), np.zeros(N_bkg))).astype(K.floatx())
@@ -427,24 +435,9 @@ def main ():
         # Convenient short-hands
         num_samples, num_features = X.shape
 
-        # Manually shuffle input, once and for all
-        #shuffle_indices = np.arange(num_samples, dtype=int)
-        #np.random.shuffle(shuffle_indices)
-
-        #X = X[shuffle_indices,:]
-        #P = P[shuffle_indices,:]
-        #Y = Y[shuffle_indices]
-        #W = W[shuffle_indices]
-        #U = U[shuffle_indices]
+        # Define single data container
+        data = dict(X=X, Y=Y, P=P, W=W, U=U, sig=sig, bkg=bkg)
         pass
-
-    # @TEMP Use subsection of data
-    #subsample = np.random.choice(num_samples, num_samples // 10, replace=False)
-    #X = X[subsample,:]
-    #P = P[subsample,:]
-    #Y = Y[subsample]
-    #W = W[subsample]
-    #U = U[subsample]
 
 
     # Classifier-only fit
@@ -465,9 +458,7 @@ def main ():
         skf = StratifiedKFold(n_splits=args.folds)
 
         # Importe module creator methods and optimiser options
-        #from adversarial.models import compiler_options, classifier_model,
-        #adversary_model
-        from adversarial.models import classifier_model, adversary_model
+        from adversarial.models import classifier_model, adversary_model, combined_model, classifier_from_combined
 
         # Create unique set of random indices to use with stratification
         random_indices = np.arange(num_samples)
@@ -498,33 +489,31 @@ def main ():
 
                     # Get classifier
                     classifier = classifier_model(num_features, **cfg['classifier']['model'])
+
+                    # Compile model (necessary to save properly)
+                    classifier.compile(**cfg['classifier']['model'])
                     
-                    # Compile with optimiser configuration
-                    #opts = dict(**cfg['classifier']['compile'])
-                    #opts['optimizer'] = eval("keras.optimizers.{optimizer}(lr={lr}, decay={decay})" \
-                    #                         .format(optimizer = opts['optimizer'],
-                    #                                 lr        = opts.pop('lr'),
-                    #                                 decay     = opts.pop('decay')))
-                    #classifier.compile(**opts)
-                    classifier.compile(**cfg['classifier']['compile'])
-                                        
                     # Fit classifier model                    
                     result = train_in_parallel(classifier,
-                                               {'input':   X[train, :],
-                                                'target':  Y[train],
-                                                'weights': W[train]},
-                                               {'input':   X[validation, :],
-                                                'target':  Y[validation],
-                                                'weights': W[validation]},
+                                               {'input':   X,
+                                                'target':  Y,
+                                                'weights': W,
+                                                'mask':    train},
+                                               {'input':   X,
+                                                'target':  Y,
+                                                'weights': W,
+                                                'mask':    validation},
                                                config=cfg['classifier'],
                                                num_devices=args.devices, mode=args.mode, seed=seed)
+
                     histories.append(result['history'])
                     
                     # Save classifier model and training history to file, both
                     # in unique output directory and in the directory for
                     # pre-trained classifiers
                     for destination in [args.output, 'trained/']:
-                        classifier.save(destination + '{}.h5'.format(name))
+                        classifier.save        (destination + '{}.h5'        .format(name))
+                        classifier.save_weights(destination + '{}_weights.h5'.format(name))
                         with open(destination + 'history__{}.json'.format(name), 'wb') as f:
                             json.dump(result['history'], f)
                             pass
@@ -599,7 +588,7 @@ def main ():
         
         plt.xticks(filter(lambda x: x % step == 0, epochs))
         plt.legend()
-        plt.savefig(args.output + 'costlog.pdf')
+        plt.savefig(args.output + 'costlog_classifier.pdf')
         pass
     
 
@@ -610,24 +599,14 @@ def main ():
         # Define variables
         name = 'full_classifier'
 
-        if args.train: # @TEMP or True
+        if args.train:
             log.info("Training full classifier")
             
-            # @TODO Train _final_ classifier on all data
             # Get classifier
             classifier = classifier_model(num_features, **cfg['classifier']['model'])
-            
-            # Compile with optimiser configuration
-            #opts = dict(**cfg['classifier']['compile'])
-            #opts['optimizer'] = eval("keras.optimizers.{optimizer}(lr={lr}, decay={decay})" \
-            #                         .format(optimizer = opts['optimizer'],
-            #                                 lr        = opts.pop('lr'),
-            #                                 decay     = opts.pop('decay')))
-            #classifier.compile(**opts)
-            classifier.compile(**cfg['classifier']['compile'])
 
-            # Save classifier model diagram to file
-            plot_model(classifier, to_file=args.output + 'classifier.png', show_shapes=True)
+            # Compile model (necessary to save properly)
+            classifier.compile(**cfg['classifier']['compile'])
             
             # Overwrite number of training epochs with optimal number found from
             # cross-validation
@@ -647,7 +626,8 @@ def main ():
             # in unique output directory and in the directory for
             # pre-trained classifiers
             for destination in [args.output, 'trained/']:
-                classifier.save(destination + '{}.h5'.format(name))
+                classifier.save        (destination + '{}.h5'        .format(name))
+                classifier.save_weights(destination + '{}_weights.h5'.format(name))
                 with open(destination + 'history__{}.json'.format(name), 'wb') as f:
                     json.dump(result['history'], f)
                     pass
@@ -659,18 +639,19 @@ def main ():
             
             # Load pre-trained classifiers
             classifier_file = 'trained/{}.h5'.format(name)
-            #classifier_file = glob.glob('trained/{}.h5'.format(name))[0]
             classifier = load_model(classifier_file)
 
             # Load associated training histories
             history_file = 'trained/history__{}.json'.format(name)
-            #history_file = glob.glob('trained/history__{}.json'.format(name))
             with open(history_file, 'r') as f:
                 history = json.load(f)
                 pass
 
             pass # end: train/load
-        
+
+        # Save classifier model diagram to file
+        plot_model(classifier, to_file=args.output + 'model_classifier.png', show_shapes=True)    
+
         # ...
         
         # Store classifier output as tagger variables. @NOTE This works only
@@ -678,6 +659,94 @@ def main ():
         msk_sig = (Y == 1.)
         sig = append_fields(sig, 'NN', classifier.predict(X[ msk_sig], batch_size=1024).flatten(), dtypes=K.floatx())
         bkg = append_fields(bkg, 'NN', classifier.predict(X[~msk_sig], batch_size=1024).flatten(), dtypes=K.floatx())
+
+        # Update `data` container
+        data = dict(X=X, Y=Y, P=P, W=W, U=U, sig=sig, bkg=bkg)        
+        pass
+
+    # '''
+    # def plot_posterior (adversary, Y, P, U, destination=args.output, name='posterior', title=''):
+    # " ""..."" "
+    # 
+    # # Create figure
+    # fig, ax = plt.subplots()
+    # 
+    # # Variable definitions
+    # edges  = np.linspace(-0.2, 1.2, 2 * 70 + 1, endpoint=True)
+    # 
+    # z_slices  = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+    # #P2_slices = [0, 1]
+    # P1        = np.linspace(0, 1, 1000 + 1, endpoint=True)
+    # 
+    # linestyles =  ['-', '--', '-.', ':']
+    # colours = map(lambda d: d['color'], list(plt.rcParams["axes.prop_cycle"]))
+    # 
+    # # Plot prior
+    # msk = (Y == 0)
+    # plt.hist(P[:,0][msk], bins=edges, weights=U[msk], normed=True, color='gray', alpha=0.5, label='Prior')
+    # 
+    # # Plot adversary posteriors
+    # # for i, P2_slice in enumerate(P2_slices):
+    # # P2 = np.ones_like(P1) * P2_slice
+    # # P_test = np.vstack((P1, P2)).T
+    # P_test = P1
+    # posteriors = list()
+    # for j, z_slice in enumerate(z_slices):
+    # z_test = np.ones_like(P1) * z_slice
+    # posterior = adversary.predict([z_test, P_test])
+    # posteriors.append(posterior)
+    # plt.plot(P1, posterior, color=colours[j], label='clf. = %.1f' % z_slices[j])
+    # pass
+    # 
+    # # Decorations
+    # plt.xlabel("Normalised jet log(m)", horizontalalignment='right', x=1.0)
+    # plt.ylabel("Jets",                  horizontalalignment='right', y=1.0)
+    # plt.title("De-correlation p.d.f.'s{}".format((': ' + title) if title else ''), fontweight='medium')
+    # plt.ylim(0, 5.)
+    # plt.legend()
+    # 
+    # # Save figure
+    # plt.savefig(destination + name + '.pdf')
+    # plt.close(fig)
+    # return
+    # '''
+
+    class LRCallback (Callback):
+        def on_epoch_end (self, epoch, logs={}):
+            optimizer = self.model.optimizer
+            lr = K.eval(optimizer.lr * (1. / (1. + optimizer.decay * optimizer.iterations)))
+            print('\nLR: {:.6f} / ({:6f}) after {:f} iterations\n'.format(lr, K.eval(optimizer.lr), K.eval(optimizer.iterations)))
+            return
+        pass
+
+
+    class PosteriorCallback (Callback):
+        def __init__ (self, data, args, adversary):
+            self.opts = dict(data=data, args=args, adversary=adversary)
+            return
+        
+        def on_train_begin (self, logs={}):
+            plot_posterior(name='posterior_begin', title="Beginning of training", **self.opts)
+            return
+        
+        def on_epoch_end (self, epoch, logs={}):
+            plot_posterior(name='posterior_epoch_{:03d}'.format(epoch + 1), title="Epoch {}".format(epoch + 1), **self.opts)
+            return
+        pass
+
+
+    class ProfilesCallback (Callback):
+        def __init__ (self, data, args, var):
+            self.opts = dict(data=data, args=args, var=var)
+            return
+        
+        def on_train_begin (self, logs={}):
+            plot_profiles(name='profiles_begin', title="Beginning of training", **self.opts)
+            return
+        
+        def on_epoch_end (self, epoch, logs={}):
+            plot_profiles(name='profiles_epoch_{:03d}'.format(epoch + 1), title="Epoch {}".format(epoch + 1), **self.opts)
+            return
         pass
 
 
@@ -686,137 +755,102 @@ def main ():
     with Profile("Combined fit, full"):
         # @TODO: - Make work
         #        - Train/load
+        #        - Add 'combined' category to configs
         #        - Checkpointing
         #        - Add per-epoch callback logging mean(s) and width(s) of GMM
         #        component(s) for fixed percentiles of classifier output.
 
         # Define variables
-        name = 'full_adversary'
+        name = 'full_combined'
 
-        if args.train:
+        # Set up adversary
+        adversary = adversary_model(gmm_dimensions=P.shape[1],
+                                    **cfg['adversary']['model'])            
+
+        # Save adversarial model diagram
+        plot_model(adversary, to_file=args.output + 'model_adversary.png', show_shapes=True)
+
+        # Create callback logging the adversary p.d.f.'s during training
+        callback_posterior = PosteriorCallback(data, args, adversary)
+
+        # Create callback logging the adversary p.d.f.'s during training
+        callback_profiles  = ProfilesCallback(data, args, classifier)
+
+        # Create callback that tracks the learning rate during training
+        callback_lr = LRCallback()
+
+        # Set up combined, adversarial model
+        combined = combined_model(classifier,
+                                  adversary,
+                                  **cfg['combined']['model'])
+        
+        # Save combiend model diagram
+        plot_model(combined, to_file=args.output + 'model_combined.png', show_shapes=True)
+            
+        if args.train or True: # @TEMP
             log.info("Training full, combined model")
-            
-            # Set up combined, adversarial model
-            adversary = adversary_model(classifier,
-                                        gmm_dimensions=P.shape[1],
-                                        **cfg['adversary']['model'])
-            
-            # if resume: 
-            #    load_checkpoint(adversarial)
-            #    pass
-            
-            # adversarial.compile(**opts['adversarial'])
-            # Compile with optimiser configuration
-            # opts = dict(**cfg['adversary']['compile'])
-            # opts['optimizer'] = eval("keras.optimizers.{optimizer}(lr={lr}, decay={decay})" \
-            #                         .format(optimizer = opts['optimizer'],
-            #                                 lr        = opts.pop('lr'),
-            #                                 decay     = opts.pop('decay')))
-            # adversary.compile(**opts)
-            adversary.compile(**cfg['adversary']['compile'])
-            
-            # Save adversarial model diagram
-            plot_model(adversary, to_file=args.output + 'adversary.png', show_shapes=False)
-            
-            # Set fit options
-            # fit_opts = {
-            #    'shuffle':          True,
-            #    'validation_split': 0.2,
-            #    'batch_size':       4 * 1024,
-            #    'nb_epoch':         100,
-            #    'sample_weight':    [W_train, np.multiply(W_train, 1. - Y_train)]
-            #    }
-            
-            
-            # class LossHistory(Callback):
-            #    def on_train_begin(self, logs={}):
-            #        self.lossnames = ['loss', 'classifier_loss', 'adversary_loss']
-            #        self.losses = {name: list() for name in self.lossnames}
-            #        return
-            #    
-            #    def on_batch_end(self, batch, logs={}):
-            #        for name in self.lossnames:
-            #            self.losses[name].append(float(logs.get(name)))
-            #            pass
-            #        return
-            #    pass
-            # 
-            # history = LossHistory()
-            
-            # -- Callback for updating learning rate(s)
-            # damp = np.power(1.0E-04, 1./float(fit_opts['nb_epoch']))
-            # def schedule (epoch):
-            #    "" " Update the learning rate of the two optimisers. "" "
-            #    if 0 < damp and damp < 1:
-            #        K_.set_value(adv_optim.lr, damp * K_.get_value(adv_optim.lr))
-            #        pass
-            #    return float(K_.eval(adv_optim.lr))
-            #
-            # change_lr = LearningRateScheduler(schedule)
-            
-            # -- Callback for saving model checkpoints
-            # from keras.callbacks import ModelCheckpoint
-            # checkpointer = ModelCheckpoint(filepath=".adversary_checkpoint.h5", verbose=0, save_best_only=False)
-            
-            # -- Callback to reduce learning rate when validation loss plateaus
-            # reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, min_lr=1E-07)
-            
-            # Store callbacks in fit options
-            # fit_opts['callbacks'] = [history, change_lr, checkpointer]
-            
-            # Fit the combined, adversarial model
-            # adversary.fit([X_train, P_train], [Y_train, np.ones_like(Y_train)], **fit_opts)
-            #    'sample_weight':    [W_train, np.multiply(W_train, 1. - Y_train)]
-            # hist = history.losses
-            result = train_in_parallel(adversary,
+
+            # Create custom objective function for posterior: - log(p) of the
+            # posterior p.d.f.
+            def maximise (p_true, p_pred):
+                return - K.log(p_pred)
+
+            cfg['combined']['compile']['loss'][1] = maximise
+
+            # Compile model (necessary to save properly)
+            combined.compile(**cfg['combined']['compile'])            
+
+            # Train final classifier
+            classifier.trainable = True # @TEMP
+            result = train_in_parallel(combined,
                                        {'input':   [X, P],
                                         'target':  [Y, np.ones_like(Y)],
                                         'weights': [U, np.multiply(U, 1 - Y)]},
-                                       config=cfg['adversary'],
+                                       config=cfg['combined'],
                                        mode=args.mode,
                                        num_devices=args.devices,
-                                       seed=seed)
+                                       seed=seed,
+                                       callbacks=[callback_posterior, callback_lr]) # @TEMP ..., callback_profiles, ...
             
-            # Save adversary model and training history to file, both
+            # Save combined model and training history to file, both
             # in unique output directory and in the directory for
             # pre-trained classifiers
             history = result['history']
             for destination in [args.output, 'trained/']:
-                adversary.save(destination + '{}.h5'.format(name))
+                combined.save        (destination + '{}.h5'        .format(name))
+                combined.save_weights(destination + '{}_weights.h5'.format(name))
                 with open(destination + 'history__{}.json'.format(name), 'wb') as f:
                     json.dump(history, f)
                     pass
                 pass
             
-            # Save cost log to file
-            # with open('cost.log', 'a' if resume else 'w') as cost_log:
-            #    line  = "# "
-            #    line += ", ".join(['%s' % name for name in history.lossnames])
-            #    line += " \n"
-            #    cost_log.write(line) 
-            #    
-            #    cost_array = np.squeeze(np.array(zip(hist.values())))
-            #    for row in range(cost_array.shape[1]):
-            #        costs = list(cost_array[:,row])
-            #        line = ', '.join(['%.4e' % cost for cost in costs])
-            #        line += " \n"
-            #        cost_log.write(line)    
-            #        pass
-            #    pass
-            
-
         else:
 
             log.info("Loading full, combined model from file")
-            
-            # Load pre-trained adversary
-            adversary_file = 'trained/{}.h5'.format(name)
-            #adversary_file = glob.glob('trained/{}.h5'.format(name))[0]
-            adversary = load_model(adversary_file)
-            
+
+            # Improt GradientReversalLayerto allow reading of model
+            from adversarial.layers import GradientReversalLayer, PosteriorLayer
+
+            # Load pre-trained combined
+            # combined_file = 'trained/{}.h5'.format(name)
+            # combined = load_model(combined_file, custom_objects={
+            # 'GradientReversalLayer': GradientReversalLayer,
+            # 'PosteriorLayer':        PosteriorLayer
+            # })
+            combined_weights_file = 'trained/{}_weights.h5'.format(name)
+            combined.load_weights(combined_weights_file)
+
+            # @TODO: Instead:
+            # - Create classifier and adversary
+            # - From the, create combined
+            # - Read in _weights_ only
+            # - Use classifier and combined with stored weights
+
+            # Extract classifier from loaded combined
+            classifier = classifier_from_combined(combined)
+
             # Load associated training histories
             history_file = 'trained/history__{}.json'.format(name)
-            #history_file = glob.glob('trained/history__{}.json'.format(name))
             with open(history_file, 'r') as f:
                 history = json.load(f)
                 pass
@@ -828,8 +862,13 @@ def main ():
         msk_sig = (Y == 1.)
         sig = append_fields(sig, 'ANN', classifier.predict(X[ msk_sig], batch_size=1024).flatten(), dtypes=K.floatx())
         bkg = append_fields(bkg, 'ANN', classifier.predict(X[~msk_sig], batch_size=1024).flatten(), dtypes=K.floatx())
+        
+        # Update `data` container
+        data = dict(X=X, Y=Y, P=P, W=W, U=U, sig=sig, bkg=bkg)        
         pass
-    
+
+    plot_posterior(data, args, adversary, name='posterior_end', title="End of training")
+
 
     # Plotting: Cost log for adversarial fit
     # --------------------------------------------------------------------------
@@ -838,30 +877,28 @@ def main ():
         fig, ax = plt.subplots()
         colours = map(lambda d: d['color'], list(plt.rcParams["axes.prop_cycle"]))
         epochs = 1 + np.arange(len(history['loss']))
-        lambda_reg = cfg['adversary']['model']['lambda_reg']
-        lr_ratio   = cfg['adversary']['model']['lr_ratio']        
-                   
-        classifier_loss = np.mean([loss for key,loss in history.iteritems() if key.startswith('adversary') and int(key.split('_')[-1]) % 2 == 1 ], axis=0)
-        adversary_loss  = np.mean([loss for key,loss in history.iteritems() if key.startswith('adversary') and int(key.split('_')[-1]) % 2 == 0 ], axis=0) * lambda_reg
-        #combined_loss   = np.array(history['loss']) * lambda_reg /
-        #float(lr_ratio)
+        lambda_reg = cfg['combined']['model']['lambda_reg']
+        lr_ratio   = cfg['combined']['model']['lr_ratio']        
+
+        classifier_loss = np.mean([loss for key,loss in history.iteritems() if key.startswith('combined') and int(key.split('_')[-1]) % 2 == 1 ], axis=0)
+        adversary_loss  = np.mean([loss for key,loss in history.iteritems() if key.startswith('combined') and int(key.split('_')[-1]) % 2 == 0 ], axis=0) * lambda_reg
         combined_loss   = classifier_loss + adversary_loss
         
         plt.plot(epochs, classifier_loss, color=colours[0],  linewidth=1.4,  label='Classifier')
-        plt.plot(epochs, adversary_loss,  color=colours[1],  linewidth=1.4,  label=r'Adversary (\lambda = {})'.format(lambda_reg))
+        plt.plot(epochs, adversary_loss,  color=colours[1],  linewidth=1.4,  label=r'Adversary ($\lambda$ = {})'.format(lambda_reg))
         plt.plot(epochs, combined_loss,   color=colours[-1], linestyle='--', label='Combined')
 
         plt.title('Adversarial training', fontweight='medium')
         plt.xlabel("Training epochs", horizontalalignment='right', x=1.0)
         plt.ylabel("Objective function",   horizontalalignment='right', y=1.0)
-        ax.set_yscale('log')
+        #ax.set_yscale('log')
         
         epochs = [0] + list(epochs)
         step = max(int(np.floor(len(epochs) / 10.)), 1)
         
         plt.xticks(filter(lambda x: x % step == 0, epochs))
         plt.legend()
-        plt.savefig(args.output + 'adversary_costlog.pdf')
+        plt.savefig(args.output + 'costlog_combined.pdf')
         pass
 
     
@@ -874,7 +911,6 @@ def main ():
 
         # Plotted 1D tagger variable distributions
         fig, ax = plt.subplots(1, len(variables), figsize=(len(variables) * 4, 4))
-
 
         for ivar, var in enumerate(variables):
 
@@ -900,7 +936,6 @@ def main ():
             msk = ~np.isnan(v_bkg)
             v_bkg = v_bkg[msk]
             w_bkg = w_bkg[msk]
-
 
             # Plot distributions
             ax[ivar].hist(v_bkg, bins=edges, weights=w_bkg, alpha=0.5, normed=True, label='Background')
@@ -936,6 +971,105 @@ def main ():
         plt.savefig(args.output + 'tagger_ROCs.pdf')
         pass
 
+
+    # Plotting: Profiles
+    # --------------------------------------------------------------------------
+    with Profile("Plotting: Profiles"):
+        '''
+        # Plotting variables
+        edges = np.linspace(0, 300, 60 + 1, endpoint=True)
+        bins  = edges[:-1] + 0.5 * np.diff(edges)
+        colours = map(lambda d: d['color'], list(plt.rcParams["axes.prop_cycle"]))
+        
+        step = 10.
+        percentiles = np.linspace(step, 100 - step, int(100 / step) - 1, endpoint=True)
+        '''
+        # Loop tagger variables
+        for var in ['tau21', 'tau21DDT', 'D2', 'NN', 'ANN']:
+
+            plot_profiles(data, args, var)
+            
+            '''
+            profiles = [[] for _ in percentiles]
+
+            fig, ax = plt.subplots()
+
+            # Loop edges
+            for (mass_down, mass_up) in zip(edges[:-1], edges[1:]):
+                
+                # Get array of `var` within the current jet-mass band
+                msk = (bkg['m'] >= mass_down) & (bkg['m'] < mass_up)
+                array = bkg[var][msk]
+                
+                # Loop percentiles
+                for idx, perc in enumerate(percentiles):
+                    if len(array) == 0:
+                        profiles[idx].append(np.nan)
+                    else:
+                        profiles[idx].append(np.percentile(array, perc))
+                        pass
+                    pass # end: loop percentiles
+
+                pass # end: loop edges
+
+            # Plot profile
+            for profile, perc in zip(profiles, percentiles):
+                plt.plot(bins, profile, color=colours[0], linewidth=2 if perc == 50 else 1, label='Median' if perc == 50 else None)
+                pass
+
+            # Add text
+            mid = len(percentiles) // 2
+
+            arr_profiles = np.array(profiles).flatten()
+            arr_profiles = arr_profiles[~np.isnan(arr_profiles)]
+            diff = np.max(arr_profiles) - np.min(arr_profiles)
+
+            opts = dict(horizontalalignment='center', verticalalignment='bottom', fontsize='x-small')
+            text_string = r"$\varepsilon_{bkg.}$ = %d%%"
+
+            plt.text(edges[-1], profiles[-1] [-1] + 0.02 * diff, text_string % percentiles[-1],  **opts) # 90%
+
+            opts = dict(horizontalalignment='left', verticalalignment='center', fontsize='x-small')
+            text_string = "%d%%"
+
+            plt.text(edges[-1], profiles[mid][-1], text_string % percentiles[mid], **opts) # 50%
+            plt.text(edges[-1], profiles[0]  [-1], text_string % percentiles[0],   **opts) # 10%
+            
+            plt.xlabel("Jet mass [GeV]",  horizontalalignment='right', x=1.0)
+            plt.ylabel("{}".format(var),  horizontalalignment='right', y=1.0)
+            plt.title('Percentile profiles for {}'.format(var), fontweight='medium')
+            plt.legend()
+            plt.savefig(args.output + 'tagger_profile_{}.pdf'.format(var))
+            '''
+            pass # end: loop variables
+
+        pass
+
+
+    # Plotting: Posterior p.d.f.'s
+    # --------------------------------------------------------------------------
+    """
+    with Profile("Plotting: Posterior p.d.f.'s"):
+
+        masses = np.linspace(-0.2, 1.2, 35 + 1, endpoint=True)
+        pts    = np.linspace(-0.2, 1.2, 35 + 1, endpoint=True)
+        params = np.vstack([M.flatten() for M in np.meshgrid(masses, pts)]).T
+
+        fig, ax = plt.subplots()
+        step = 0.2
+        for z in linspace(step, 1 - step, int(1 / float(step)) - 1, endpoint=True):
+            adverary.predict(np.ones((params.shape[0],)) * z, params)
+            pass
+
+        plt.xlabel("Log-scaled and normalised jet mass", horizontalalignment='right', x=1.0)
+        plt.ylabel("Probability density",                horizontalalignment='right', y=1.0)
+        plt.title("Adversary posterior p.d.f.'s",        fontweight='medium')
+        plt.legend()
+        plt.savefig(args.output + 'adverary_posterior.pdf')
+
+        pass
+        """
+        
     # ...
 
     return 0
