@@ -491,7 +491,7 @@ def main ():
                     classifier = classifier_model(num_features, **cfg['classifier']['model'])
 
                     # Compile model (necessary to save properly)
-                    classifier.compile(**cfg['classifier']['model'])
+                    classifier.compile(**cfg['classifier']['compile'])
                     
                     # Fit classifier model                    
                     result = train_in_parallel(classifier,
@@ -810,7 +810,7 @@ def main ():
                                        mode=args.mode,
                                        num_devices=args.devices,
                                        seed=seed,
-                                       callbacks=[callback_posterior, callback_lr]) # @TEMP ..., callback_profiles, ...
+                                       callbacks=[callback_posterior, callback_profiles, callback_lr])
             
             # Save combined model and training history to file, both
             # in unique output directory and in the directory for
