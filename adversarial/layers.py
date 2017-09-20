@@ -16,6 +16,37 @@ from scipy.stats import norm
 from keras import backend as K
 from keras.engine.topology import Layer
 
+if K.backend() == 'tensorflow':
+    import tensorflow as tf
+    def erf (x):
+        """Error-function from TensorFlow backend."""
+        return tf.erf(x)
+else:
+    import theano.tensor as t
+    def erf (x):
+        """Error-function from Theano backend."""
+        return t.erf(x)
+    pass
+
+def cumulative (x):
+    """Cumulative distribution function for the unit gaussian."""
+    return 0.5 * (1. + erf(x / np.sqrt(2.)))
+    
+
+def gaussian_integral_on_unit_interval (mean, width):
+    """Compute the integral of unit gaussians on the unit interval.
+
+    Args:
+        mean: Mean(s) of unit gaussian(s).
+        width: Width(s) of unit gaussian(s).
+
+    Returns:
+        Integral of unit gaussian on [0,1]
+    """
+    z0 = (0. - mean) / width
+    z1 = (1. - mean) / width
+    return cumulative(z1) - cumulative(z0)
+
 
 def gaussian (x, coeff, mean, width):
     """Compute a unit gaussian using Keras-backend methods.
@@ -32,18 +63,6 @@ def gaussian (x, coeff, mean, width):
     return coeff * K.exp( - K.square(x - mean) / 2. / K.square(width)) / K.sqrt( 2. * K.square(width) * np.pi) 
 
 
-def gaussian_integral_on_unit_interval (mean, width):
-    """Compute the integral of unit gaussians on the unit interval.
-
-    Args:
-        mean: Mean(s) of unit gaussian(s).
-        width: Width(s) of unit gaussian(s).
-
-    Returns:
-        Integral of unit gaussian on [0,1]
-    """
-    return norm.cdf(1, loc=mean, scale=width) - norm.cdf(0, loc=mean, scale=width)
-
 
 class PosteriorLayer (Layer):
     """Custom layer, modelling the posterior probability distribution for the jet mass using a gaussian mixture model (GMM)"""
@@ -52,7 +71,7 @@ class PosteriorLayer (Layer):
     # - Check that K.sum((x < 0) || (x > 1)) == 0
     # - Normalise to unity on ([0,1])^gmm_dimensions    
 
-    def __init__ (self, gmm_components, gmm_dimensions, **kwargs):
+    def __init__ (self, gmm_components=np.nan, gmm_dimensions=np.nan, **kwargs):
         self.output_dim = 1 # Probability
         self.gmm_components = gmm_components
         self.gmm_dimensions = gmm_dimensions
@@ -77,24 +96,33 @@ class PosteriorLayer (Layer):
         inputs = x[-1]
 
         # Compute the pdf from the GMM
-        pdf = gaussian(inputs[:,0], coeffs[:,0], means[0][:,0], widths[0][:,0])
+        pdf  = gaussian(inputs[:,0], coeffs[:,0], means[0][:,0], widths[0][:,0])
+        pdf /= gaussian_integral_on_unit_interval(means[0][:,0], widths[0][:,0])
         for d in range(1, self.gmm_dimensions):
-            pdf *= gaussian(inputs[:,d], 1, means[d][:,0], widths[d][:,0])
-            pdf /= guassian_integral_on_unit_interval(means[d][:,0], widths[d][:,0])
+            pdf *= gaussian(inputs[:,d], 1,           means[d][:,0], widths[d][:,0])
+            pdf /= gaussian_integral_on_unit_interval(means[d][:,0], widths[d][:,0])
             pass
         for c in range(1, self.gmm_components):
-            this_pdf = gaussian(inputs[:,0], coeffs[:,c], means[0][:,c], widths[0][:,c])
+            this_pdf  = gaussian(inputs[:,0], coeffs[:,c], means[0][:,c], widths[0][:,c])
+            this_pdf /= gaussian_integral_on_unit_interval(means[0][:,c], widths[0][:,c])
             for d in range(1, self.gmm_dimensions):
-                this_pdf *= gaussian(inputs[:,d], 1, means[d][:,c], widths[d][:,c])
-                this_pdf /= guassian_integral_on_unit_interval(means[d][:,c], widths[d][:,c])
+                this_pdf *= gaussian(inputs[:,d], 1,           means[d][:,c], widths[d][:,c])
+                this_pdf /= gaussian_integral_on_unit_interval(means[d][:,c], widths[d][:,c])
                 pass
             pdf += this_pdf
             pass
 
-        return K.reshape(pdf, (K.shape(pdf)[0], 1))
+        return pdf # K.reshape(pdf, (K.shape(pdf)[0], 1))
 
     def compute_output_shape (self, input_shape):
         return (input_shape[0], self.output_dim)
+
+    def get_config (self):
+        config = {"name": self.__class__.__name__,
+                  "gmm_components": self.gmm_components,
+                  "gmm_dimensions": self.gmm_dimensions}
+        base_config = super(PosteriorLayer, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))
 
     pass  
 
@@ -181,7 +209,9 @@ class GradientReversalLayer (Layer):
     <feedforward> return input x
     <backward> return -lambda * delta
     """
-    def __init__ (self, hp_lambda, **kwargs):
+    def __init__ (self, hp_lambda=np.nan, **kwargs):
+        # @NOTE: Default (dummy) value for `hp_lambda` is set to allow loading
+        # from file, where attribute value is overwritten by saved value.
         super(GradientReversalLayer, self).__init__(**kwargs)
         self.supports_masking = False
         self.hp_lambda = hp_lambda
@@ -194,14 +224,45 @@ class GradientReversalLayer (Layer):
     
     def call (self, x, mask=None):
         return self.gr_op(x)
-        
+    
     def compute_output_shape (self, input_shape):
         return input_shape
     
     def get_config (self):
-        config = {"name": self.__class__.__name__,
-                  "lambda": self.hp_lambda}
+        config = {"name":      self.__class__.__name__,
+                  "hp_lambda": self.hp_lambda}
         base_config = super(GradientReversalLayer, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
     
     pass
+
+
+# class GradientReversalLayer (Layer):
+#     """Reverse a gradient 
+#     <feedforward> return input x
+#     <backward> return -lambda * delta
+#     """
+#     def __init__ (self, hp_lambda, **kwargs):
+#         super(GradientReversalLayer, self).__init__(**kwargs)
+#         self.supports_masking = False
+#         self.hp_lambda = hp_lambda
+#         self.gr_op = ReverseGradient(self.hp_lambda)
+#         pass
+#     
+#     def build (self, input_shape):
+#         self.trainable_weights = []
+#         return
+#     
+#     def call (self, x, mask=None):
+#         return self.gr_op(x)
+#         
+#     def compute_output_shape (self, input_shape):
+#         return input_shape
+#     
+#     def get_config (self):
+#         config = {"name": self.__class__.__name__,
+#                   "lambda": self.hp_lambda}
+#         base_config = super(GradientReversalLayer, self).get_config()
+#         return dict(list(base_config.items()) + list(config.items()))
+#     
+#     pass
