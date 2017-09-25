@@ -13,7 +13,7 @@ import collections
 import numpy as np
 
 # Project import(s)
-from .profile import profile
+from .profile import Profile, profile
 
 
 def flatten (container):
@@ -270,7 +270,7 @@ def train_in_parallel (model, data_train, data_validation={}, config={}, callbac
     """
 
     # @TODO:
-    # - Make Data Namespace-type, with '.train, .validation, .test' fields, etc.?
+    # - Implement `Data` class?
 
     # Check(s)
     data_train, data_validation = validate_training_input(data_train, data_validation)
