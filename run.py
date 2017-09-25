@@ -16,11 +16,10 @@ import itertools
 
 # Scientific import(s)
 import numpy as np
-from numpy.lib.recfunctions import append_fields
 seed = 21 # For reproducibility
 np.random.seed(seed)
+import root_numpy
 
-from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import StratifiedKFold
 
 import matplotlib.pyplot as plt
@@ -35,11 +34,8 @@ with open(os.devnull, 'w') as sys.stderr:
     pass
 sys.stderr = stderr
 
-# Custom import(s)
-from rootplotting import ap
-from rootplotting.tools import loadData, loadXsec, scale_weights
-
 # Project import(s)
+from adversarial.data    import *
 from adversarial.utils   import *
 from adversarial.profile import *
 from adversarial.plots   import plot_posterior, plot_profiles
@@ -170,93 +166,22 @@ def main ():
         pass
     
 
-    # @TODO: Turn 'Loading data', 'Re-weighting', 'Data preparation' into
-    # utility function(s), for use with separate `evaluate.py` script
-    
     # Loading data
     # --------------------------------------------------------------------------
     with Profile("Loading data"):
-        
-        # Get paths for files to use
-        with Profile():
-            log.debug("ROOT files in input directory:")
-            all_paths = sorted(glob.glob(args.input + '*.root'))
-            sig_paths = sorted(glob.glob(args.input + 'objdef_MC_30836*.root'))
-            bkg_paths = sorted(glob.glob(args.input + 'objdef_MC_3610*.root'))
-            for p in all_paths:
-                cls = 'signal' if p in sig_paths else ('background' if p in bkg_paths else None)
-                log.debug("  " + p + (" (%s)" % cls if cls else "" ))
-                pass
 
-            sig_paths = [sig_paths[0]]
-            log.info("Using signal sample: '{}'".format(sig_paths[0]))
-            pass
-        
-        # Get data- and info arrays
-        datatreename = 'BoostedJet+ISRgamma/Nominal/EventSelection/Pass/NumLargeRadiusJets/Postcut'
-        infotreename = 'BoostedJet+ISRgamma/Nominal/outputTree'
-        prefix = 'Jet_'
-        # @TODO: Is it easier/better to drop the prefix, list the names
-        # explicitly, and then rename manually afterwards? Or should the
-        # 'loadData' method support a 'rename' argument, using regex, with
-        # support for multiple such operations? That last one is probably the
-        # way to go, actually... In that case, I should probably also allow for
-        # regex support for branches? Like branches=['Jet_.*',
-        # 'leading_Photons_.*'], rename=[('Jet_', ''),]
+        data = load_data(args.input + 'data.h5')
+        data = prepare_data(data)
+        data.shuffle(seed=21)
+        data.split(train=0.8, test=0.2)
 
-        #branches = ['m', 'pt', 'C2', 'D2', 'ECF1', 'ECF2', 'ECF3', 'Split12',
-        #'Split23', 'Split34', 'eta', 'leading_Photons_E',
-        #'leading_Photons_eta', 'leading_Photons_phi', 'leading_Photons_pt',
-        #'nTracks', 'phi', 'rho', 'tau21']
-
-        log.info("Reading data from '%s' with prefix '%s'" % (datatreename, prefix))
-        log.info("Reading info from '%s'" % (infotreename))
-        with Profile():
-            sig_data = loadData(sig_paths, datatreename, prefix=prefix) # ..., branches=branches)
-            sig_info = loadData(sig_paths, infotreename, stop=1)
-            pass
-
-        with Profile():
-            bkg_data = loadData(bkg_paths, datatreename, prefix=prefix) # ..., branches=branches)
-            bkg_info = loadData(bkg_paths, infotreename, stop=1)
-            pass
-        
-        log.info("Retrieved data columns: [%s]" % (', '.join(sig_data.dtype.names)))
-        log.info("Retrieved %d signal and %d background events." % (sig_data.shape[0], bkg_data.shape[0]))
-        
-        # Scale by cross section
-        with Profile():
-            log.debug("Scaling weights by cross-section and luminosity")
-            xsec = loadXsec('share/sampleInfo.csv')
-        
-            sig = scale_weights(sig_data, sig_info, xsec=xsec, lumi=36.1)
-            bkg = scale_weights(bkg_data, bkg_info, xsec=xsec, lumi=36.1)
-            pass
-        
-        # Restricting phase space
-        with Profile():
-            # - min(pT) of 200 GeV imposed in AnalysisTool code
-            # - min(m)  of   0 GeV required by physics and log(·)
-            # - otherwise, we're free to choose whatever phasespace we want
-
-            # @TODO: Tune phase space selection and/or reweighter settings, such 
-            # that there is not a drop-off at high mass/low pt of the re-weighted 
-            # background spectrum
-            log.debug("Restricting phase space")
-            msk  = (sig['m']  >  10.) & (sig['m']  <  300.)
-            msk &= (sig['pt'] > 200.) & (sig['pt'] < 2000.)
-            sig  = sig[msk]
-            
-            msk  = (bkg['m']  >  10.) & (bkg['m']  <  300.)
-            msk &= (bkg['pt'] > 200.) & (bkg['pt'] < 2000.)
-            bkg  = bkg[msk]
-            pass
-
+        num_samples, num_features = data.train.inputs.shape
         pass
 
 
     # Re-weighting to flatness
     # --------------------------------------------------------------------------
+    """
     with Profile("Re-weighting"):
         # @NOTE: This is the crucial point: If the target is flat in (m,pt) the
         # re-weighted background _won't_ be flat in (log m, log pt), and vice 
@@ -390,54 +315,7 @@ def main ():
             plt.savefig(args.output + 'priors_2d.pdf')
             pass
         pass
-
-
-    # Prepare arrays for training
-    # --------------------------------------------------------------------------
-    with Profile("Data preparation"):
-
-        # Remove unwanted fields from input array
-        names = sig.dtype.names
-        exclude = ['pt', 'm', 'isMC', 'DSID', 'weight', 'reweight', 'CutVariable', \
-                   'id', 'q', 'x1', 'x2', 'tau21DDT', 'rhoDDT', 'tau21_ungroomed', \
-                   'pt_ungroomed', 'pdgId1', 'pdgId2']
-        names = sorted(list(set(names) - set(exclude)))
-        
-        log.info("Using The following variables as inputs to the neural network:\n[%s]" % ', '.join(names))
-        
-        # Weights
-        W_sig = sig['weight']   / np.sum(sig['weight'])   * float(bkg['weight'].size) 
-        W_bkg = bkg['weight']   / np.sum(bkg['weight'])   * float(bkg['weight'].size) 
-        U_sig = sig['reweight'] / np.sum(sig['reweight']) * float(bkg['reweight'].size) 
-        U_bkg = bkg['reweight'] / np.sum(bkg['reweight']) * float(bkg['reweight'].size) 
-        W = np.hstack((W_sig, W_bkg)).astype(K.floatx())
-        U = np.hstack((U_sig, U_bkg)).astype(K.floatx())
-        U = W # @TEMP
-
-        # Labels
-        #Y = np.hstack((np.ones(N_sig, dtype=int), np.zeros(N_bkg, dtype=int)))
-        Y = np.hstack((np.ones(N_sig), np.zeros(N_bkg))).astype(K.floatx())
-        
-        # Input(s)
-        X_sig = np.vstack(tuple(sig[var] for var in names)).T
-        X_bkg = np.vstack(tuple(bkg[var] for var in names)).T
-        
-        # Data pre-processing
-        # @NOTE: This is already done manually for P_{sig,bkg} above.
-        substructure_scaler = StandardScaler().fit(X_bkg)
-        X_sig = substructure_scaler.transform(X_sig)
-        X_bkg = substructure_scaler.transform(X_bkg)
-        
-        # Concatenate signal and background samples
-        X = np.vstack((X_sig, X_bkg)).astype(K.floatx())
-        P = np.vstack((P_sig, P_bkg)).astype(K.floatx())
-
-        # Convenient short-hands
-        num_samples, num_features = X.shape
-
-        # Define single data container
-        data = dict(X=X, Y=Y, P=P, W=W, U=U, sig=sig, bkg=bkg)
-        pass
+        """
 
 
     # Classifier-only fit
@@ -449,7 +327,11 @@ def main ():
     #  [https://stackoverflow.com/a/44771313]
     
     with Profile("Classifier-only fit, cross-validation"):
-        # @TODO: - Implement checkpointing
+        # @TODO:
+        # - Implement checkpointing (?)
+        # - Implement data generator looping over all of the background and
+        # randomly sampling signal events to have equal fractions in each
+        # batch. Use DataFlow from Tensorpack?
 
         # Define variables
         basename = 'crossval_classifier'
@@ -473,7 +355,7 @@ def main ():
             log.info("Training cross-validation classifiers")
             
             # Loop `k` folds
-            for fold, (train, validation) in enumerate(skf.split(X,Y)):
+            for fold, (train, validation) in enumerate(skf.split(data.train.inputs, data.train.targets)):
                 with Profile("Fold {}/{}".format(fold + 1, args.folds)):
 
                     # StratifiedKFold provides stratification, but since the
@@ -492,16 +374,16 @@ def main ():
 
                     # Compile model (necessary to save properly)
                     classifier.compile(**cfg['classifier']['compile'])
-                    
+
                     # Fit classifier model                    
                     result = train_in_parallel(classifier,
-                                               {'input':   X,
-                                                'target':  Y,
-                                                'weights': W,
+                                               {'input':   data.train.inputs,
+                                                'target':  data.train.targets,
+                                                'weights': data.train.weights,
                                                 'mask':    train},
-                                               {'input':   X,
-                                                'target':  Y,
-                                                'weights': W,
+                                               {'input':   data.train.inputs,
+                                                'target':  data.train.targets,
+                                                'weights': data.train.weights,
                                                 'mask':    validation},
                                                config=cfg['classifier'],
                                                num_devices=args.devices, mode=args.mode, seed=seed)
@@ -567,9 +449,11 @@ def main ():
         val_avg = np.mean([hist['val_loss'] for hist in histories], axis=0)
         plt.plot(epochs, val_avg,   color=colours[1], label='Validation (avg.)')
 
-        # Store the optimal number of training epochs        
-        opt_epochs = epochs[np.argmin(val_avg)]
-        log.info("Using optimal number of {:d} training epochs".format(opt_epochs))
+        # Store the optimal number of training epochs
+        if args.train:
+            opt_epochs = epochs[np.argmin(val_avg)]
+            log.info("Using optimal number of {:d} training epochs".format(opt_epochs))
+            pass
         
         for fold, hist in enumerate(histories):
             plt.plot(epochs, hist['loss'],     color=colours[0], linewidth=1.0, alpha=0.3,
@@ -614,9 +498,9 @@ def main ():
             
             # Train final classifier
             result = train_in_parallel(classifier,
-                                       {'input':   X,
-                                        'target':  Y,
-                                        'weights': W},
+                                       {'input':   data.train.inputs,
+                                        'target':  data.train.targets,
+                                        'weights': data.train.weights},
                                        config=cfg['classifier'],
                                        mode=args.mode,
                                        num_devices=args.devices,
@@ -652,71 +536,8 @@ def main ():
         # Save classifier model diagram to file
         plot_model(classifier, to_file=args.output + 'model_classifier.png', show_shapes=True)    
 
-        # ...
-        
-        # Store classifier output as tagger variables. @NOTE This works only
-        # _provided_ the input array X has the same ordering as sig/bkg.
-        msk_sig = (Y == 1.)
-        sig = append_fields(sig, 'NN', classifier.predict(X[ msk_sig], batch_size=1024).flatten(), dtypes=K.floatx())
-        bkg = append_fields(bkg, 'NN', classifier.predict(X[~msk_sig], batch_size=1024).flatten(), dtypes=K.floatx())
-
-        # Update `data` container
-        data = dict(X=X, Y=Y, P=P, W=W, U=U, sig=sig, bkg=bkg)        
-        pass
-
-    # '''
-    # def plot_posterior (adversary, Y, P, U, destination=args.output, name='posterior', title=''):
-    # " ""..."" "
-    # 
-    # # Create figure
-    # fig, ax = plt.subplots()
-    # 
-    # # Variable definitions
-    # edges  = np.linspace(-0.2, 1.2, 2 * 70 + 1, endpoint=True)
-    # 
-    # z_slices  = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
-    # #P2_slices = [0, 1]
-    # P1        = np.linspace(0, 1, 1000 + 1, endpoint=True)
-    # 
-    # linestyles =  ['-', '--', '-.', ':']
-    # colours = map(lambda d: d['color'], list(plt.rcParams["axes.prop_cycle"]))
-    # 
-    # # Plot prior
-    # msk = (Y == 0)
-    # plt.hist(P[:,0][msk], bins=edges, weights=U[msk], normed=True, color='gray', alpha=0.5, label='Prior')
-    # 
-    # # Plot adversary posteriors
-    # # for i, P2_slice in enumerate(P2_slices):
-    # # P2 = np.ones_like(P1) * P2_slice
-    # # P_test = np.vstack((P1, P2)).T
-    # P_test = P1
-    # posteriors = list()
-    # for j, z_slice in enumerate(z_slices):
-    # z_test = np.ones_like(P1) * z_slice
-    # posterior = adversary.predict([z_test, P_test])
-    # posteriors.append(posterior)
-    # plt.plot(P1, posterior, color=colours[j], label='clf. = %.1f' % z_slices[j])
-    # pass
-    # 
-    # # Decorations
-    # plt.xlabel("Normalised jet log(m)", horizontalalignment='right', x=1.0)
-    # plt.ylabel("Jets",                  horizontalalignment='right', y=1.0)
-    # plt.title("De-correlation p.d.f.'s{}".format((': ' + title) if title else ''), fontweight='medium')
-    # plt.ylim(0, 5.)
-    # plt.legend()
-    # 
-    # # Save figure
-    # plt.savefig(destination + name + '.pdf')
-    # plt.close(fig)
-    # return
-    # '''
-
-    class LRCallback (Callback):
-        def on_epoch_end (self, epoch, logs={}):
-            optimizer = self.model.optimizer
-            lr = K.eval(optimizer.lr * (1. / (1. + optimizer.decay * optimizer.iterations)))
-            print('\nLR: {:.6f} / ({:6f}) after {:f} iterations\n'.format(lr, K.eval(optimizer.lr), K.eval(optimizer.iterations)))
-            return
+        # Store classifier output as tagger variable. 
+        data.add_field('NN', classifier.predict(data.inputs, batch_size=2048).flatten().astype(K.floatx()))
         pass
 
 
@@ -753,31 +574,27 @@ def main ():
     # Combined fit, full (@TODO: Cross-val?)
     # --------------------------------------------------------------------------
     with Profile("Combined fit, full"):
-        # @TODO: - Make work
-        #        - Train/load
-        #        - Add 'combined' category to configs
-        #        - Checkpointing
-        #        - Add per-epoch callback logging mean(s) and width(s) of GMM
-        #        component(s) for fixed percentiles of classifier output.
+        # @TODO:
+        # - Checkpointing
 
         # Define variables
         name = 'full_combined'
 
         # Set up adversary
-        adversary = adversary_model(gmm_dimensions=P.shape[1],
+        adversary = adversary_model(gmm_dimensions=data.decorrelation.shape[1],
                                     **cfg['adversary']['model'])            
 
         # Save adversarial model diagram
         plot_model(adversary, to_file=args.output + 'model_adversary.png', show_shapes=True)
 
         # Create callback logging the adversary p.d.f.'s during training
-        callback_posterior = PosteriorCallback(data, args, adversary)
+        callback_posterior = PosteriorCallback(data.test, args, adversary)
 
         # Create callback logging the adversary p.d.f.'s during training
-        callback_profiles  = ProfilesCallback(data, args, classifier)
+        callback_profiles  = ProfilesCallback(data.test, args, classifier)
 
-        # Create callback that tracks the learning rate during training
-        callback_lr = LRCallback()
+        # List all callbacks to be used
+        callbacks = [callback_posterior, callback_profiles]
 
         # Set up combined, adversarial model
         combined = combined_model(classifier,
@@ -787,7 +604,7 @@ def main ():
         # Save combiend model diagram
         plot_model(combined, to_file=args.output + 'model_combined.png', show_shapes=True)
             
-        if args.train or True: # @TEMP
+        if args.train: # @TEMP
             log.info("Training full, combined model")
 
             # Create custom objective function for posterior: - log(p) of the
@@ -801,16 +618,17 @@ def main ():
             combined.compile(**cfg['combined']['compile'])            
 
             # Train final classifier
-            classifier.trainable = True # @TEMP
             result = train_in_parallel(combined,
-                                       {'input':   [X, P],
-                                        'target':  [Y, np.ones_like(Y)],
-                                        'weights': [U, np.multiply(U, 1 - Y)]},
+                                       {'input':   [data.inputs, data.decorrelation],
+                                        'target':  [data.targets, np.ones_like(data.targets)],
+                                        'weights': [data.weights, np.multiply(data.weights, 1 - data.targets)]},
+                                       # @TODO:
+                                       # - Try to use [data.weights, data.weights_flat * ...]
                                        config=cfg['combined'],
                                        mode=args.mode,
                                        num_devices=args.devices,
                                        seed=seed,
-                                       callbacks=[callback_posterior, callback_profiles, callback_lr])
+                                       callbacks=callbacks)
             
             # Save combined model and training history to file, both
             # in unique output directory and in the directory for
@@ -831,23 +649,11 @@ def main ():
             # Improt GradientReversalLayerto allow reading of model
             from adversarial.layers import GradientReversalLayer, PosteriorLayer
 
-            # Load pre-trained combined
-            # combined_file = 'trained/{}.h5'.format(name)
-            # combined = load_model(combined_file, custom_objects={
-            # 'GradientReversalLayer': GradientReversalLayer,
-            # 'PosteriorLayer':        PosteriorLayer
-            # })
+            # Load pre-trained combined _weights_ from file, in order to
+            # simultaneously load the embedded classifier so as to not have to
+            # extract it manually afterwards.
             combined_weights_file = 'trained/{}_weights.h5'.format(name)
             combined.load_weights(combined_weights_file)
-
-            # @TODO: Instead:
-            # - Create classifier and adversary
-            # - From the, create combined
-            # - Read in _weights_ only
-            # - Use classifier and combined with stored weights
-
-            # Extract classifier from loaded combined
-            classifier = classifier_from_combined(combined)
 
             # Load associated training histories
             history_file = 'trained/history__{}.json'.format(name)
@@ -857,17 +663,47 @@ def main ():
             
             pass
             
-        # Store classifier output as tagger variables. @NOTE This works only
-        # _provided_ the input array X has the same ordering as sig/bkg.
-        msk_sig = (Y == 1.)
-        sig = append_fields(sig, 'ANN', classifier.predict(X[ msk_sig], batch_size=1024).flatten(), dtypes=K.floatx())
-        bkg = append_fields(bkg, 'ANN', classifier.predict(X[~msk_sig], batch_size=1024).flatten(), dtypes=K.floatx())
-        
-        # Update `data` container
-        data = dict(X=X, Y=Y, P=P, W=W, U=U, sig=sig, bkg=bkg)        
+        # Store classifier output as tagger variable.
+        data.add_field('ANN', classifier.predict(data.inputs, batch_size=2048).flatten().astype(K.floatx()))
         pass
 
     plot_posterior(data, args, adversary, name='posterior_end', title="End of training")
+
+
+    # Perform DDT transform
+    # --------------------------------------------------------------------------
+    with Profile("DDT transform"):
+
+        # Compute rhoDDT
+        rhoDDT = np.log(np.square(data['m']) / data['pt'] / 1.)
+
+        # Define rhoDDT bin edges
+        edges = np.linspace(-2, 6, 32 + 1, endpoint=True)
+
+        # Fill ROOT TProfile
+        profile = ROOT.TProfile('tau21_profile', "", len(edges) - 1, edges)
+        root_numpy.fill_profile(profile, np.vstack((rhoDDT, data['Tau21'])).T, data.weights)
+
+        # Perform linear fit
+        xmin, xmax = 1.0, 4.0
+        fit = ROOT.TF1('fit', 'pol1', xmin, xmax)
+        profile.Fit('fit', 'RQ0')
+        slope = fit.GetParameter(1)
+
+        # Compute tau21DDT
+        Tau21DDT = data['Tau21'] - slope * (rhoDDT - xmin)
+        #Tau21DDT[rhoDDT < xmin] = np.nan
+        #Tau21DDT[rhoDDT > xmax] = np.nan
+
+        # Append to data container
+        #data.data = append_fields(data.data, 'Tau21DDT', Tau21DDT,
+        #dtypes=K.floatx())
+        data.add_field('Tau21DDT', Tau21DDT)
+
+        # @TODO: Plot comparison of tau21 and tau21DDT
+
+        # ...
+        pass
 
 
     # Plotting: Cost log for adversarial fit
@@ -902,12 +738,15 @@ def main ():
         pass
 
     
-    # Plotting: Distributions/ROC
+    # Plotting
     # --------------------------------------------------------------------------
-    with Profile("Plotting: Distributions/ROC"):
+    
+    # Tagger variables
+    variables = ['Tau21', 'Tau21DDT', 'D2', 'NN', 'ANN']
 
-        # Tagger variables
-        variables = ['tau21', 'D2', 'NN', 'ANN']
+    # Plotting: Distributions
+    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+    with Profile("Plotting: Distributions"):
 
         # Plotted 1D tagger variable distributions
         fig, ax = plt.subplots(1, len(variables), figsize=(len(variables) * 4, 4))
@@ -922,11 +761,11 @@ def main ():
                 pass
 
             # Get value- and weight arrays
-            v_sig = np.array(sig[var])
-            v_bkg = np.array(bkg[var])
+            v_sig = np.array(data.signal    [var])
+            v_bkg = np.array(data.background[var])
 
-            w_sig = np.array(sig['weight'])
-            w_bkg = np.array(bkg['weight'])
+            w_sig = np.array(data.signal    .weights)
+            w_bkg = np.array(data.background.weights)
 
             # Mask out NaN's
             msk = ~np.isnan(v_sig)
@@ -950,13 +789,22 @@ def main ():
 
         plt.legend()
         plt.savefig(args.output + 'tagger_distributions.pdf')
+        pass
 
+    
+    # Plotting: ROCs
+    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+    with Profile("Plotting: ROCs"):
+        
         # Plotted ROCs
         fig, ax = plt.subplots(figsize=(5,5))
 
         ax.plot([0,1],[0,1], 'k--', linewidth=1.0, alpha=0.2)
         for ivar, var in enumerate(reversed(variables)):
-            eff_sig, eff_bkg = roc_efficiencies(sig[var], bkg[var], sig['weight'], bkg['weight'])
+            eff_sig, eff_bkg = roc_efficiencies(data.test.signal    [var],
+                                                data.test.background[var],
+                                                data.test.signal    .weights,
+                                                data.test.background.weights)
             try:
                 auc = roc_auc(eff_sig, eff_bkg)
             except: # Efficiencies not monotonically increasing
@@ -973,104 +821,15 @@ def main ():
 
 
     # Plotting: Profiles
-    # --------------------------------------------------------------------------
+    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
     with Profile("Plotting: Profiles"):
-        '''
-        # Plotting variables
-        edges = np.linspace(0, 300, 60 + 1, endpoint=True)
-        bins  = edges[:-1] + 0.5 * np.diff(edges)
-        colours = map(lambda d: d['color'], list(plt.rcParams["axes.prop_cycle"]))
-        
-        step = 10.
-        percentiles = np.linspace(step, 100 - step, int(100 / step) - 1, endpoint=True)
-        '''
+
         # Loop tagger variables
-        for var in ['tau21', 'tau21DDT', 'D2', 'NN', 'ANN']:
-
-            plot_profiles(data, args, var)
-            
-            '''
-            profiles = [[] for _ in percentiles]
-
-            fig, ax = plt.subplots()
-
-            # Loop edges
-            for (mass_down, mass_up) in zip(edges[:-1], edges[1:]):
-                
-                # Get array of `var` within the current jet-mass band
-                msk = (bkg['m'] >= mass_down) & (bkg['m'] < mass_up)
-                array = bkg[var][msk]
-                
-                # Loop percentiles
-                for idx, perc in enumerate(percentiles):
-                    if len(array) == 0:
-                        profiles[idx].append(np.nan)
-                    else:
-                        profiles[idx].append(np.percentile(array, perc))
-                        pass
-                    pass # end: loop percentiles
-
-                pass # end: loop edges
-
-            # Plot profile
-            for profile, perc in zip(profiles, percentiles):
-                plt.plot(bins, profile, color=colours[0], linewidth=2 if perc == 50 else 1, label='Median' if perc == 50 else None)
-                pass
-
-            # Add text
-            mid = len(percentiles) // 2
-
-            arr_profiles = np.array(profiles).flatten()
-            arr_profiles = arr_profiles[~np.isnan(arr_profiles)]
-            diff = np.max(arr_profiles) - np.min(arr_profiles)
-
-            opts = dict(horizontalalignment='center', verticalalignment='bottom', fontsize='x-small')
-            text_string = r"$\varepsilon_{bkg.}$ = %d%%"
-
-            plt.text(edges[-1], profiles[-1] [-1] + 0.02 * diff, text_string % percentiles[-1],  **opts) # 90%
-
-            opts = dict(horizontalalignment='left', verticalalignment='center', fontsize='x-small')
-            text_string = "%d%%"
-
-            plt.text(edges[-1], profiles[mid][-1], text_string % percentiles[mid], **opts) # 50%
-            plt.text(edges[-1], profiles[0]  [-1], text_string % percentiles[0],   **opts) # 10%
-            
-            plt.xlabel("Jet mass [GeV]",  horizontalalignment='right', x=1.0)
-            plt.ylabel("{}".format(var),  horizontalalignment='right', y=1.0)
-            plt.title('Percentile profiles for {}'.format(var), fontweight='medium')
-            plt.legend()
-            plt.savefig(args.output + 'tagger_profile_{}.pdf'.format(var))
-            '''
+        for var in variables:
+            plot_profiles(data.test, args, var)
             pass # end: loop variables
 
         pass
-
-
-    # Plotting: Posterior p.d.f.'s
-    # --------------------------------------------------------------------------
-    """
-    with Profile("Plotting: Posterior p.d.f.'s"):
-
-        masses = np.linspace(-0.2, 1.2, 35 + 1, endpoint=True)
-        pts    = np.linspace(-0.2, 1.2, 35 + 1, endpoint=True)
-        params = np.vstack([M.flatten() for M in np.meshgrid(masses, pts)]).T
-
-        fig, ax = plt.subplots()
-        step = 0.2
-        for z in linspace(step, 1 - step, int(1 / float(step)) - 1, endpoint=True):
-            adverary.predict(np.ones((params.shape[0],)) * z, params)
-            pass
-
-        plt.xlabel("Log-scaled and normalised jet mass", horizontalalignment='right', x=1.0)
-        plt.ylabel("Probability density",                horizontalalignment='right', y=1.0)
-        plt.title("Adversary posterior p.d.f.'s",        fontweight='medium')
-        plt.legend()
-        plt.savefig(args.output + 'adverary_posterior.pdf')
-
-        pass
-        """
-        
-    # ...
 
     return 0
 
