@@ -1,5 +1,13 @@
 # adversarial
 
+## Contents
+
+TBA
+
+
+
+## Running on Eddie3 computing cluster
+
 Main wiki page: https://www.wiki.ed.ac.uk/display/ResearchServices/Eddie
 
 
