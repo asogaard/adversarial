@@ -7,8 +7,10 @@
 import re
 import sys
 import time
+import inspect
 from inspect import currentframe, getframeinfo, getouterframes
 from functools import wraps
+
 
 class Profile:
     """Profile class, for measuring time elapsed running sections of code."""
@@ -106,7 +108,10 @@ def profile (fn):
     """Implement Profile class as function decorator."""
     @wraps(fn)
     def wrapper (*args, **kwargs):
-        with Profile(title='@' + fn.__name__, depth=3):
+        spec  = inspect.getargspec(fn)
+        name  = (args[0].__class__.__name__ + '.') if (spec.args and spec.args[0] == 'self') else ''
+        name += fn.__name__
+        with Profile(title='@' + name, depth=3):
             result = fn(*args, **kwargs)
             pass
         return result
