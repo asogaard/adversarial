@@ -14,9 +14,6 @@ import matplotlib.pyplot as plt
 plt.switch_backend('pdf')
 plt.style.use('edinburgh')
 
-# Custom import(s)
-#from rootplotting import ap
-
 # Project import(s)
 from adversarial.profile import *
 
@@ -40,7 +37,6 @@ def wpercentile (data, percents, weights=None):
     return y
 
 
-@profile
 def plot_profiles (data, args, var, name='tagger_profile', title=''):
     """Plot percentile profiles of tagger varaibles versus jet mass.
 
@@ -70,26 +66,24 @@ def plot_profiles (data, args, var, name='tagger_profile', title=''):
     
     # Get tagger variable array
     if isinstance(var, str):
-        # Assume `var` is a valid key in `data['bkg']`
-        tagger = data['bkg'][var]
+        tagger = data.background[var]
     else:
         # Assume `var` is a Keras model describing a classifier taking
         # `data['X']` as input
         classifier, var = var, var.name
-        msk_bkg = (data['Y'] == 0.)
-        tagger = classifier.predict(data['X'][msk_bkg], batch_size=2048).flatten()
+        tagger = classifier.predict(data.background.inputs, batch_size=2048).flatten()
         pass
 
-    masses = data['bkg']['m']
-    weight = data['bkg']['weight']
+    masses = data.background['m']
+    weight = data.background['weight']
     
     # Loop mass bins
     for (mass_down, mass_up) in zip(edges[:-1], edges[1:]):
         
         # Get array of `var` within the current jet-mass band
-        msk = (data['bkg']['m'] >= mass_down) & (data['bkg']['m'] < mass_up)
+        msk = (data.background['m'] >= mass_down) & (data.background['m'] < mass_up)
         arr_tagger = tagger[msk]
-        arr_weight = data['bkg']['weight'][msk]
+        arr_weight = data.background.weights[msk]
         
         # Perform bootstrapping of the tagger variable array to estimate error
         # bands on percentile contours.
@@ -136,8 +130,9 @@ def plot_profiles (data, args, var, name='tagger_profile', title=''):
         pass
 
     # Plot mean profile with error bars
+    msk_nan = np.isnan(tagger)
     profile = ROOT.TProfile('profile', "", len(bins), edges)
-    fill_profile(profile, np.vstack((masses, tagger)).T, weight)
+    fill_profile(profile, np.vstack((masses, tagger)).T[~msk_nan], weight[~msk_nan])
 
     means, rmses = list(), list()
     for i in range(1, 1 + len(bins)):
@@ -177,6 +172,7 @@ def plot_profiles (data, args, var, name='tagger_profile', title=''):
     plt.ylabel("{}".format(var),  horizontalalignment='right', y=1.0)
     plt.title('Percentile profiles for {}{}'.format(var, (': ' + title) if title else ''), fontweight='medium')
     plt.legend()
+    plt.xlim(edges[0], edges[-1])
     if classifier is not None:
         plt.ylim(-0.05, 1.05)
         pass
@@ -190,7 +186,6 @@ def plot_profiles (data, args, var, name='tagger_profile', title=''):
     return
 
 
-@profile
 def plot_posterior (data, args, adversary, name='posterior', title=''):
     """..."""
 
@@ -209,8 +204,8 @@ def plot_posterior (data, args, adversary, name='posterior', title=''):
     P1        = np.linspace(0, 1, 1000 + 1, endpoint=True)
         
     # Plot prior
-    msk = (data['Y'] == 0)
-    plt.hist(data['P'][:,0][msk], bins=edges, weights=data['U'][msk], normed=True, color='gray', alpha=0.5, label='Prior')
+    msk = (data.targets == 0)
+    plt.hist(data.decorrelation[:,0][msk], bins=edges, weights=data.weights[msk], normed=True, color='gray', alpha=0.5, label='Prior')
     
     # Plot adversary posteriors
     # for i, P2_slice in enumerate(P2_slices):
