@@ -9,32 +9,216 @@
 import numpy as np
 from root_numpy import fill_profile
 import ROOT
-
 import matplotlib.pyplot as plt
-plt.switch_backend('pdf')
-plt.style.use('edinburgh')
 
 # Project import(s)
 from adversarial.profile import *
+from adversarial.utils   import *
 
 # Global variables
 linestyles = ['-', '--', '-.', ':']
 colours    = map(lambda d: d['color'], list(plt.rcParams["axes.prop_cycle"]))
 
 
-def wpercentile (data, percents, weights=None):
-    ''' percents in units of 1%
-    weights specifies the frequency (count) of data.
-    From [https://stackoverflow.com/a/31539746]
-    '''
-    if weights is None:
-        return np.percentile(data, percents)
-    ind = np.argsort(data)
-    d = data[ind]
-    w = weights[ind]
-    p = 100. * w.cumsum() / w.sum()
-    y = np.interp(percents, p, d)
-    return y
+def plot_jetmass (data, args, var, cut_value=None, cut_eff=None, name='tagger_jetmass', title=''):
+    """..."""
+
+    # Check(s)
+    assert (cut_value is None) != (cut_eff is None), "Please specify exactly one of `cut_value` and `cut_eff`"
+
+    # Get sequential blues
+    blues = plt.get_cmap('Blues')
+    
+    # Get cut direction
+    if wmean(data.signal[var], data.signal.weights) > wmean(data.background[var], data.background.weights):
+        direction = ">"
+    else:
+        direction = "<"
+        pass
+        
+    if cut_value is None:
+        if isinstance(cut_eff, (list,tuple)):
+            cut_value = list()
+            for eff in cut_eff:
+                assert eff < 1.
+                assert eff > 0.
+                print "Computing cut value for {:.1f}% signal efficiency".format(eff * 100.)
+                if direction == ">":
+                    cut_value.append(wpercentile(data.signal[var], (1. - eff) * 100., data.signal.weights))
+                else:
+                    cut_value.append(wpercentile(data.signal[var],       eff  * 100., data.signal.weights))
+                    pass
+                pass
+        else:
+            assert cut_eff < 1.
+            assert cut_eff > 0.
+            print "Computing cut value for {:.1f}% signal efficiency".format(cut_eff * 100.)
+            if direction == ">":
+                cut_value = [wpercentile(data.signal[var], (1. - cut_eff) * 100., data.signal.weights)]
+            else:
+                cut_value = [wpercentile(data.signal[var],       cut_eff  * 100., data.signal.weights)]
+                pass
+            pass
+    else:
+        if isinstance(cut_value, (list,tuple)):
+            cut_eff = list()
+            for value in cut_value:
+                if direction == ">":
+                    cut_eff.append(np.sum(data.signal.weights[var] > value) / np.sum(data.signal.weights))
+                else:
+                    cut_eff.append(np.sum(data.signal.weights[var] < value) / np.sum(data.signal.weights))
+                    pass
+                pass
+        else:
+            if direction == ">":
+                cut_eff = [np.sum(data.signal.weights[var] > cut_value) / np.sum(data.signal.weights)]
+            else:
+                cut_eff = [np.sum(data.signal.weights[var] < cut_value) / np.sum(data.signal.weights)]
+                pass
+            pass
+        pass
+
+    # Create figure
+    fig, ax = plt.subplots()
+    
+    # Get axis limits
+    edges = np.linspace(0, 300, 60 + 1, endpoint=True)
+        
+
+    # Plot pre-cut distribution
+    plt.hist(data.background['m'], bins=edges, weights=data.background.weights,
+             alpha=1.0, normed=True, label='Before cut')
+
+    # Loop cut values.
+    for icut, (value, eff) in enumerate(zip(cut_value, cut_eff)):
+        print "Using {} cut value {:.3f}".format(var, value)
+
+        # Select background jets passing substructure cut
+        if direction == ">":
+            msk_pass = data.background[var] > value
+        else:
+            msk_pass = data.background[var] < value
+            pass
+        
+        # Plot post-cut distribution
+        color = blues(1 - float(icut + 1)/(len(cut_value) + 1))
+        plt.hist(data.background['m'][msk_pass], bins=edges, weights=data.background.weights[msk_pass], histtype='step', color=color, # ... colours[1],
+                 alpha=0.7, linewidth=1.2, normed=True, label=r'After cut (%s %s %.2f; $\varepsilon_{sig.} = %.0f$%% )' % (latex(var), direction, value, eff * 100.))
+        pass
+    
+    # Decorations
+    plt.xlabel(r"Large-radius jet mass [GeV]",
+               horizontalalignment='right', x=1.0)
+    
+    plt.ylabel("Jets / {:.1f} GeV (normalised)".format(np.diff(edges)[0]),
+               horizontalalignment='right', y=1.0)
+
+    plt.yscale('log')
+    plt.ylim(1E-05, 1E+00)
+    plt.title(r"Jet mass spectra for successive cuts on {}".format(latex(var)), fontweight='medium')
+    plt.legend()
+
+    # Save figure
+    plt.savefig(args.output + '{}__{}.pdf'.format(name, var))
+    
+    # Close figure
+    plt.close()
+    
+    return
+
+
+def plot_distribution (data, args, var, name='tagger_distribution', title=''):
+    """..."""
+
+    # Create figure
+    fig, ax = plt.subplots()
+    
+    # Get axis limits
+    if var == 'D2':
+        edges = np.linspace(0, 5, 50 + 1, endpoint=True)
+    else:
+        edges = np.linspace(0, 1, 50 + 1, endpoint=True)
+        pass
+    
+    # Plot distributions
+    msk = np.isfinite(data.background[var])
+    plt.hist(data.background[var][msk], bins=edges, weights=data.background.weights[msk],
+             alpha=0.5, normed=True, label='Background')
+
+    msk = np.isfinite(data.signal[var])
+    plt.hist(data.signal    [var][msk], bins=edges, weights=data.signal    .weights[msk],
+             alpha=0.5, normed=True, label='Signal')
+    
+
+    # Decorations
+    plt.xlabel(r"Jet {}".format(latex(var)),
+               horizontalalignment='right', x=1.0)
+    
+    plt.ylabel("Jets / {:.3f} (normalised)".format(np.diff(edges)[0]),
+               horizontalalignment='right', y=1.0)
+
+    plt.legend()
+
+    # Save figure
+    plt.savefig(args.output + '{}__{}.pdf'.format(name, var))
+    
+    # Close figure
+    plt.close()
+    
+    return
+
+
+def plot_roc (data, args, vars, name='tagger_ROCs', title=''):
+    """...."""
+
+    # Create figure
+    fig, ax = plt.subplots(figsize=(5,5))
+
+    # Plot random-guess line
+    plt.plot([0,1], [0,1], 'k--', linewidth=1.0, alpha=0.2)
+
+    # Get and plot ROC curves
+    for ivar, var in enumerate(vars):
+
+        # Get format
+        linestyle, color = None, None
+        if var.startswith('Tau21DDT'):
+            idx_lst = int(var[-1]) - 1
+            idx_col = len(filter(lambda var: not var.startswith('Tau21DDT'), vars)) # -1
+            linestyle = linestyles[idx_lst]
+            color     = colours   [idx_col]
+            pass
+        
+        # Compute selection efficiencies
+        eff_sig, eff_bkg = roc_efficiencies(data.signal    [var],
+                                            data.background[var],
+                                            data.signal    .weights,
+                                            data.background.weights)
+
+        # Compute ROC AUC
+        try:
+            auc = roc_auc(eff_sig, eff_bkg)
+        except: # Efficiencies not monotonically increasing
+            auc = 0.
+            pass
+
+        # Plot ROC curve
+        ax.plot(eff_bkg, eff_sig, linestyle=linestyle, color=color, label='{} (AUC: {:.3f})'.format(latex(var), auc))
+        pass
+
+    # Decorations
+    plt.xlabel("Background efficiency", horizontalalignment='right', x=1.0)
+    plt.ylabel("Signal efficiency",     horizontalalignment='right', y=1.0)
+    plt.legend()
+
+    # Save figure
+    plt.savefig(args.output + '{}.pdf'.format(name))
+
+    # Cloase figure
+    plt.close()
+    
+    return
+
 
 
 def plot_profiles (data, args, var, name='tagger_profile', title=''):
@@ -55,8 +239,10 @@ def plot_profiles (data, args, var, name='tagger_profile', title=''):
     # Create figure
     fig, ax = plt.subplots()
 
+    direction = ">" if 'NN' in var else "<"
+
     # Plotting variables
-    edges = np.linspace(0, 300, 30 + 1, endpoint=True)
+    edges = np.linspace(0, 300, 60 + 1, endpoint=True)
     bins  = edges[:-1] + 0.5 * np.diff(edges)
     step = 10.
     percentiles = np.linspace(step, 100 - step, int(100 / step) - 1, endpoint=True)
@@ -66,24 +252,30 @@ def plot_profiles (data, args, var, name='tagger_profile', title=''):
     
     # Get tagger variable array
     if isinstance(var, str):
-        tagger = data.background[var]
+        tagger = data[var]
     else:
         # Assume `var` is a Keras model describing a classifier taking
         # `data['X']` as input
         classifier, var = var, var.name
-        tagger = classifier.predict(data.background.inputs, batch_size=2048).flatten()
+        tagger = classifier.predict(data.inputs, batch_size=2048).flatten()
         pass
 
-    masses = data.background['m']
-    weight = data.background['weight']
+    msk = np.isfinite(tagger)
+
+    tagger = tagger[msk]
+    masses = data['m'][msk]
+    weight = data['weight'][msk]
+    
+    rho = wcorr(masses, tagger, weight)
+    print "Linear correlation coeff. for {} vs. jet mass: {:3f}".format(var, rho)
     
     # Loop mass bins
     for (mass_down, mass_up) in zip(edges[:-1], edges[1:]):
         
         # Get array of `var` within the current jet-mass band
-        msk = (data.background['m'] >= mass_down) & (data.background['m'] < mass_up)
+        msk = (masses >= mass_down) & (masses < mass_up)
         arr_tagger = tagger[msk]
-        arr_weight = data.background.weights[msk]
+        arr_weight = weight[msk]
         
         # Perform bootstrapping of the tagger variable array to estimate error
         # bands on percentile contours.
@@ -106,7 +298,11 @@ def plot_profiles (data, args, var, name='tagger_profile', title=''):
                 if len(bts_tagger) == 0:
                     bootstrap_percentiles[idx].append(np.nan)
                 else:
-                    bootstrap_percentiles[idx].append(wpercentile(bts_tagger, perc, bts_weight))
+                    if direction == "<":
+                        bootstrap_percentiles[idx].append(wpercentile(bts_tagger,         perc,  bts_weight))
+                    else:
+                        bootstrap_percentiles[idx].append(wpercentile(bts_tagger, (100. - perc), bts_weight))
+                        pass
                     pass
                 pass
             pass
@@ -118,7 +314,11 @@ def plot_profiles (data, args, var, name='tagger_profile', title=''):
             if len(arr_tagger) == 0:
                 profiles[idx].append(np.nan)
             else:
-                profiles[idx].append(wpercentile(arr_tagger, perc, arr_weight))
+                if direction == "<":
+                    profiles[idx].append(wpercentile(arr_tagger,         perc,  arr_weight))
+                else:
+                    profiles[idx].append(wpercentile(arr_tagger, (100. - perc), arr_weight))
+                    pass
                 pass
             pass # end: loop percentiles
         pass # end: loop mass bins
@@ -130,9 +330,8 @@ def plot_profiles (data, args, var, name='tagger_profile', title=''):
         pass
 
     # Plot mean profile with error bars
-    msk_nan = np.isnan(tagger)
     profile = ROOT.TProfile('profile', "", len(bins), edges)
-    fill_profile(profile, np.vstack((masses, tagger)).T[~msk_nan], weight[~msk_nan])
+    fill_profile(profile, np.vstack((masses, tagger)).T, weight)
 
     means, rmses = list(), list()
     for i in range(1, 1 + len(bins)):
@@ -158,21 +357,26 @@ def plot_profiles (data, args, var, name='tagger_profile', title=''):
     
     opts = dict(horizontalalignment='center', verticalalignment='bottom', fontsize='x-small')
     text_string = r"$\varepsilon_{bkg.}$ = %d%%"
-    
-    plt.text(edges[-1], profiles[-1] [-1] + 0.02 * diff, text_string % percentiles[-1],  **opts) # 90%
+
+    idx = -1 if direction == "<" else 0
+    plt.text(edges[-1], profiles[idx] [-1] + 0.02 * diff, text_string % percentiles[idx],  **opts) # 90%
     
     opts = dict(horizontalalignment='left', verticalalignment='center', fontsize='x-small')
     text_string = "%d%%"
-    
-    plt.text(edges[-1], profiles[mid][-1], text_string % percentiles[mid], **opts) # 50%
-    plt.text(edges[-1], profiles[0]  [-1], text_string % percentiles[0],   **opts) # 10%
+
+    idx = mid
+    plt.text(edges[-1], profiles[idx][-1], text_string % percentiles[idx], **opts) # 50%
+
+    idx = 0 if direction == "<" else -1
+    plt.text(edges[-1], profiles[idx][-1], text_string % percentiles[idx],   **opts) # 10%
 
     # Decorations
     plt.xlabel("Jet mass [GeV]",  horizontalalignment='right', x=1.0)
-    plt.ylabel("{}".format(var),  horizontalalignment='right', y=1.0)
-    plt.title('Percentile profiles for {}{}'.format(var, (': ' + title) if title else ''), fontweight='medium')
+    plt.ylabel(r"{}".format(latex(var)),  horizontalalignment='right', y=1.0)
+    plt.title(r'Percentile profiles for {}{}'.format(latex(var), (': ' + title) if title else ''), fontweight='medium')
     plt.legend()
-    plt.xlim(edges[0], edges[-1])
+    #plt.xlim(edges[0], edges[-1])
+    plt.xlim(0, 320)
     if classifier is not None:
         plt.ylim(-0.05, 1.05)
         pass
@@ -224,7 +428,7 @@ def plot_posterior (data, args, adversary, name='posterior', title=''):
     plt.title("De-correlation p.d.f.'s{}".format((': ' + title) if title else ''), fontweight='medium')
     plt.ylim(0, 5.)
     plt.legend()
-    
+
     # Save figure
     plt.savefig(args.output + name + '.pdf')
 
