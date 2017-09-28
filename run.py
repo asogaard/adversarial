@@ -22,9 +22,13 @@ import root_numpy
 
 from sklearn.model_selection import StratifiedKFold
 
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 plt.switch_backend('pdf')
 plt.style.use('edinburgh')
+mpl.rcParams['mathtext.default'] = 'regular' # Use text font for math
+# @TODO: Italicise?
+
 
 # -- Explicitly ignore DeprecationWarning from scikit-learn, which we can't do
 #    anything about anyway.
@@ -38,7 +42,7 @@ sys.stderr = stderr
 from adversarial.data    import *
 from adversarial.utils   import *
 from adversarial.profile import *
-from adversarial.plots   import plot_posterior, plot_profiles
+from adversarial.plots   import *
 
 # Get ROOT to stop hogging the command-line options
 import ROOT
@@ -430,6 +434,7 @@ def main ():
 
     # Plotting: Cost log for classifier-only fit
     # --------------------------------------------------------------------------
+
     # Optimal number of training epochs
     opt_epochs = None
     
@@ -472,6 +477,12 @@ def main ():
         
         plt.xticks(filter(lambda x: x % step == 0, epochs))
         plt.legend()
+
+        #plt.text(0.03, 0.95, "ATLAS",
+        #         weight='bold', style='italic', size='large',
+        #         ha='left', va='top',
+        #         transform=ax.transAxes)
+        
         plt.savefig(args.output + 'costlog_classifier.pdf')
         pass
     
@@ -537,10 +548,26 @@ def main ():
         plot_model(classifier, to_file=args.output + 'model_classifier.png', show_shapes=True)    
 
         # Store classifier output as tagger variable. 
-        data.add_field('NN', classifier.predict(data.inputs, batch_size=2048).flatten().astype(K.floatx()))
+        data.add_field('NN', classifier.predict(data.inputs, batch_size=2048 * 8).flatten().astype(K.floatx()))
         pass
 
 
+    # Plotting ROCs (only NN)
+    # --------------------------------------------------------------------------
+
+    # Tagger variables
+    variables = ['Tau21', 'D2', 'NN']
+
+    with Profile("Plotting: ROCs (only NN)"):
+        plot_roc(data.test, args, variables, name='tagger_ROCs_NN')
+        pass
+
+
+    # Training callbacks
+    # --------------------------------------------------------------------------
+    # @TODO:
+    # - Move to `adversarial/callbacks.py`?
+    
     class PosteriorCallback (Callback):
         def __init__ (self, data, args, adversary):
             self.opts = dict(data=data, args=args, adversary=adversary)
@@ -664,7 +691,7 @@ def main ():
             pass
             
         # Store classifier output as tagger variable.
-        data.add_field('ANN', classifier.predict(data.inputs, batch_size=2048).flatten().astype(K.floatx()))
+        data.add_field('ANN', classifier.predict(data.inputs, batch_size=2048 * 8).flatten().astype(K.floatx()))
         pass
 
     plot_posterior(data, args, adversary, name='posterior_end', title="End of training")
@@ -675,32 +702,145 @@ def main ():
     with Profile("DDT transform"):
 
         # Compute rhoDDT
-        rhoDDT = np.log(np.square(data['m']) / data['pt'] / 1.)
+        data.add_field('rhoDDT', np.log(np.square(data['m']) / data['pt'] / 1.))
 
-        # Define rhoDDT bin edges
-        edges = np.linspace(-2, 6, 32 + 1, endpoint=True)
+        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        def plot_decorrelation (data, args, name='decorrelation_profile', title='', fit_range=None):
+            """..."""
+            
+            # Define rhoDDT bin edges
+            edges = np.linspace(-2, 6, 64 + 1, endpoint=True)
+            
+            # Fill ROOT TProfile
+            prof = ROOT.TProfile('tau21_profile', "", len(edges) - 1, edges)
+            root_numpy.fill_profile(prof, np.vstack((data['rhoDDT'], data['Tau21'])).T, data.weights)
 
-        # Fill ROOT TProfile
-        profile = ROOT.TProfile('tau21_profile', "", len(edges) - 1, edges)
-        root_numpy.fill_profile(profile, np.vstack((rhoDDT, data['Tau21'])).T, data.weights)
+            # Perform linear fit
+            if fit_range is None:
+                intercept, slope = None, None
+            else:
+                fit = ROOT.TF1('fit', 'pol1', *fit_range)
+                prof.Fit('fit', 'RQ0')
+                intercept, slope = fit.GetParameter(0), fit.GetParameter(1)
+                pass
+            
+            # Create arrays from profile
+            arr_x, arr_y, arr_ex, arr_ey = list(), list(), list(), list()
+            for ibin in range(1, prof.GetXaxis().GetNbins() + 1):
+                if prof.GetBinContent(ibin) == 0. and prof.GetBinError(ibin) == 0.:
+                    arr_x .append(np.nan)
+                    arr_y .append(np.nan)
+                    arr_ex.append(np.nan)
+                    arr_ey.append(np.nan)
+                else:
+                    arr_x .append(prof.GetBinCenter (ibin))
+                    arr_y .append(prof.GetBinContent(ibin))
+                    arr_ex.append(prof.GetBinWidth  (ibin) / 2.)
+                    arr_ey.append(prof.GetBinError  (ibin))
+                    pass
+                pass
+            
+            # Create figure
+            fig, ax = plt.subplots()
+            
+            # Plot profile
+            plt.errorbar(arr_x, arr_y, xerr=arr_ex, yerr=arr_ey, fmt='.', label='Mean profile')
 
-        # Perform linear fit
-        xmin, xmax = 1.0, 4.0
-        fit = ROOT.TF1('fit', 'pol1', xmin, xmax)
-        profile.Fit('fit', 'RQ0')
-        slope = fit.GetParameter(1)
+            # (Opt.) plot fit
+            if intercept is not None:
+                x1, y1 = xmin, intercept + xmin * slope
+                x2, y2 = xmax, intercept + xmax * slope
+                plt.plot([x1,x2], [y1,y2], color=colours[-1], label='Linear fit', zorder=10)
+                pass
+            
+            # Decoration
+            plt.xlabel(r"Large-radius jet $\rho^{DDT}$ = log($m^{2}$ / $p_{T}$ / 1 GeV)", horizontalalignment='right', x=1.0)
+            plt.ylabel(r"$\langle\tau_{21}\rangle$",     horizontalalignment='right', y=1.0)
+            plt.xlim(-0.8, 5.8)
+            plt.ylim(0., 1.)
+            plt.title(title, fontweight='medium')
+            if intercept is not None:
+                plt.legend()
+                pass
+
+            plt.text(0.03, 0.95, "ATLAS",
+                     weight='bold', style='italic', size='large',
+                     ha='left', va='top',
+                     transform=ax.transAxes)
+            
+            # Save figure
+            plt.savefig(args.output + '{}.pdf'.format(name))
+            
+            # Close figure
+            plt.close()
+            
+            return intercept, slope
+        
+        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+        # Tau21DDT(1)
+        xmin, xmax = 1.5, 4.0
+        intercept, slope = plot_decorrelation(data.background,
+                                              args,
+                                              name='tagger_decorrelation__1',
+                                              #title=r"%s: All background jets" % (latex('tau21DDT_1')),
+                                              fit_range=(xmin, xmax))
 
         # Compute tau21DDT
-        Tau21DDT = data['Tau21'] - slope * (rhoDDT - xmin)
-        #Tau21DDT[rhoDDT < xmin] = np.nan
-        #Tau21DDT[rhoDDT > xmax] = np.nan
+        Tau21DDT = data['Tau21'] - slope * (data['rhoDDT'] - xmin)
 
         # Append to data container
-        #data.data = append_fields(data.data, 'Tau21DDT', Tau21DDT,
-        #dtypes=K.floatx())
-        data.add_field('Tau21DDT', Tau21DDT)
+        data.add_field('Tau21DDT_1', Tau21DDT)
+        
+        # Tau21DDT(2)
+        xmin, xmax = 1.5, 9999 #np.inf
 
-        # @TODO: Plot comparison of tau21 and tau21DDT
+        selection = lambda array: array['pt'] > 2 * array['m']
+        eff_W = np.sum(data.signal.weights[selection(data.signal)]) / \
+                np.sum(data.signal.weights)
+        log.warning("Weighted fraction of W events passing Tau21DDT_2 selection: {:.1f}%".format(eff_W * 100.))
+
+        msk = selection(data.background) #data.background['pt'] > 2 * data.background['m']
+        intercept, slope = plot_decorrelation(data.background.slice(msk),
+                                              args,
+                                              name='tagger_decorrelation__2',
+                                              #title=r"%s: Background jets, $p_{T} > 2 \times m$ ($\varepsilon_{W} = %.1f%%$)" % (latex('tau21DDT_2'), eff_W * 100.),
+                                              fit_range=(xmin, xmax))
+
+        # Compute tau21DDT
+        Tau21DDT = data['Tau21'] - slope * (data['rhoDDT'] - xmin)
+
+        # Restrict kinematics (pT > 2 x m)
+        Tau21DDT[~selection(data)] = np.nan
+
+        # Append to data container
+        data.add_field('Tau21DDT_2', Tau21DDT)
+
+        # Tau21DDT(3)
+        xmin, xmax = 1.5, 9999 
+
+        selection = lambda array: (array['pt'] > 2 * array['m']) & (array['rhoDDT'] > xmin)
+        eff_W = np.sum(data.signal.weights[selection(data.signal)]) / \
+                np.sum(data.signal.weights)
+        log.warning("Weighted fraction of W events passing Tau21DDT_3 selection: {:.1f}%".format(eff_W * 100.))
+
+        msk = selection(data.background)
+        intercept, slope = plot_decorrelation(data.background.slice(msk),
+                                              args,
+                                              name='tagger_decorrelation__3',
+                                              #title=r"%s: Background jets, $p_{T} > 2 \times m$, %s $> %.1f$ ($\varepsilon_{W} = %.1f%%$)" % (latex('tau21DDT_3'), latex('rhoDDT'), xmin, eff_W * 100.),
+                                              fit_range=(xmin, xmax))
+
+        # Compute tau21DDT
+        Tau21DDT = data['Tau21'] - slope * (data['rhoDDT'] - xmin)
+
+        # Restrict kinematics
+        Tau21DDT[~selection(data)] = np.nan
+
+        # Append to data container
+        data.add_field('Tau21DDT_3', Tau21DDT)
+
+        # @TODO: Plot comparison of tau21 and tau21DDT?
 
         # ...
         pass
@@ -727,13 +867,18 @@ def main ():
         plt.title('Adversarial training', fontweight='medium')
         plt.xlabel("Training epochs", horizontalalignment='right', x=1.0)
         plt.ylabel("Objective function",   horizontalalignment='right', y=1.0)
-        #ax.set_yscale('log')
         
         epochs = [0] + list(epochs)
         step = max(int(np.floor(len(epochs) / 10.)), 1)
         
         plt.xticks(filter(lambda x: x % step == 0, epochs))
         plt.legend()
+
+        plt.text(0.03, 0.95, "ATLAS",
+                 weight='bold', style='italic', size='large',
+                 ha='left', va='top',
+                 transform=ax.transAxes)
+        
         plt.savefig(args.output + 'costlog_combined.pdf')
         pass
 
@@ -742,93 +887,45 @@ def main ():
     # --------------------------------------------------------------------------
     
     # Tagger variables
-    variables = ['Tau21', 'Tau21DDT', 'D2', 'NN', 'ANN']
+    variables = ['Tau21', 'D2', 'NN', 'ANN', 'Tau21DDT_1', 'Tau21DDT_2', 'Tau21DDT_3']
+    
 
     # Plotting: Distributions
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
     with Profile("Plotting: Distributions"):
-
-        # Plotted 1D tagger variable distributions
-        fig, ax = plt.subplots(1, len(variables), figsize=(len(variables) * 4, 4))
-
-        for ivar, var in enumerate(variables):
-
-            # Get axis limits
-            if var == 'D2':
-                edges = np.linspace(0, 5, 50 + 1, endpoint=True)
-            else:
-                edges = np.linspace(0, 1, 50 + 1, endpoint=True)
-                pass
-
-            # Get value- and weight arrays
-            v_sig = np.array(data.signal    [var])
-            v_bkg = np.array(data.background[var])
-
-            w_sig = np.array(data.signal    .weights)
-            w_bkg = np.array(data.background.weights)
-
-            # Mask out NaN's
-            msk = ~np.isnan(v_sig)
-            v_sig = v_sig[msk]
-            w_sig = w_sig[msk]
-            
-            msk = ~np.isnan(v_bkg)
-            v_bkg = v_bkg[msk]
-            w_bkg = w_bkg[msk]
-
-            # Plot distributions
-            ax[ivar].hist(v_bkg, bins=edges, weights=w_bkg, alpha=0.5, normed=True, label='Background')
-            ax[ivar].hist(v_sig, bins=edges, weights=w_sig, alpha=0.5, normed=True, label='Signal')
-
-            ax[ivar].set_xlabel("Jet {}".format(var),
-                                horizontalalignment='right', x=1.0)
-
-            ax[ivar].set_ylabel("Jets / {:.3f}".format(np.diff(edges)[0]),
-                                horizontalalignment='right', y=1.0)
+        for var in variables:
+            print "-- {}".format(var)
+            plot_distribution(data, args, var)
             pass
-
-        plt.legend()
-        plt.savefig(args.output + 'tagger_distributions.pdf')
         pass
 
     
-    # Plotting: ROCs
+    # Plotting: ROCs (NN and ANN)
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-    with Profile("Plotting: ROCs"):
-        
-        # Plotted ROCs
-        fig, ax = plt.subplots(figsize=(5,5))
-
-        ax.plot([0,1],[0,1], 'k--', linewidth=1.0, alpha=0.2)
-        for ivar, var in enumerate(reversed(variables)):
-            eff_sig, eff_bkg = roc_efficiencies(data.test.signal    [var],
-                                                data.test.background[var],
-                                                data.test.signal    .weights,
-                                                data.test.background.weights)
-            try:
-                auc = roc_auc(eff_sig, eff_bkg)
-            except: # Efficiencies not monotonically increasing
-                auc = 0.
-                pass
-            ax.plot(eff_bkg, eff_sig, label='{} (AUC: {:.3f})'.format(var, auc))
-            pass
-
-        plt.xlabel("Background efficiency", horizontalalignment='right', x=1.0)
-        plt.ylabel("Signal efficiency",     horizontalalignment='right', y=1.0)
-        plt.legend()
-        plt.savefig(args.output + 'tagger_ROCs.pdf')
+    with Profile("Plotting: ROCs (NN and ANN)"):
+        plot_roc(data.test, args, variables, name='tagger_ROCs_ANN')
         pass
 
 
     # Plotting: Profiles
+    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    if True:
+        with Profile("Plotting: Profiles"):
+            for var in variables:
+                print "-- {}".format(var)
+                plot_profiles(data.background, args, var) # (data.test, ...)
+                pass
+            pass
+        pass
+
+
+    # Plotting: Jet mass spectra
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-    with Profile("Plotting: Profiles"):
-
-        # Loop tagger variables
+    with Profile("Plotting: Jet mass spectra"):
         for var in variables:
-            plot_profiles(data.test, args, var)
-            pass # end: loop variables
-
+            print "-- {}".format(var)
+            plot_jetmass(data, args, var, cut_eff=[0.5, 0.4, 0.3, 0.2, 0.1])
+            pass
         pass
 
     return 0
