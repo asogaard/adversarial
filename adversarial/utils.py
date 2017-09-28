@@ -5,6 +5,7 @@
 
 # Basic import(s)
 import os
+import re
 import logging as log
 import subprocess
 import collections
@@ -14,6 +15,61 @@ import numpy as np
 
 # Project import(s)
 from .profile import Profile, profile
+
+
+def latex (_name):
+    """..."""
+    
+    name = _name.lower()
+
+    name = re.sub('^d2$', 'D_{2}', name)
+    name = re.sub('^pt$', 'p_{T}', name)
+    name = re.sub('rho', '\\rho', name)
+    name = name.replace('tau21', '\\tau_{21}')
+    name = name.replace('ddt', '^{DDT}')
+    name = re.sub('\_([0-9]+)$', '^{(\\1)}', name)
+
+    # Remove duplicate superscripts
+    name = re.sub("(\^.*)}\^{", "\\1", name)
+
+    if name == _name.lower():
+        name = _name
+        pass
+    
+    return r"${}$".format(name)
+
+
+def wmean (x, w):
+    """Weighted Mean
+    From [https://stackoverflow.com/a/38647581]
+    """
+    return np.sum(x * w) / np.sum(w)
+
+def wcov (x, y, w):
+    """Weighted Covariance
+    From [https://stackoverflow.com/a/38647581]
+    """
+    return np.sum(w * (x - wmean(x, w)) * (y - wmean(y, w))) / np.sum(w)
+
+def wcorr (x, y, w):
+    """Weighted Correlation
+    From [https://stackoverflow.com/a/38647581]
+    """
+    return wcov(x, y, w) / np.sqrt(wcov(x, x, w) * wcov(y, y, w))
+
+def wpercentile (data, percents, weights=None):
+    """ percents in units of 1%
+    weights specifies the frequency (count) of data.
+    From [https://stackoverflow.com/a/31539746]
+    """
+    if weights is None:
+        return np.percentile(data, percents)
+    ind = np.argsort(data)
+    d = data[ind]
+    w = weights[ind]
+    p = 100. * w.cumsum() / w.sum()
+    y = np.interp(percents, p, d)
+    return y
 
 
 def flatten (container):
