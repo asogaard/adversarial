@@ -48,9 +48,13 @@
 # Set up correct environment
 echo "Setting up python environment"
 . /etc/profile.d/modules.sh
-. ./setup.sh 
 # @TODO Implement flag
-#. ./setup.sh gpu
+if [ "$GPU" == true ]; then
+    . ./setup.sh gpu
+else
+    . ./setup.sh cpu
+fi
+  
 
 # Run python program
 echo "Reading data from $INPUTDIR/*.root"

@@ -68,7 +68,7 @@ shift # past argument or value
 done
 
 if [ ! -z "$HELP" ]; then
-    echo "usage: ./submit.sh [--gpu] [--train] [--tensorflow] [--devices <num>] [--folds <num>] [--config <path>] [--patch <path>] [--patch <path>] ... [--tag <name>] [--username <name>]"
+    echo "usage: ./scripts/submit.sh [--gpu] [--train] [--tensorflow] [--devices <num>] [--folds <num>] [--config <path>] [--patch <path>] [--patch <path>] ... [--tag <name>] [--username <name>]"
     echo "Options and arguments:"
     echo "  -h, --help        : print this help message and exit"
     echo "  --gpu             : run on GPU(s)"
@@ -163,7 +163,7 @@ SCRATCH=/exports/eddie/scratch/$USER/adversarial
 qsub -v SOURCE="$EOS/$VERSION" \
      -v DESTINATION="$SCRATCH/data" \
      -v KRB5CCNAME="FILE:$KFILE" \
-     scripts/stagein.sh
+     scripts/eddie3/stagein.sh
 
 qsub -v INPUTDIR="$SCRATCH/data/$VERSION" \
      -v OUTPUTDIR="$SCRATCH/output/$TAG" \
@@ -174,8 +174,8 @@ qsub -v INPUTDIR="$SCRATCH/data/$VERSION" \
      -v FOLDS="$FOLDS" \
      -v CONFIG="$CONFIG" \
      -v PATCH="$PATCH" \
-     scripts/run.sh
+     scripts/eddie3/run.sh
 
 qsub -v SOURCE="$SCRATCH/output/$TAG" \
      -v DESTINATION="$DATASTORE/output" \
-     scripts/stageout.sh
+     scripts/eddie3/stageout.sh
