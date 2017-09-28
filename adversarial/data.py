@@ -18,30 +18,44 @@ from .profile import Profile, profile
 
 # Convenience class for storing data
 class Data (object):
-    
-    def __init__ (self, inputs, targets, weights, weights_flat, decorrelation, data):
-        """ ... """
-        # @TODO: 
-        # - Make signature: `Data(self, data, **kwargs)`
-        # - Check that `.shape[0]` are equal if all arguments
-        # - Dynamically add properties for each kwarg
-        # - Add each kwarg to `self.__fields`
-        
-        # Attributes
-        # -- Data-type attributes
-        self.inputs        = inputs
-        self.targets       = targets
-        self.weights       = weights
-        self.weights_flat  = weights_flat  # @TODO Remove for generality?
-        self.decorrelation = decorrelation # @TODO Remove for generality?
-        self.__data = data # Users shouldn't have to interact with this
 
-        # -- List of data-type fields; these are shuffled collectively
-        self.__fields = ['inputs', 'targets', 'weights', 'weights_flat', 'decorrelation',
-                         '_{}__data'.format(self.__class__.__name__)]
-        
+    def __init__ (self, data, **kwargs):
+        """..."""
+        # Check(s)
+        assert isinstance(data, np.ndarray), \
+        "Base data container type ({}) is not supported.".format(str(type(data)))
+
+        # Store base data container
+        self.__data = data
+
+        # Initialise list of fields to be sliced
+        self.__fields = ['_{}__data'.format(self.__class__.__name__)]
+
+        # Store number of examples, for consistency checks
+        self.__num_samples = data.shape[0]
+
+        # Loop manual fields
+        for field, array in kwargs.iteritems():
+
+            # Check(s)
+            assert isinstance(array, np.ndarray), \
+            "Field '{}' type ({}) is not supported.".format(field, str(type(array)))
+            
+            assert array.shape[0] == self.__num_samples, \
+            ("Array in field '{}' does not have the same number of examples as the base data\n"
+            "container ({} vs. {}).".format(field, array.shape[0], num_samples))
+            
+            # Add attribute for the current field
+            setattr(self, field, array)
+
+            # Add field to list of manually added attributes
+            self.__fields.append(field)
+            pass
+
+        # Data train-, test-, and validation split fraction
         self.__split_fractions = None
-                
+
+        # Data splits
         self.__background = None
         self.__signal     = None
         
@@ -49,8 +63,7 @@ class Data (object):
         self.__test       = None
         self.__validation = None
 
-        self.__indices = dict()
-        
+        # Random seed
         self.__seed = None
         return
     
@@ -71,12 +84,17 @@ class Data (object):
     # --------------------------------------------------------------------------
 
     def concatenate (self, other):
-        self.inputs        = np.concatenate((self.inputs,        other.inputs))
-        self.targets       = np.concatenate((self.targets,       other.targets))
-        self.weights       = np.concatenate((self.weights,       other.weights))
-        self.weights_flat  = np.concatenate((self.weights_flat,  other.weights_flat))
-        self.decorrelation = np.concatenate((self.decorrelation, other.decorrelation))
-        self.__data        = np.concatenate((self.__data,        other._Data__data))
+        for field in self.__fields:
+            setattr(self, field, np.concatenate((
+                getattr(self, field), getattr(other, field)
+                )))
+            pass
+        # self.inputs        = np.concatenate((self.inputs,        other.inputs))
+        # self.targets       = np.concatenate((self.targets,       other.targets))
+        # self.weights       = np.concatenate((self.weights,       other.weights))
+        # self.weights_flat  = np.concatenate((self.weights_flat,  other.weights_flat))
+        # self.decorrelation = np.concatenate((self.decorrelation, other.decorrelation))
+        # self.__data        = np.concatenate((self.__data,        other._Data__data))
         return
 
 
