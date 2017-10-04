@@ -69,7 +69,6 @@ class PosteriorLayer (Layer):
 
     # @TODO:
     # - Check that K.sum((x < 0) || (x > 1)) == 0
-    # - Normalise to unity on ([0,1])^gmm_dimensions    
 
     def __init__ (self, gmm_components=np.nan, gmm_dimensions=np.nan, **kwargs):
         self.output_dim = 1 # Probability
@@ -235,34 +234,3 @@ class GradientReversalLayer (Layer):
         return dict(list(base_config.items()) + list(config.items()))
     
     pass
-
-
-# class GradientReversalLayer (Layer):
-#     """Reverse a gradient 
-#     <feedforward> return input x
-#     <backward> return -lambda * delta
-#     """
-#     def __init__ (self, hp_lambda, **kwargs):
-#         super(GradientReversalLayer, self).__init__(**kwargs)
-#         self.supports_masking = False
-#         self.hp_lambda = hp_lambda
-#         self.gr_op = ReverseGradient(self.hp_lambda)
-#         pass
-#     
-#     def build (self, input_shape):
-#         self.trainable_weights = []
-#         return
-#     
-#     def call (self, x, mask=None):
-#         return self.gr_op(x)
-#         
-#     def compute_output_shape (self, input_shape):
-#         return input_shape
-#     
-#     def get_config (self):
-#         config = {"name": self.__class__.__name__,
-#                   "lambda": self.hp_lambda}
-#         base_config = super(GradientReversalLayer, self).get_config()
-#         return dict(list(base_config.items()) + list(config.items()))
-#     
-#     pass
