@@ -103,7 +103,7 @@ def classifier_model (num_params, architecture=[], default=dict(), scope='classi
         num_params: Number of input features to the classifier.
         architecture: List of dicts specifying the architecture of the deep,
             sequential section of the adversary's network. See `stack_layers`.
-y        defalult: Default configuration of each layer in the deep, sequential
+        default: Default configuration of each layer in the deep, sequential
             section of the adversary's network. See `stack_layers`.
         scope: Name of scope in which the layers should be created.
         
