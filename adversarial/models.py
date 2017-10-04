@@ -95,7 +95,6 @@ def stack_layers (input_layer, architecture, default, scope=None):
     return l
 
 
-
 def classifier_model (num_params, architecture=[], default=dict(), scope='classifier'):
     """Network model used for classifier/tagger.
 
