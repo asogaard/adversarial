@@ -18,16 +18,8 @@ from keras.layers.normalization import BatchNormalization
 # Project import(s)
 from .layers import *
 
-# @TODO:
-# - Factorise `adversary_model` and `combined_model`?
 
-
-def snake_case (string):
-    """ ... """
-    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', string)
-    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
-
-
+# Utility methods for naming layers
 def layer_name_factory (scope):
     """ ... """
     def layer_name (name):
@@ -226,9 +218,9 @@ def combined_model (classifier, adversary, lambda_reg=None, lr_ratio=None, scope
     keras_layer_name = keras_layer_name_factory(scope)
     layer_name       = layer_name_factory(scope)
 
-    # Sub-models
-    #classifier.trainable = False # @TEMP
-    #adversary .trainable = True
+    # Toggling sub-models
+    classifier.trainable = True
+    adversary .trainable = True
     
     # Reconstruct classifier
     classifier_input = classifier.layers[0]
@@ -253,32 +245,3 @@ def combined_model (classifier, adversary, lambda_reg=None, lr_ratio=None, scope
 
     # Return
     return model
-
-
-def classifier_from_combined (combined, classifier_scope='classifier'):
-    """Extract classifier from combied, adversarial model.
-
-    Args:
-        combined: Combined, adversarial model.
-        classifier_scope: Named scope in which all classifier layers are placed.
-            Necessary to distinguish these from the adversarial layers.
-
-    Returns:
-        Classifier sub-model.
-    """
-    
-    # Select only classifier layers from combined, adversarial model.
-    layers = filter(lambda l: l.name.startswith(classifier_scope), combined.layers)
-    
-    # Create new input layer, cf. [https://stackoverflow.com/a/43363915]
-    classifier_input = Input(shape=layers[0].input_shape[1:], name=layers[0].name)
-
-    # Add remaining layers
-    classifier_output = classifier_input
-    for layer in layers[1:]:
-        classifier_output = layer(classifier_output)
-        pass
-    
-    # Return model
-    return Model(inputs=classifier_input, outputs=classifier_output)
-

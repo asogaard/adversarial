@@ -17,6 +17,13 @@ import numpy as np
 from .profile import Profile, profile
 
 
+
+def snake_case (string):
+    """ ... """
+    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', string)
+    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+
+
 def latex (_name):
     """..."""
     
