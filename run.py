@@ -25,7 +25,7 @@ from sklearn.model_selection import StratifiedKFold
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 plt.switch_backend('pdf')
-plt.style.use('edinburgh')
+plt.style.use('edinburgh-swiss')
 mpl.rcParams['mathtext.default'] = 'regular' # Use text font for math
 # @TODO: Italicise?
 
@@ -68,7 +68,7 @@ parser.add_argument('--folds',       dest='folds',    action='store', type=int,
                     default=2, help='Number of folds to use for stratified cross-validation.')
 
 # -- Flags
-parser.add_argument('-v', '--verbose', dest='verbose', action='store_const', 
+parser.add_argument('-v', '--verbose', dest='verbose', action='store_const',
                     const=True, default=False, help='Print verbose')
 parser.add_argument('-g', '--gpu',  dest='gpu',        action='store_const',
                     const=True, default=False, help='Run on GPU')
@@ -93,7 +93,7 @@ def main ():
         args = argparse.Namespace(mode='gpu' if args.gpu else 'cpu', **vars(args))
 
         # Set print level
-        log.basicConfig(format="%(levelname)s: %(message)s", 
+        log.basicConfig(format="%(levelname)s: %(message)s",
                         level=log.DEBUG if args.verbose else log.INFO)
 
         #  Modify input/output directory names to conform to convention
@@ -103,7 +103,7 @@ def main ():
         # @TODO:
         # - Make `args = prepare_args  (args)` method?
         # - Make `cfg  = prepare_config(args)` method?
-        
+
         # Load configuration file
         with open(args.config, 'r') as f:
             cfg = json.load(f)
@@ -132,7 +132,7 @@ def main ():
         from keras.models import load_model
         from keras.callbacks import Callback
         from keras.utils.vis_utils import plot_model
-        
+
         # Print setup information
         log.info("Running '%s'" % __file__)
         log.info("Command-line arguments:")
@@ -168,7 +168,7 @@ def main ():
             pass
 
         pass
-    
+
 
     # Loading data
     # --------------------------------------------------------------------------
@@ -188,12 +188,12 @@ def main ():
     """
     with Profile("Re-weighting"):
         # @NOTE: This is the crucial point: If the target is flat in (m,pt) the
-        # re-weighted background _won't_ be flat in (log m, log pt), and vice 
-        # versa. It should go without saying, but draw target samples from a 
+        # re-weighted background _won't_ be flat in (log m, log pt), and vice
+        # versa. It should go without saying, but draw target samples from a
         # uniform prior on the coordinates which are used for the decorrelation.
 
         decorrelation_variables = ['m']#, 'pt']
-        
+
         # Performing pre-processing of de-correlation coordinates
         with Profile():
             log.debug("Performing pre-processing")
@@ -202,18 +202,18 @@ def main ():
             N_sig = len(sig)
             N_bkg = len(bkg)
             N_tar = len(bkg)
-            
+
             # Initialise and fill coordinate arrays
             P_sig = np.zeros((N_sig, len(decorrelation_variables)), dtype=float)
             P_bkg = np.zeros((N_bkg, len(decorrelation_variables)), dtype=float)
             for col, var in enumerate(decorrelation_variables):
                 P_sig[:,col] = np.log(sig[var])
                 P_bkg[:,col] = np.log(bkg[var])
-                pass            
+                pass
             #P_sig[:,1] = np.log(sig['pt'])
             #P_bkg[:,1] = np.log(bkg['pt'])
             P_tar = np.random.rand(N_tar, len(decorrelation_variables))
-            
+
             # Scale coordinates to range [0,1]
             log.debug("Scaling background coordinates to range [0,1]")
             P_sig -= np.min(P_sig, axis=0)
@@ -262,7 +262,7 @@ def main ():
     # Plotting: Re-weighting
     # --------------------------------------------------------------------------
     with Profile("Plotting: Re-weighting"):
-        
+
 
         fig, ax = plt.subplots(2, 4, figsize=(12,6))
 
@@ -312,7 +312,7 @@ def main ():
             ax[0].set_xlabel("Scaled log(m)")
             ax[1].set_xlabel("Scaled log(m)")
             ax[0].set_ylabel("Scaled log(pt)")
-            
+
             fig.subplots_adjust(right=0.9)
             cbar_ax = fig.add_axes([0.925, 0.15, 0.025, 0.7])
             fig.colorbar(h[3], cax=cbar_ax)
@@ -329,7 +329,7 @@ def main ():
     #  [https://github.com/fchollet/keras/issues/7515]
     #  [https://stackoverflow.com/questions/43821786/data-parallelism-in-keras]
     #  [https://stackoverflow.com/a/44771313]
-    
+
     with Profile("Classifier-only fit, cross-validation"):
         # @TODO:
         # - Implement checkpointing (?)
@@ -339,12 +339,12 @@ def main ():
 
         # Define variables
         basename = 'crossval_classifier'
-        
+
         # Get indices for each fold in stratified k-fold training
         skf = StratifiedKFold(n_splits=args.folds)
 
         # Importe module creator methods and optimiser options
-        from adversarial.models import classifier_model, adversary_model, combined_model, classifier_from_combined
+        from adversarial.models import classifier_model, adversary_model, combined_model
 
         # Create unique set of random indices to use with stratification
         random_indices = np.arange(num_samples)
@@ -357,7 +357,7 @@ def main ():
         # Train or load classifiers
         if args.train:
             log.info("Training cross-validation classifiers")
-            
+
             # Loop `k` folds
             for fold, (train, validation) in enumerate(skf.split(data.train.inputs, data.train.targets)):
                 with Profile("Fold {}/{}".format(fold + 1, args.folds)):
@@ -379,7 +379,7 @@ def main ():
                     # Compile model (necessary to save properly)
                     classifier.compile(**cfg['classifier']['compile'])
 
-                    # Fit classifier model                    
+                    # Fit classifier model
                     result = train_in_parallel(classifier,
                                                {'input':   data.train.inputs,
                                                 'target':  data.train.targets,
@@ -393,7 +393,7 @@ def main ():
                                                num_devices=args.devices, mode=args.mode, seed=seed)
 
                     histories.append(result['history'])
-                    
+
                     # Save classifier model and training history to file, both
                     # in unique output directory and in the directory for
                     # pre-trained classifiers
@@ -404,14 +404,14 @@ def main ():
                             json.dump(result['history'], f)
                             pass
                         pass
-                    
+
                     # Add to list of classifiers
                     classifiers.append(classifier)
                     pass
                 pass
         else:
             log.info("Loading cross-validation classifiers from file")
-            
+
             # Load pre-trained classifiers
             classifier_files = sorted(glob.glob('trained/{}__*of{}.h5'.format(basename, args.folds)))
             assert len(classifier_files) == args.folds, "Number of pre-trained classifiers ({}) does not match number of requested folds ({})".format(len(classifier_files), args.folds)
@@ -430,27 +430,27 @@ def main ():
 
             pass # end: train/load
         pass
-        
+
 
     # Plotting: Cost log for classifier-only fit
     # --------------------------------------------------------------------------
 
     # Optimal number of training epochs
     opt_epochs = None
-    
-    with Profile("Plotting: Cost log, cross-val."):        
+
+    with Profile("Plotting: Cost log, cross-val."):
 
         fig, ax = plt.subplots()
         colours = map(lambda d: d['color'], list(plt.rcParams["axes.prop_cycle"]))
-        
+
         # @NOTE: Assuming no early stopping
         epochs = 1 + np.arange(len(histories[0]['loss']))
-        
-        for fold, hist in enumerate(histories): 
+
+        for fold, hist in enumerate(histories):
             plt.plot(epochs, hist['val_loss'], color=colours[1], linewidth=0.6, alpha=0.3,
                      label='Validation (fold)' if fold == 0 else None)
             pass
-        
+
         val_avg = np.mean([hist['val_loss'] for hist in histories], axis=0)
         plt.plot(epochs, val_avg,   color=colours[1], label='Validation (avg.)')
 
@@ -459,22 +459,22 @@ def main ():
             opt_epochs = epochs[np.argmin(val_avg)]
             log.info("Using optimal number of {:d} training epochs".format(opt_epochs))
             pass
-        
+
         for fold, hist in enumerate(histories):
             plt.plot(epochs, hist['loss'],     color=colours[0], linewidth=1.0, alpha=0.3,
                      label='Training (fold)'   if fold == 0 else None)
             pass
-        
+
         train_avg = np.mean([hist['loss'] for hist in histories], axis=0)
         plt.plot(epochs, train_avg, color=colours[0], label='Train (avg.)')
-        
+
         plt.title('Classifier-only, stratified {}-fold training'.format(args.folds), fontweight='medium')
         plt.xlabel("Training epochs",    horizontalalignment='right', x=1.0)
         plt.ylabel("Objective function", horizontalalignment='right', y=1.0)
-        
+
         epochs = [0] + list(epochs)
         step = max(int(np.floor(len(epochs) / 10.)), 1)
-        
+
         plt.xticks(filter(lambda x: x % step == 0, epochs))
         plt.legend()
 
@@ -482,10 +482,10 @@ def main ():
         #         weight='bold', style='italic', size='large',
         #         ha='left', va='top',
         #         transform=ax.transAxes)
-        
+
         plt.savefig(args.output + 'costlog_classifier.pdf')
         pass
-    
+
 
     # Classifier-only fit, full
     # --------------------------------------------------------------------------
@@ -496,17 +496,17 @@ def main ():
 
         if args.train:
             log.info("Training full classifier")
-            
+
             # Get classifier
             classifier = classifier_model(num_features, **cfg['classifier']['model'])
 
             # Compile model (necessary to save properly)
             classifier.compile(**cfg['classifier']['compile'])
-            
+
             # Overwrite number of training epochs with optimal number found from
             # cross-validation
             cfg['classifier']['fit']['epochs'] = opt_epochs
-            
+
             # Train final classifier
             result = train_in_parallel(classifier,
                                        {'input':   data.train.inputs,
@@ -527,11 +527,11 @@ def main ():
                     json.dump(result['history'], f)
                     pass
                 pass
-            
+
         else:
 
             log.info("Loading full classifier from file")
-            
+
             # Load pre-trained classifiers
             classifier_file = 'trained/{}.h5'.format(name)
             classifier = load_model(classifier_file)
@@ -545,9 +545,9 @@ def main ():
             pass # end: train/load
 
         # Save classifier model diagram to file
-        plot_model(classifier, to_file=args.output + 'model_classifier.png', show_shapes=True)    
+        plot_model(classifier, to_file=args.output + 'model_classifier.png', show_shapes=True)
 
-        # Store classifier output as tagger variable. 
+        # Store classifier output as tagger variable.
         data.add_field('NN', classifier.predict(data.inputs, batch_size=2048 * 8).flatten().astype(K.floatx()))
         pass
 
@@ -567,16 +567,16 @@ def main ():
     # --------------------------------------------------------------------------
     # @TODO:
     # - Move to `adversarial/callbacks.py`?
-    
+
     class PosteriorCallback (Callback):
         def __init__ (self, data, args, adversary):
             self.opts = dict(data=data, args=args, adversary=adversary)
             return
-        
+
         def on_train_begin (self, logs={}):
             plot_posterior(name='posterior_begin', title="Beginning of training", **self.opts)
             return
-        
+
         def on_epoch_end (self, epoch, logs={}):
             plot_posterior(name='posterior_epoch_{:03d}'.format(epoch + 1), title="Epoch {}".format(epoch + 1), **self.opts)
             return
@@ -587,11 +587,11 @@ def main ():
         def __init__ (self, data, args, var):
             self.opts = dict(data=data, args=args, var=var)
             return
-        
+
         def on_train_begin (self, logs={}):
             plot_profiles(name='profiles_begin', title="Beginning of training", **self.opts)
             return
-        
+
         def on_epoch_end (self, epoch, logs={}):
             plot_profiles(name='profiles_epoch_{:03d}'.format(epoch + 1), title="Epoch {}".format(epoch + 1), **self.opts)
             return
@@ -609,7 +609,7 @@ def main ():
 
         # Set up adversary
         adversary = adversary_model(gmm_dimensions=data.decorrelation.shape[1],
-                                    **cfg['adversary']['model'])            
+                                    **cfg['adversary']['model'])
 
         # Save adversarial model diagram
         plot_model(adversary, to_file=args.output + 'model_adversary.png', show_shapes=True)
@@ -627,10 +627,10 @@ def main ():
         combined = combined_model(classifier,
                                   adversary,
                                   **cfg['combined']['model'])
-        
+
         # Save combiend model diagram
         plot_model(combined, to_file=args.output + 'model_combined.png', show_shapes=True)
-            
+
         if args.train: # @TEMP
             log.info("Training full, combined model")
 
@@ -642,7 +642,7 @@ def main ():
             cfg['combined']['compile']['loss'][1] = maximise
 
             # Compile model (necessary to save properly)
-            combined.compile(**cfg['combined']['compile'])            
+            combined.compile(**cfg['combined']['compile'])
 
             # Train final classifier
             result = train_in_parallel(combined,
@@ -656,7 +656,7 @@ def main ():
                                        num_devices=args.devices,
                                        seed=seed,
                                        callbacks=callbacks)
-            
+
             # Save combined model and training history to file, both
             # in unique output directory and in the directory for
             # pre-trained classifiers
@@ -668,7 +668,7 @@ def main ():
                     json.dump(history, f)
                     pass
                 pass
-            
+
         else:
 
             log.info("Loading full, combined model from file")
@@ -687,9 +687,9 @@ def main ():
             with open(history_file, 'r') as f:
                 history = json.load(f)
                 pass
-            
+
             pass
-            
+
         # Store classifier output as tagger variable.
         data.add_field('ANN', classifier.predict(data.inputs, batch_size=2048 * 8).flatten().astype(K.floatx()))
         pass
@@ -704,80 +704,6 @@ def main ():
         # Compute rhoDDT
         data.add_field('rhoDDT', np.log(np.square(data['m']) / data['pt'] / 1.))
 
-        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-        def plot_decorrelation (data, args, name='decorrelation_profile', title='', fit_range=None):
-            """..."""
-            
-            # Define rhoDDT bin edges
-            edges = np.linspace(-2, 6, 64 + 1, endpoint=True)
-            
-            # Fill ROOT TProfile
-            prof = ROOT.TProfile('tau21_profile', "", len(edges) - 1, edges)
-            root_numpy.fill_profile(prof, np.vstack((data['rhoDDT'], data['Tau21'])).T, data.weights)
-
-            # Perform linear fit
-            if fit_range is None:
-                intercept, slope = None, None
-            else:
-                fit = ROOT.TF1('fit', 'pol1', *fit_range)
-                prof.Fit('fit', 'RQ0')
-                intercept, slope = fit.GetParameter(0), fit.GetParameter(1)
-                pass
-            
-            # Create arrays from profile
-            arr_x, arr_y, arr_ex, arr_ey = list(), list(), list(), list()
-            for ibin in range(1, prof.GetXaxis().GetNbins() + 1):
-                if prof.GetBinContent(ibin) == 0. and prof.GetBinError(ibin) == 0.:
-                    arr_x .append(np.nan)
-                    arr_y .append(np.nan)
-                    arr_ex.append(np.nan)
-                    arr_ey.append(np.nan)
-                else:
-                    arr_x .append(prof.GetBinCenter (ibin))
-                    arr_y .append(prof.GetBinContent(ibin))
-                    arr_ex.append(prof.GetBinWidth  (ibin) / 2.)
-                    arr_ey.append(prof.GetBinError  (ibin))
-                    pass
-                pass
-            
-            # Create figure
-            fig, ax = plt.subplots()
-            
-            # Plot profile
-            plt.errorbar(arr_x, arr_y, xerr=arr_ex, yerr=arr_ey, fmt='.', label='Mean profile')
-
-            # (Opt.) plot fit
-            if intercept is not None:
-                x1, y1 = xmin, intercept + xmin * slope
-                x2, y2 = xmax, intercept + xmax * slope
-                plt.plot([x1,x2], [y1,y2], color=colours[-1], label='Linear fit', zorder=10)
-                pass
-            
-            # Decoration
-            plt.xlabel(r"Large-radius jet $\rho^{DDT}$ = log($m^{2}$ / $p_{T}$ / 1 GeV)", horizontalalignment='right', x=1.0)
-            plt.ylabel(r"$\langle\tau_{21}\rangle$",     horizontalalignment='right', y=1.0)
-            plt.xlim(-0.8, 5.8)
-            plt.ylim(0., 1.)
-            plt.title(title, fontweight='medium')
-            if intercept is not None:
-                plt.legend()
-                pass
-
-            plt.text(0.03, 0.95, "ATLAS",
-                     weight='bold', style='italic', size='large',
-                     ha='left', va='top',
-                     transform=ax.transAxes)
-            
-            # Save figure
-            plt.savefig(args.output + '{}.pdf'.format(name))
-            
-            # Close figure
-            plt.close()
-            
-            return intercept, slope
-        
-        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-
         # Tau21DDT(1)
         xmin, xmax = 1.5, 4.0
         intercept, slope = plot_decorrelation(data.background,
@@ -791,7 +717,7 @@ def main ():
 
         # Append to data container
         data.add_field('Tau21DDT_1', Tau21DDT)
-        
+
         # Tau21DDT(2)
         xmin, xmax = 1.5, 9999 #np.inf
 
@@ -817,7 +743,7 @@ def main ():
         data.add_field('Tau21DDT_2', Tau21DDT)
 
         # Tau21DDT(3)
-        xmin, xmax = 1.5, 9999 
+        xmin, xmax = 1.5, 9999
 
         selection = lambda array: (array['pt'] > 2 * array['m']) & (array['rhoDDT'] > xmin)
         eff_W = np.sum(data.signal.weights[selection(data.signal)]) / \
@@ -848,18 +774,18 @@ def main ():
 
     # Plotting: Cost log for adversarial fit
     # --------------------------------------------------------------------------
-    with Profile("Plotting: Cost log, adversarial, full"):        
+    with Profile("Plotting: Cost log, adversarial, full"):
 
         fig, ax = plt.subplots()
         colours = map(lambda d: d['color'], list(plt.rcParams["axes.prop_cycle"]))
         epochs = 1 + np.arange(len(history['loss']))
         lambda_reg = cfg['combined']['model']['lambda_reg']
-        lr_ratio   = cfg['combined']['model']['lr_ratio']        
+        lr_ratio   = cfg['combined']['model']['lr_ratio']
 
         classifier_loss = np.mean([loss for key,loss in history.iteritems() if key.startswith('combined') and int(key.split('_')[-1]) % 2 == 1 ], axis=0)
         adversary_loss  = np.mean([loss for key,loss in history.iteritems() if key.startswith('combined') and int(key.split('_')[-1]) % 2 == 0 ], axis=0) * lambda_reg
         combined_loss   = classifier_loss + adversary_loss
-        
+
         plt.plot(epochs, classifier_loss, color=colours[0],  linewidth=1.4,  label='Classifier')
         plt.plot(epochs, adversary_loss,  color=colours[1],  linewidth=1.4,  label=r'Adversary ($\lambda$ = {})'.format(lambda_reg))
         plt.plot(epochs, combined_loss,   color=colours[-1], linestyle='--', label='Combined')
@@ -867,10 +793,10 @@ def main ():
         plt.title('Adversarial training', fontweight='medium')
         plt.xlabel("Training epochs", horizontalalignment='right', x=1.0)
         plt.ylabel("Objective function",   horizontalalignment='right', y=1.0)
-        
+
         epochs = [0] + list(epochs)
         step = max(int(np.floor(len(epochs) / 10.)), 1)
-        
+
         plt.xticks(filter(lambda x: x % step == 0, epochs))
         plt.legend()
 
@@ -878,20 +804,20 @@ def main ():
                  weight='bold', style='italic', size='large',
                  ha='left', va='top',
                  transform=ax.transAxes)
-        
+
         plt.savefig(args.output + 'costlog_combined.pdf')
         pass
 
-    
+
     # Plotting
     # --------------------------------------------------------------------------
-    
+
     # Tagger variables
     variables = ['Tau21', 'D2', 'NN', 'ANN', 'Tau21DDT_1', 'Tau21DDT_2', 'Tau21DDT_3']
-    
+
 
     # Plotting: Distributions
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     with Profile("Plotting: Distributions"):
         for var in variables:
             print "-- {}".format(var)
@@ -899,9 +825,20 @@ def main ():
             pass
         pass
 
-    
+
+    # Plotting: Jet mass spectra
+    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    with Profile("Plotting: Jet mass spectra"):
+        plot_jetmass_comparison(data, args, cut_eff=0.5)
+        for var in variables:
+            print "-- {}".format(var)
+            plot_jetmass(data, args, var, cut_eff=[0.5, 0.4, 0.3, 0.2, 0.1])
+            pass
+        pass
+
+
     # Plotting: ROCs (NN and ANN)
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     with Profile("Plotting: ROCs (NN and ANN)"):
         plot_roc(data.test, args, variables, name='tagger_ROCs_ANN')
         pass
@@ -915,16 +852,6 @@ def main ():
                 print "-- {}".format(var)
                 plot_profiles(data.background, args, var) # (data.test, ...)
                 pass
-            pass
-        pass
-
-
-    # Plotting: Jet mass spectra
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-    with Profile("Plotting: Jet mass spectra"):
-        for var in variables:
-            print "-- {}".format(var)
-            plot_jetmass(data, args, var, cut_eff=[0.5, 0.4, 0.3, 0.2, 0.1])
             pass
         pass
 
