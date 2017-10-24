@@ -17,6 +17,7 @@ from keras.layers.normalization import BatchNormalization
 
 # Project import(s)
 from .layers import *
+from .utils import snake_case
 
 
 # Utility methods for naming layers
