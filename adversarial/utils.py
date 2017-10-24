@@ -17,7 +17,6 @@ import numpy as np
 from .profile import Profile, profile
 
 
-
 def snake_case (string):
     """ ... """
     s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', string)
@@ -26,7 +25,7 @@ def snake_case (string):
 
 def latex (_name):
     """..."""
-    
+
     name = _name.lower()
 
     name = re.sub('^d2$', 'D_{2}', name)
@@ -42,7 +41,7 @@ def latex (_name):
     if name == _name.lower():
         name = _name
         pass
-    
+
     return r"${}$".format(name)
 
 
@@ -81,7 +80,7 @@ def wpercentile (data, percents, weights=None):
 
 def flatten (container):
     """Unravel nested lists and tuples.
-    
+
     From [https://stackoverflow.com/a/10824420]
     """
     if isinstance(container, (list,tuple)):
@@ -94,7 +93,7 @@ def flatten (container):
             pass
     else:
         yield container
-    
+
 
 def apply_patch (d, u):
     """Update nested dictionary without overwriting previous levels.
@@ -117,32 +116,32 @@ def roc_efficiencies (sig, bkg, sig_weight=None, bkg_weight=None):
 
     Adapted from [https://github.com/asogaard/AdversarialSubstructure/blob/master/utils.py]
     """
-    
+
     # Check(s)
     if sig_weight is None:
         sig_weight = np.ones_like(sig)
         pass
-    
+
     if bkg_weight is None:
         bkg_weight = np.ones_like(bkg)
         pass
-    
+
     # Store and sort 2D array
     sig2 = np.vstack((sig.ravel(), sig_weight.ravel(), np.zeros_like(sig.ravel()))).T
     bkg2 = np.vstack((bkg.ravel(), np.zeros_like(bkg.ravel()), bkg_weight.ravel())).T
     sig_bkg      = np.vstack((sig2, bkg2))
     sig_bkg_sort = sig_bkg[sig_bkg[:,0].argsort()]
-    
+
     # Accumulated (weighted) counts
     eff_sig = np.cumsum(sig_bkg_sort[:,1]) / np.sum(sig_weight)
     eff_bkg = np.cumsum(sig_bkg_sort[:,2]) / np.sum(bkg_weight)
-    
+
     # Make sure that cut direction is correct
     if np.sum(eff_sig < eff_bkg) > len(eff_sig) / 2:
         eff_sig = 1. - eff_sig
         eff_bkg = 1. - eff_bkg
         pass
-    
+
     return eff_sig, eff_bkg
 
 
@@ -157,7 +156,7 @@ def roc_auc (eff_sig, eff_bkg):
         eff_sig = eff_sig[::-1]
         eff_bkg = eff_bkg[::-1]
         pass
-    
+
     # Compute AUC as the average signal efficiency times the difference in
     # background efficiencies, summed of all ROC segments.
     auc = np.sum((eff_sig[:-1] + 0.5 * np.diff(eff_sig)) * np.diff(eff_bkg))
@@ -192,7 +191,7 @@ def split_indices (num_samples, num_splits, shuffle=True, seed=None):
         pass
 
     assert type(num_splits) is int, "`num_splits` of type " + str(type(num_splits)) + " is not accepted"
-            
+
     # Create array if indices
     indices = np.arange(num_samples)
 
@@ -205,13 +204,13 @@ def split_indices (num_samples, num_splits, shuffle=True, seed=None):
     # Perform splits
     num_samples_per_split = num_samples // num_splits
     result = [split[:num_samples_per_split] for split in np.array_split(indices, num_splits)]
-    
+
     return result
 
 
 def apply_slice (x, idx):
     """Apply slicing to numpy arrays in nested container."""
-    
+
     if isinstance(x, dict):
         return {key: apply_slice(val, idx) for (key,val) in x.iteritems()}
     elif isinstance(x, (list, tuple)):
@@ -220,10 +219,10 @@ def apply_slice (x, idx):
         return x[idx]
     else:
         raise Exception("apply_slice: Input type '{}' not recognised".format(type(x)))
-    
+
     # Should never reach here
     return None
-    
+
 
 def validate_training_input (data_train, data_validation):
     """Make sure that the format of the data dicts makes sense.
@@ -258,7 +257,7 @@ def validate_training_input (data_train, data_validation):
 
     # Check that shapes of provided arrays are compatible
     #shapes = [data_train[key].shape[0] for key in list(set(flatten(data_train.keys())) - set(['mask']))]
-    #assert all(shape == shapes[0] for shape in shapes), "Training sample counts are incompatible: [{}]".format(', '.join(map(str, shapes))) 
+    #assert all(shape == shapes[0] for shape in shapes), "Training sample counts are incompatible: [{}]".format(', '.join(map(str, shapes)))
     #shapes = [data_validation[key].shape[0] for key in list(set(flatten(data_validation.keys())) - set(['mask'])) ]
     #assert all(shape == shapes[0] for shape in shapes), "Validation sample counts are incompatible: [{}]".format(', '.join(map(str, shapes)))
 
@@ -271,7 +270,7 @@ def validate_training_input (data_train, data_validation):
     if mask is not None:
         data_validation = apply_slice(data_validation, mask)
         pass
-    
+
     return data_train, data_validation
 
 
@@ -302,13 +301,13 @@ def train_in_sequence (model, data_train, data_validation={}, config={}, callbac
     X = data_train['input']
     Y = data_train['target']
     W = data_train['weights'] if 'weights' in data_train else None
-    
+
     validation_data = (
         data_validation['input'],
         data_validation['target'],
         data_validation['weights'] if 'weights' in data_validation else None
         ) if use_validation else None
-    
+
     # Perform fit
     hist = model.fit(X, Y, sample_weight=W, validation_data=validation_data, verbose=1, callbacks=callbacks, **config['fit'])
 
@@ -345,7 +344,7 @@ def train_in_parallel (model, data_train, data_validation={}, config={}, callbac
         log.warning("train_in_parallel only works for Tensorflow. Falling back to train_in_sequence")
         train_in_sequence(model, data_train, data_validation, config=config)
         return
-    
+
     # Local imports (make sure Keras backend is set before elsewhere)
     import tensorflow as tf
     #import keras
@@ -359,11 +358,11 @@ def train_in_parallel (model, data_train, data_validation={}, config={}, callbac
     device_splits_train      = split_indices(data_train     ['input'], num_devices)
     device_splits_validation = split_indices(data_validation['input'], num_devices) \
                                if use_validation else None
-    
+
     # Get batched data
     device_data_train      = [apply_slice(data_train,      idx) for idx in device_splits_train]
     device_data_validation = [apply_slice(data_validation, idx) for idx in device_splits_validation] if use_validation else None
-    
+
     # Create parallelised model
     # -- Put inputs on main CPU (PS)
     with tf.device('/cpu:0'):
@@ -377,7 +376,7 @@ def train_in_parallel (model, data_train, data_validation={}, config={}, callbac
             inputs.append(device_inputs)
             pass
         pass
-    
+
     # -- Create replicate classifiers on devices
     outputs = list()
     for device in range(num_devices):
@@ -385,10 +384,10 @@ def train_in_parallel (model, data_train, data_validation={}, config={}, callbac
             outputs.append(model(inputs[device]))
             pass
         pass
-    
+
     # -- Create parallelised model
     parallelised = Model(inputs=list(flatten(inputs)), outputs=list(flatten(outputs)), name=model.name + '_parallelised')
-    
+
     # Replicate fields which are specific to each output node
     for field in ['loss', 'loss_weights']:
         if field in config['compile'] and isinstance(config['compile'][field], (list, tuple)):
@@ -398,18 +397,18 @@ def train_in_parallel (model, data_train, data_validation={}, config={}, callbac
 
     # Compile parallelised model
     parallelised.compile(**config['compile'])
-    
+
     # Format data
     X = list(flatten([data['input']   for data in device_data_train]))
     Y = list(flatten([data['target']  for data in device_data_train]))
     W = list(flatten([data['weights'] for data in device_data_train])) if 'weights' in data_train else None
-    
+
     validation_data = (
         list(flatten([data['input']   for data in device_data_validation])),
         list(flatten([data['target']  for data in device_data_validation])),
         list(flatten([data['weights'] for data in device_data_validation])) if 'weights' in data_validation else None
         ) if use_validation else None
-    
+
     # Perform fit
     hist = parallelised.fit(X, Y, sample_weight=W, validation_data=validation_data, verbose=1, callbacks=callbacks, **config['fit'])
 
@@ -420,7 +419,7 @@ def train_in_parallel (model, data_train, data_validation={}, config={}, callbac
             history[name] = [l / float(num_devices) for l in history[name]]
             pass
         pass
-    
+
     return {'model': model, 'history': history}
 
 
@@ -436,10 +435,10 @@ def initialise_backend (args):
     # Check(s)
     if args.gpu and not args.tensorflow and args.devices > 1:
         raise NotImplementedError("Distributed training on GPUs is current not enabled.")
-    
+
     # Specify Keras backend and import module
     os.environ['KERAS_BACKEND'] = "tensorflow" if args.tensorflow else "theano"
-    
+
     # Get number of cores on CPU(s), name of CPU devices, and number of physical
     # cores in each device.
     num_cpus = len(filter(lambda line: line.startswith('cpu cores'),
@@ -454,16 +453,16 @@ def initialise_backend (args):
 
     # Configure backends
     if args.tensorflow:
-        
+
         # Set print level to avoid unecessary warnings, e.g.
         #  $ The TensorFlow library wasn't compiled to use <SSE4.1, ...>
         #  $ instructions, but these are available on your machine and could
         #  $ speed up CPU computations.
         os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-        
+
         # Switch: CPU/GPU
         if args.gpu:
-            
+
             # Set this environment variable to "0,1,...", to make Tensorflow
             # use the first N available GPUs
             os.environ['CUDA_VISIBLE_DEVICES'] = ','.join(map(str,range(args.devices)))
@@ -474,28 +473,28 @@ def initialise_backend (args):
             # many cores as possible)
             os.environ['CUDA_VISIBLE_DEVICES'] = ""
             pass
-        
+
         # Load the tensorflow module here to make sure only the correct
         # GPU devices are set up
         import tensorflow as tf
 
         # @TODO:
         # - Some way to avoid starving GPU of data?
-        
+
         # Manually configure Tensorflow session
         gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.1,
                                     allow_growth=True)
-            
+
         config = tf.ConfigProto(intra_op_parallelism_threads=num_cores * 2,
                                 inter_op_parallelism_threads=num_cores * 2,
                                 allow_soft_placement=True,
                                 device_count={'GPU': args.devices if args.gpu else 0},
                                 gpu_options=gpu_options if args.gpu else None)
-        
+
         session = tf.Session(config=config)
-        
+
     else:
-        
+
         if args.devices > 1:
             log.warning("Currently it is not possible to specify more than one devices for Theano backend.")
             pass
@@ -521,14 +520,14 @@ def initialise_backend (args):
             ]
         os.environ["THEANO_FLAGS"] = ','.join(standard_flags + (dnn_flags if args.gpu else []))
         pass
-    
+
     # Import Keras backend
     import keras.backend as K
     K.set_floatx('float32')
-    
+
     if args.tensorflow:
         # Set global Tensorflow session
         K.set_session(session)
         pass
-    
+
     return
