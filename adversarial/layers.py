@@ -16,6 +16,17 @@ from scipy.stats import norm
 from keras import backend as K
 from keras.engine.topology import Layer
 
+# Temporary fix for error:
+# >> AttributeError: 'module' object has no attribute 'control_flow_ops'
+# occurring when using older TensorFlow backend (__version__ < 1.2.1, at least).
+# From [https://github.com/fchollet/keras/issues/3857#issuecomment-251385542]
+if K.backend() == 'tensorflow':    
+    import tensorflow
+    if int(tensorflow.__version__.split('.')[1]) < 2:
+        tensorflow.python.control_flow_ops = tensorflow
+        pass
+    pass
+
 if K.backend() == 'tensorflow':
     import tensorflow as tf
     def erf (x):
