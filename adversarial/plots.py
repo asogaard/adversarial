@@ -11,8 +11,14 @@ import root_numpy
 import ROOT
 import matplotlib.pyplot as plt
 
-# Custom import(s) # @TEMP
-from rootplotting import ap
+# Custom import(s)
+ROOTPLOTTING=False
+try:
+    from rootplotting import ap
+    ROOTPLOTTING=True
+except:
+    # RootPlotting not available
+    pass
 
 # Project import(s)
 from adversarial.profile import *
@@ -196,61 +202,63 @@ def plot_jetmass_comparison (data, args, cut_eff=0.5, name='tagger_jetmass_compa
 
     # RootPlotting version
     # --------------------------------------------------------------------------
+    if ROOTPLOTTING:
 
-    # Create canvas
-    c = ap.canvas(batch=True, size=(700, 500))
-
-    # Plot pre-cut distribution
-    c.hist(data.background['m'], bins=edges, weights=data.background.weights, fillcolor=root_colours[0], normalise=True, label="Before cut")
-
-
-    # Plot post-cut distributionsa
-    for ivar, var in enumerate(['Tau21', 'Tau21DDT_1', 'NN', 'ANN']):
+        # Create canvas
+        c = ap.canvas(batch=True, size=(700, 500))
         
-        # Get cut direction
-        if wmean(data.signal[var], data.signal.weights) > wmean(data.background[var], data.background.weights):
-            direction = ">"
-        else:
-            direction = "<"
+        # Plot pre-cut distribution
+        c.hist(data.background['m'], bins=edges, weights=data.background.weights, fillcolor=root_colours[0], normalise=True, label="Before cut")
+        
+        
+        # Plot post-cut distributionsa
+        for ivar, var in enumerate(['Tau21', 'Tau21DDT_1', 'NN', 'ANN']):
+            
+            # Get cut direction
+            if wmean(data.signal[var], data.signal.weights) > wmean(data.background[var], data.background.weights):
+                direction = ">"
+            else:
+                direction = "<"
+                pass
+            
+            # Get cut value
+            if direction == ">":
+                value = wpercentile(data.signal[var], (1. - cut_eff) * 100., data.signal.weights)
+            else:
+                value = wpercentile(data.signal[var],       cut_eff  * 100., data.signal.weights)
+                pass
+            
+            # Select background jets passing substructure cut
+            if direction == ">":
+                msk_pass = data.background[var] > value
+            else:
+                msk_pass = data.background[var] < value
+                pass
+            
+            # Plot post-cut distribution
+            icol = ivar // 2 + 1 # if ivar < 2 else ivar + 2
+            c.hist(data.background['m'][msk_pass], bins=edges, weights=data.background.weights[msk_pass],
+                   linecolor=root_colours[icol], linewidth=2, linestyle=ivar % 2 + 2,
+                   markercolor=root_colours[icol], markerstyle=20+ivar, markersize=1.0,
+                   option="HIST HP", legend_option="LP",
+                   normalise=True, label=(r'%s %s %.2f' % (latex(var), direction, value)).replace("\\", "#").replace("$", ""))
             pass
         
-        # Get cut value
-        if direction == ">":
-            value = wpercentile(data.signal[var], (1. - cut_eff) * 100., data.signal.weights)
-        else:
-            value = wpercentile(data.signal[var],       cut_eff  * 100., data.signal.weights)
-            pass
+        # Decorations
+        c.xlabel("Large-#it{R} jet mass [GeV]")
+        c.ylabel("Fraction of jets")
+        c.ymin(1E-05)
+        c.logy()
+        c.xline(80.5, ymin=1E-05, linestyle=2, linewidth=1, linecolor=ROOT.kGray + 3, text='#it{W} pole mass', text_align='BR', textsize=17)
+        c.text(["#sqrt{s} = 13 TeV",
+                "W-tagging MC",
+                "Fixed 50% signal efficiency cuts"],
+               qualifier="Work in progress")
+        c.legend(xmin=0.65, width=0.25)
         
-        # Select background jets passing substructure cut
-        if direction == ">":
-            msk_pass = data.background[var] > value
-        else:
-            msk_pass = data.background[var] < value
-            pass
-        
-        # Plot post-cut distribution
-        icol = ivar // 2 + 1 # if ivar < 2 else ivar + 2
-        c.hist(data.background['m'][msk_pass], bins=edges, weights=data.background.weights[msk_pass],
-               linecolor=root_colours[icol], linewidth=2, linestyle=ivar % 2 + 2,
-               markercolor=root_colours[icol], markerstyle=20+ivar, markersize=1.0,
-               option="HIST HP", legend_option="LP",
-               normalise=True, label=(r'%s %s %.2f' % (latex(var), direction, value)).replace("\\", "#").replace("$", ""))
+        # Save figure
+        c.save(args.output + 'rp__' + '{}.pdf'.format(name))
         pass
-    
-    # Decorations
-    c.xlabel("Large-#it{R} jet mass [GeV]")
-    c.ylabel("Fraction of jets")
-    c.ymin(1E-05)
-    c.logy()
-    c.xline(80.5, ymin=1E-05, linestyle=2, linewidth=1, linecolor=ROOT.kGray + 3, text='#it{W} pole mass', text_align='BR', textsize=17)
-    c.text(["#sqrt{s} = 13 TeV",
-            "W-tagging MC",
-            "Fixed 50% signal efficiency cuts"],
-           qualifier="Work in progress")
-    c.legend(xmin=0.65, width=0.25)
-
-    # Save figure
-    c.save(args.output + 'rp__' + '{}.pdf'.format(name))
 
     return
 
@@ -525,55 +533,57 @@ def plot_profiles (data, args, var, name='tagger_profile', title=''):
 
     # RootPlotting version
     # --------------------------------------------------------------------------
-    
-    # Create canvas
-    c = ap.canvas(batch=True, size=(700, 500))
-
-    # Plot percentile profiles
-    first = True
-    for profile, error, perc in zip(profiles, errorbands, percentiles):
-        msk = np.isfinite(profile) & np.isfinite(error)
-        graph = ROOT.TGraphErrors(sum(msk),
-                                  np.array(bins)     .flatten('C').astype(float)[msk],
-                                  np.array(profile)  .flatten('C').astype(float)[msk],
-                                  np.array(binwidths).flatten('C').astype(float)[msk],
-                                  np.array(error)    .flatten('C').astype(float)[msk])
-
-        c.graph(graph, linecolor=root_colours[0], fillcolor=root_colours[0], markerstyle=0, alpha=0.2 if perc == 50 else 0.1, linewidth=2 if perc == 50 else 1, option=('A' if first else '') + 'L3', label="Median background eff." if perc == 50 else ("Background efficiency deciles" if perc == 10 else None), legend_option="FL")
-
-        padx, pady = 2, 0.01
-        idx = list(bins).index(287.5)
-        if   ((perc == 10) and (direction == ">")) or ((perc == 90) and (direction == "<")):
-            c.latex("#varepsilon_{bkg.} = %d%%" % perc,
-                    287.5, profile[idx] + 0.02, align=31, textsize=14, textcolor=ROOT.kGray+3)
-            pass
-        # ...
+    if ROOTPLOTTING:
         
-        first = False
+        # Create canvas
+        c = ap.canvas(batch=True, size=(700, 500))
+        
+        # Plot percentile profiles
+        first = True
+        for profile, error, perc in zip(profiles, errorbands, percentiles):
+            msk = np.isfinite(profile) & np.isfinite(error)
+            graph = ROOT.TGraphErrors(sum(msk),
+                                      np.array(bins)     .flatten('C').astype(float)[msk],
+                                      np.array(profile)  .flatten('C').astype(float)[msk],
+                                      np.array(binwidths).flatten('C').astype(float)[msk],
+                                      np.array(error)    .flatten('C').astype(float)[msk])
+            
+            c.graph(graph, linecolor=root_colours[0], fillcolor=root_colours[0], markerstyle=0, alpha=0.2 if perc == 50 else 0.1, linewidth=2 if perc == 50 else 1, option=('A' if first else '') + 'L3', label="Median background eff." if perc == 50 else ("Background efficiency deciles" if perc == 10 else None), legend_option="FL")
+            
+            padx, pady = 2, 0.01
+            idx = list(bins).index(287.5)
+            if   ((perc == 10) and (direction == ">")) or ((perc == 90) and (direction == "<")):
+                c.latex("#varepsilon_{bkg.} = %d%%" % perc,
+                        287.5, profile[idx] + 0.02, align=31, textsize=14, textcolor=ROOT.kGray+3)
+                pass
+            # ...
+            
+            first = False
+            pass
+        
+        # Plot mean profile
+        graph = ROOT.TGraphErrors(len(bins),
+                                  np.array(bins)     .flatten('C').astype(float),
+                                  np.array(means)    .flatten('C').astype(float),
+                                  np.array(binwidths).flatten('C').astype(float),
+                                  np.array(rmses)    .flatten('C').astype(float))
+        c.graph(graph, markerstyle=20, label="Mean #pm RMS")
+        
+        # Decoration
+        c.xlabel("Large-#it{R} jet mass [GeV]")
+        c.ylabel(latex(var).replace("$", "").replace("\\", "#") + " classifier output")
+        c.xlim(50, 300)
+        c.ylim(0, 1.6)
+        c.legend(xmin=0.45)
+        c.xline(80.5, ymax=1.0, linestyle=2, linewidth=1, linecolor=ROOT.kGray + 3, text='#it{W} pole mass', text_align='TR', textsize=17)
+        
+        c.text(["#sqrt{s} = 13 TeV",
+                "W-tagging MC"],
+               qualifier="Work in progress")
+        
+        # Save figure
+        c.save(args.output + 'rp__{}__{}.pdf'.format(name, var))
         pass
-
-    # Plot mean profile
-    graph = ROOT.TGraphErrors(len(bins),
-                              np.array(bins)     .flatten('C').astype(float),
-                              np.array(means)    .flatten('C').astype(float),
-                              np.array(binwidths).flatten('C').astype(float),
-                              np.array(rmses)    .flatten('C').astype(float))
-    c.graph(graph, markerstyle=20, label="Mean #pm RMS")
-
-    # Decoration
-    c.xlabel("Large-#it{R} jet mass [GeV]")
-    c.ylabel(latex(var).replace("$", "").replace("\\", "#") + " classifier output")
-    c.xlim(50, 300)
-    c.ylim(0, 1.6)
-    c.legend(xmin=0.45)
-    c.xline(80.5, ymax=1.0, linestyle=2, linewidth=1, linecolor=ROOT.kGray + 3, text='#it{W} pole mass', text_align='TR', textsize=17)
-    
-    c.text(["#sqrt{s} = 13 TeV",
-            "W-tagging MC"],
-           qualifier="Work in progress")
-
-    # Save figure
-    c.save(args.output + 'rp__{}__{}.pdf'.format(name, var))
 
     return
 
@@ -706,48 +716,50 @@ def plot_decorrelation (data, args, name='decorrelation_profile', title='', fit_
 
     # RootPlotting version
     # --------------------------------------------------------------------------
-
-    # Create canvas
-    c = ap.canvas(batch=True, size=(700, 500))
-
-    # Compute TGraphs with error bars
-    g1 = ROOT.TGraphErrors(len(arr_x),
-                           np.array(arr_x)  .flatten('C').astype(float),
-                           np.array(arr_y1) .flatten('C').astype(float),
-                           np.array(arr_ex) .flatten('C').astype(float),
-                           np.array(arr_ey1).flatten('C').astype(float))
-    g2 = ROOT.TGraphErrors(len(arr_x),
-                           np.array(arr_x)  .flatten('C').astype(float),
-                           np.array(arr_y2) .flatten('C').astype(float),
-                           np.array(arr_ex) .flatten('C').astype(float),
-                           np.array(arr_ey2).flatten('C').astype(float))
-
-    # Plot profile
-    c.graph(g1, linecolor=root_colours[0], markercolor=root_colours[0], markerstyle=20, label="Original profile, #tau_{21}")
-    c.graph(g2, linecolor=root_colours[1], markercolor=root_colours[1], markerstyle=21, label="Transformed profile, #tau_{21}^{DDT}")
-
-    # (Opt.) plot fit
-    if intercept is not None:
-        x1, y1 = xmin, intercept + xmin * slope
-        x2, y2 = xmax, intercept + xmax * slope
-        c.plot([y1,y2], bins=[x1, x2], linecolor=root_colours[-1], markerstyle=0, linewidth=2, linestyle=1, label='Linear fit', option="L")
-        c.plot([y1,y1], bins=[x1, x2], linecolor=ROOT.kGray + 3,   markerstyle=0, linewidth=2, linestyle=2, option="L")
+    if ROOTPLOTTING:
+        
+        # Create canvas
+        c = ap.canvas(batch=True, size=(700, 500))
+        
+        # Compute TGraphs with error bars
+        g1 = ROOT.TGraphErrors(len(arr_x),
+                               np.array(arr_x)  .flatten('C').astype(float),
+                               np.array(arr_y1) .flatten('C').astype(float),
+                               np.array(arr_ex) .flatten('C').astype(float),
+                               np.array(arr_ey1).flatten('C').astype(float))
+        g2 = ROOT.TGraphErrors(len(arr_x),
+                               np.array(arr_x)  .flatten('C').astype(float),
+                               np.array(arr_y2) .flatten('C').astype(float),
+                               np.array(arr_ex) .flatten('C').astype(float),
+                               np.array(arr_ey2).flatten('C').astype(float))
+        
+        # Plot profile
+        c.graph(g1, linecolor=root_colours[0], markercolor=root_colours[0], markerstyle=20, label="Original profile, #tau_{21}")
+        c.graph(g2, linecolor=root_colours[1], markercolor=root_colours[1], markerstyle=21, label="Transformed profile, #tau_{21}^{DDT}")
+        
+        # (Opt.) plot fit
+        if intercept is not None:
+            x1, y1 = xmin, intercept + xmin * slope
+            x2, y2 = xmax, intercept + xmax * slope
+            c.plot([y1,y2], bins=[x1, x2], linecolor=root_colours[-1], markerstyle=0, linewidth=2, linestyle=1, label='Linear fit', option="L")
+            c.plot([y1,y1], bins=[x1, x2], linecolor=ROOT.kGray + 3,   markerstyle=0, linewidth=2, linestyle=2, option="L")
+            pass
+        
+        # Decoration
+        c.xlabel("Large-#it{R} jet #rho^{DDT} = log(m^{2} / p_{T} / 1 GeV)")
+        c.ylabel("#LT#tau_{21}#GT, #LT#tau_{21}^{DDT}#GT")
+        c.xlim(-0.5, 5.5)
+        c.ylim(0.2, 1.0)
+        c.legend(xmin=0.50)
+        
+        c.text(["#sqrt{s} = 13 TeV",
+                "W-tagging MC"],
+               qualifier="Work in progress")
+        
+        # Save figure
+        c.save(args.output + 'rp__{}.pdf'.format(name))
         pass
-
-    # Decoration
-    c.xlabel("Large-#it{R} jet #rho^{DDT} = log(m^{2} / p_{T} / 1 GeV)")
-    c.ylabel("#LT#tau_{21}#GT, #LT#tau_{21}^{DDT}#GT")
-    c.xlim(-0.5, 5.5)
-    c.ylim(0.2, 1.0)
-    c.legend(xmin=0.50)
-
-    c.text(["#sqrt{s} = 13 TeV",
-            "W-tagging MC"],
-           qualifier="Work in progress")
-
-    # Save figure
-    c.save(args.output + 'rp__{}.pdf'.format(name))
-
+    
     return intercept, slope
 
 
