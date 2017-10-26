@@ -1,7 +1,7 @@
 #!/bin/bash
-# Small script to setup the environment 
-# necessary for running the adversarial 
-# neural network training an evaluation.
+
+# Small script to setup the environment necessary for running the adversarial
+# neural network training and evaluation.
 
 if   [[ "$HOSTNAME" == *"lxplus"* ]]; then
     source scripts/lxplus/setup.sh "$@"

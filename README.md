@@ -14,8 +14,8 @@ TBA
 
 ### Environment
 
-On lxplus, the centrally provided SWAN environment to set up the required python
-packages. This is done in the `scripts/lxplus/setup.sh` script.
+On lxplus, the centrally provided SWAN environment is used to set up the
+required python packages. This is done in the `scripts/lxplus/setup.sh` script.
 
 
 ### Quick start
