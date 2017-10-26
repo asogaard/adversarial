@@ -15,24 +15,17 @@ TBA
 ### Environment
 
 On lxplus, the centrally provided SWAN environment to set up the required python
-packages. To initialise the environment, simply run
-```
-# Fix setup warning messages
-export LC_ALL="en_US.UTF-8"
-export LANG="en_US.UTF-8"
-
-# Set up LCG 91 version of SWAN (latest stable)
-source /cvmfs/sft.cern.ch/lcg/views/LCG_91/x86_64-slc6-gcc62-opt/setup.sh
-```
+packages. This is done in the `scripts/lxplus/setup.sh` script.
 
 
 ### Quick start
 
-To get running on lxplus after setting up the environment as described above, do
+To get running on lxplus, do
 ```
 $ cd my/work/directory
 $ git clone git@github.com:asogaard/adversarial.git
 $ cd adversarial
+$ source setup.sh
 $ ./run.py --help
 $ ./run.py --train --tensorflow --devices 8 --input /eos/atlas/user/a/asogaard/adversarial/data/
 ```
