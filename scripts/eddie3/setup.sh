@@ -1,7 +1,5 @@
-#!/bin/bash
-# Small script to setup the environment 
-# necessary for running the adversarial 
-# neural network training an evaluation.
+#!/bin/bash 
+# Set up the corrent environment on the Edinburgh Eddie3 compute cluster.
 
 echo "On Eddie3"
 

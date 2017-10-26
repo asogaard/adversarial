@@ -2,7 +2,6 @@
 # Initialise environment on lxplus
 
 echo "On lxplus"
-echo ">>$@<<"
 
 # Fix setup warning messages
 export LC_ALL="en_US.UTF-8"
