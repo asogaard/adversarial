@@ -14,29 +14,37 @@ from pprint import pprint
 import logging as log
 import itertools
 
+# Get ROOT to stop hogging the command-line options
+import ROOT
+ROOT.PyConfig.IgnoreCommandLineOptions = True
+
 # Scientific import(s)
 import numpy as np
 seed = 21 # For reproducibility
 np.random.seed(seed)
 import root_numpy
 
-from sklearn.model_selection import StratifiedKFold
+import sklearn
+SKLEARN_VERSION=int(sklearn.__version__.split('.')[1])
+if SKLEARN_VERSION >= 18:
+    from sklearn.model_selection import StratifiedKFold
+else:
+    from sklearn.cross_validation import StratifiedKFold
+    pass
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 plt.switch_backend('pdf')
-plt.style.use('edinburgh-swiss')
-mpl.rcParams['mathtext.default'] = 'regular' # Use text font for math
-# @TODO: Italicise?
 
 
 # -- Explicitly ignore DeprecationWarning from scikit-learn, which we can't do
 #    anything about anyway.
-stderr = sys.stderr
-with open(os.devnull, 'w') as sys.stderr:
-    from hep_ml.reweight import GBReweighter, BinsReweighter
-    pass
-sys.stderr = stderr
+# @TEMP Put back in -- check whether possible on lxplus
+#stderr = sys.stderr
+#with open(os.devnull, 'w') as sys.stderr:
+#    from hep_ml.reweight import GBReweighter, BinsReweighter
+#    pass
+#sys.stderr = stderr
 
 # Project import(s)
 from adversarial.data    import *
@@ -44,9 +52,6 @@ from adversarial.utils   import *
 from adversarial.profile import *
 from adversarial.plots   import *
 
-# Get ROOT to stop hogging the command-line options
-import ROOT
-ROOT.PyConfig.IgnoreCommandLineOptions = True
 
 # Command-line arguments parser
 import argparse
@@ -55,9 +60,9 @@ parser = argparse.ArgumentParser(description="Perform training (and evaluation?)
 
 # -- Inputs
 parser.add_argument('-i', '--input',  dest='input',   action='store', type=str,
-                    default='./', help='Input directory, from which to read ROOT files.')
+                    default='./input/', help='Input directory, from which to read ROOT files.')
 parser.add_argument('-o', '--output', dest='output',  action='store', type=str,
-                    default='./', help='Output directory, to which to write results.')
+                    default='./output/', help='Output directory, to which to write results.')
 parser.add_argument('-c', '--config', dest='config',  action='store', type=str,
                     default='./configs/default.json', help='Configuration file.')
 parser.add_argument('-p', '--patch', dest='patches', action='append', type=str,
@@ -100,6 +105,12 @@ def main ():
         if not args.input .endswith('/'): args.input  += '/'
         if not args.output.endswith('/'): args.output += '/'
 
+        # Make sure output directory exists
+        if not os.path.exists(args.output):
+            print "Creating output directory:\n  {}".format(args.output)
+            os.makedirs(args.output)
+            pass
+
         # @TODO:
         # - Make `args = prepare_args  (args)` method?
         # - Make `cfg  = prepare_config(args)` method?
@@ -131,7 +142,12 @@ def main ():
         import keras.backend as K
         from keras.models import load_model
         from keras.callbacks import Callback
-        from keras.utils.vis_utils import plot_model
+        KERAS_VERSION=int(keras.__version__.split('.')[0])
+        if KERAS_VERSION == 2:
+            from keras.utils.vis_utils import plot_model
+        else:
+            from keras.utils.visualize_util import plot as plot_model
+            pass
 
         # Print setup information
         log.info("Running '%s'" % __file__)
@@ -146,6 +162,13 @@ def main ():
         try:
             log.info("Keras  version: {}".format(keras.__version__))
             log.info("Using keras backend: '{}'".format(K.backend()))
+            if K.backend() == 'tensorflow':
+                import tensorflow
+                print "  TensorFlow version: {}".format(tensorflow.__version__)
+            else:
+                import theano
+                print "  Theano version: {}".format(theano.__version__)
+                pass
         except NameError: log.info("Keras not imported")
 
         # Save command-line argument configuration in output directory
@@ -341,7 +364,13 @@ def main ():
         basename = 'crossval_classifier'
 
         # Get indices for each fold in stratified k-fold training
-        skf = StratifiedKFold(n_splits=args.folds)
+        # @NOTE: No shuffling is performed -- assuming that's already done above.
+        if SKLEARN_VERSION >= 18:
+            skf_instance = StratifiedKFold(n_splits=args.folds)
+            skf = skf_instance.split(data.train.inputs, data.train.targets)
+        else:
+            skf = StratifiedKFold(data.train.targets, n_folds=args.folds)
+            pass
 
         # Importe module creator methods and optimiser options
         from adversarial.models import classifier_model, adversary_model, combined_model
@@ -359,7 +388,9 @@ def main ():
             log.info("Training cross-validation classifiers")
 
             # Loop `k` folds
-            for fold, (train, validation) in enumerate(skf.split(data.train.inputs, data.train.targets)):
+            #for fold, (train, validation) in
+            #enumerate(skf.split(data.train.inputs, data.train.targets)):
+            for fold, (train, validation) in enumerate(skf):
                 with Profile("Fold {}/{}".format(fold + 1, args.folds)):
 
                     # StratifiedKFold provides stratification, but since the
@@ -377,7 +408,29 @@ def main ():
                     classifier = classifier_model(num_features, **cfg['classifier']['model'])
 
                     # Compile model (necessary to save properly)
+                    if K.backend() == 'tensorflow':
+                        # Monkey-patch, re-defining binary cross-entropy loss
+                        # according to remarks:
+                        # [https://github.com/ibab/tensorflow-wavenet/issues/223#issuecomment-283155107]
+                        import tensorflow as tf
+                        def binary_crossentropy(output, target, from_logits=False):
+                            '''Binary crossentropy between an output tensor and a target tensor.
+                            From /cvmfs/sft.cern.ch/lcg/views/LCG_91/x86_64-slc6-gcc62-opt/lib/python2.7/site-packages/keras/backend/tensorflow_backend.py
+                            '''
+                            # Note: tf.nn.softmax_cross_entropy_with_logits
+                            # expects logits, Keras expects probabilities.
+                            if not from_logits:
+                                # transform back to logits
+                                epsilon = K.tensorflow_backend._to_tensor(K.tensorflow_backend._EPSILON, output.dtype.base_dtype)
+                                output = tf.clip_by_value(output, epsilon, 1 - epsilon)
+                                output = tf.log(output / (1 - output))
+                            return tf.nn.sigmoid_cross_entropy_with_logits(logits=output, labels=target)
+                        K.binary_crossentropy = binary_crossentropy
+                        pass
+
+
                     classifier.compile(**cfg['classifier']['compile'])
+
 
                     # Fit classifier model
                     result = train_in_parallel(classifier,
