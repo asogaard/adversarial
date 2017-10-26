@@ -7,16 +7,16 @@
 import os
 import h5py
 
+# Get ROOT to stop hogging the command-line options
+import ROOT
+ROOT.PyConfig.IgnoreCommandLineOptions = True
+
 # Scientific import(s)
 import numpy as np
 import root_numpy
 
 # Project import(s)
 from adversarial.profile import Profile, profile
-
-# Get ROOT to stop hogging the command-line options
-import ROOT
-ROOT.PyConfig.IgnoreCommandLineOptions = True
 
 # Command-line arguments parser
 import argparse
@@ -176,7 +176,7 @@ def main ():
             pass
 
         # Save as HDF5
-        with h5py.File(args.output + 'data_test.h5', 'w') as hf:
+        with h5py.File(args.output + 'data.h5', 'w') as hf:
             hf.create_dataset('dataset',  data=data)
             pass
 
@@ -186,7 +186,7 @@ def main ():
     # Testing reading in HDF5 file(s)
     # --------------------------------------------------------------------------
     with Profile("reading test"):
-        with h5py.File(args.output + 'data_test.h5', 'r') as hf:
+        with h5py.File(args.output + 'data.h5', 'r') as hf:
             new_data = hf['dataset'][:]
             pass
         print "Read {} samples.".format(new_data.shape[0])
