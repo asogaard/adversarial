@@ -5,6 +5,39 @@
 TBA
 
 
+## Running on lxplus
+
+*Notice:* It is not recommended to perform any substantial training on lxplus,
+ since the nodes are not suited for the heavy computations required. Testing,
+ plotting, etc. will be supported on lxplus
+
+
+### Environment
+
+On lxplus, the centrally provided SWAN environment to set up the required python
+packages. To initialise the environment, simply run
+```
+# Fix setup warning messages
+export LC_ALL="en_US.UTF-8"
+export LANG="en_US.UTF-8"
+
+# Set up LCG 91 version of SWAN (latest stable)
+source /cvmfs/sft.cern.ch/lcg/views/LCG_91/x86_64-slc6-gcc62-opt/setup.sh
+```
+
+
+### Quick start
+
+To get running on lxplus after setting up the environment as described above, do
+```
+$ cd my/work/directory
+$ git clone git@github.com:asogaard/adversarial.git
+$ cd adversarial
+$ ./run.py --help
+$ ./run.py --train --tensorflow --devices 8 --input /eos/atlas/user/a/asogaard/adversarial/data/
+```
+
+
 
 ## Running on Eddie3 computing cluster
 
