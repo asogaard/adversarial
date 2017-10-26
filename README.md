@@ -17,6 +17,21 @@ TBA
 On lxplus, the centrally provided SWAN environment is used to set up the
 required python packages. This is done in the `scripts/lxplus/setup.sh` script.
 
+To instead use a custom anaconda environment, on an lxplus7 node do the
+following:
+
+**To install miniconda**
+```
+$ wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
+$ bash Miniconda3-latest-Linux-x86_64.sh
+$ # Follow the screen prompts
+$ # ...
+$ rm Miniconda3-latest-Linux-x86_64.sh
+``` 
+
+**To create conda environment**
+...
+
 
 ### Quick start
 
