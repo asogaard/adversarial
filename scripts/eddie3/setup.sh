@@ -65,7 +65,4 @@ if [ "$TEST" == true ]; then
     export OUTPUTDIR="/exports/eddie/scratch/s1562020/adversarial/output/test/"
 fi
 
-# Enable auto-complete for command-line arguments
-source scripts/autocomplete.sh
-
 return
