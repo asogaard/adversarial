@@ -17,6 +17,14 @@ import numpy as np
 from .profile import Profile, profile
 
 
+def rename_key (d, old, new):
+    """Rename key in dict, if it exists."""
+    if old in d:
+        d[new] = d.pop(old)
+        pass
+    return d
+
+
 def snake_case (string):
     """ ... """
     s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', string)
@@ -308,6 +316,14 @@ def train_in_sequence (model, data_train, data_validation={}, config={}, callbac
         data_validation['weights'] if 'weights' in data_validation else None
         ) if use_validation else None
 
+    # Compatibility for Keras version 1, where `epochs` argument is named
+    # `nb_epoch`.
+    import keras
+    KERAS_VERSION = int(keras.__version__.split('.')[0])
+    if KERAS_VERSION == 1:
+        config['fit'] = rename_key(config['fit'], 'epochs', 'nb_epoch')
+        pass
+
     # Perform fit
     hist = model.fit(X, Y, sample_weight=W, validation_data=validation_data, verbose=1, callbacks=callbacks, **config['fit'])
 
@@ -347,9 +363,10 @@ def train_in_parallel (model, data_train, data_validation={}, config={}, callbac
 
     # Local imports (make sure Keras backend is set before elsewhere)
     import tensorflow as tf
-    #import keras
+    import keras
     from keras.models import Model
     from keras.layers import Input
+    KERAS_VERSION = int(keras.__version__.split('.')[0])
 
     # Define variables
     use_validation = bool(data_validation)
@@ -386,7 +403,13 @@ def train_in_parallel (model, data_train, data_validation={}, config={}, callbac
         pass
 
     # -- Create parallelised model
-    parallelised = Model(inputs=list(flatten(inputs)), outputs=list(flatten(outputs)), name=model.name + '_parallelised')
+    opts = {
+        'inputs'  if KERAS_VERSION >= 2 else 'input':  list(flatten(inputs)),
+        'outputs' if KERAS_VERSION >= 2 else 'output': list(flatten(outputs)),
+        'name': model.name + '_parallelised',
+        }
+    parallelised = Model(**opts)
+    #parallelised = Model(inputs=list(flatten(inputs)), outputs=list(flatten(outputs)), name=model.name + '_parallelised')
 
     # Replicate fields which are specific to each output node
     for field in ['loss', 'loss_weights']:
@@ -408,6 +431,12 @@ def train_in_parallel (model, data_train, data_validation={}, config={}, callbac
         list(flatten([data['target']  for data in device_data_validation])),
         list(flatten([data['weights'] for data in device_data_validation])) if 'weights' in data_validation else None
         ) if use_validation else None
+
+    # Compatibility for Keras version 1, where `epochs` argument is named
+    # `nb_epoch`.
+    if KERAS_VERSION == 1:
+        config['fit'] = rename_key(config['fit'], 'epochs', 'nb_epoch')
+        pass
 
     # Perform fit
     hist = parallelised.fit(X, Y, sample_weight=W, validation_data=validation_data, verbose=1, callbacks=callbacks, **config['fit'])
