@@ -23,9 +23,6 @@ linestyles = ['-', '--', '-.', ':']
 colours    = map(lambda d: d['color'], list(plt.rcParams["axes.prop_cycle"]))
 root_colours = [ROOT.kPink - 2, ROOT.kAzure + 7, ROOT.kGreen - 7, ROOT.kOrange + 7, ROOT.kViolet + 7, ROOT.kGray + 3]
 
-kMyGray = 7001
-color = ROOT.TColor(kMyGray, 251./255., 251./255., 251./255.)
-kMyGray = ROOT.kWhite
 
 def plot_jetmass (data, args, var, cut_value=None, cut_eff=None, name='tagger_jetmass', title=''):
     """..."""
@@ -200,15 +197,6 @@ def plot_jetmass_comparison (data, args, cut_eff=0.5, name='tagger_jetmass_compa
     # RootPlotting version
     # --------------------------------------------------------------------------
 
-    #root_colours = [tuple(np.clip(int(h.strip('#')[i:i+2], 16)/255., 0., 1.) for i in (0, 2 ,4)) for h in colours]
-    #ci = 3000
-    #for idx in range(len(root_colours)):
-    #print ci, "-->", root_colours[idx]
-    #color = ROOT.TColor(ci, *root_colours[idx])
-    #root_colours[idx] = ci
-    #ci += 1
-    #pass
-
     # Create canvas
     c = ap.canvas(batch=True, size=(700, 500))
 
@@ -261,8 +249,6 @@ def plot_jetmass_comparison (data, args, cut_eff=0.5, name='tagger_jetmass_compa
            qualifier="Work in progress")
     c.legend(xmin=0.65, width=0.25)
 
-    c.pads()[0]._bare().SetFillColor(kMyGray)
-        
     # Save figure
     c.save(args.output + 'rp__' + '{}.pdf'.format(name))
 
@@ -586,8 +572,6 @@ def plot_profiles (data, args, var, name='tagger_profile', title=''):
             "W-tagging MC"],
            qualifier="Work in progress")
 
-    c.pads()[0]._bare().SetFillColor(kMyGray)
-
     # Save figure
     c.save(args.output + 'rp__{}__{}.pdf'.format(name, var))
 
@@ -723,16 +707,6 @@ def plot_decorrelation (data, args, name='decorrelation_profile', title='', fit_
     # RootPlotting version
     # --------------------------------------------------------------------------
 
-    #root_colours = [tuple(np.clip(int(h.strip('#')[i:i+2], 16)/255., 0., 1.) for i in (0, 2 ,4)) for h in colours]
-    #ci = 4000
-    #for idx in range(len(root_colours)):
-    #print ci, "-->", root_colours[idx]
-    #color = ROOT.TColor(ci, *root_colours[idx])
-    #root_colours[idx] = ci
-    #ci += 1
-    #pass
-
-
     # Create canvas
     c = ap.canvas(batch=True, size=(700, 500))
 
@@ -770,8 +744,6 @@ def plot_decorrelation (data, args, name='decorrelation_profile', title='', fit_
     c.text(["#sqrt{s} = 13 TeV",
             "W-tagging MC"],
            qualifier="Work in progress")
-
-    c.pads()[0]._bare().SetFillColor(kMyGray)
 
     # Save figure
     c.save(args.output + 'rp__{}.pdf'.format(name))
