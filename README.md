@@ -7,9 +7,9 @@ TBA
 
 ## Running on lxplus
 
-*Notice:* It is not recommended to perform any substantial training on lxplus,
- since the nodes are not suited for the heavy computations required. Testing,
- plotting, etc. will be supported on lxplus
+**Notice:** Although supported, it is not recommended to perform any substantial
+ training on lxplus, since the nodes are not suited for the heavy computations
+ required.
 
 
 ### Environment
@@ -88,15 +88,3 @@ $ ./submit.sh
 ```
 which will submit data staging, training/evaluation, and finalisation jobs, in
 that order. Used `TAB` to auto-complete and see available command-line arguments.
-
-
-### `matplotlib` fonts
-
-Add custom `.ttf` fonts to
-```
-/exports/csce/eddie/ph/groups/PPE/asogaard/anaconda/adversarial-{cpu,gpu}/lib/python2.7/site-packages/matplotlib/mpl-data/fonts/ttf/
-```
-and remember to clear fonts cache
-```
-$ rm ~/.cache/matplotlib/fontList.cache
-```
