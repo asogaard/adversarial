@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-"""Script for conveniently formatting and storing the W/top-taggin ntuples."""
+"""Script for conveniently formatting and storing the W/top-tagging ntuples."""
 
 # Basic import(s)
 import os
@@ -23,13 +23,13 @@ import argparse
 
 parser = argparse.ArgumentParser(description="Prepare data for training and evaluation of adversarial neural networks for de-correlated jet tagging.")
 
-# -- Inputs
 parser.add_argument('-i', '--input', dest='input', action='store', type=str,
                     default='/exports/eddie/scratch/s1562020/adversarial/data/MLTrainingTesting/',
                     help='Input directory, from which to read input ROOT files.')
 parser.add_argument('-o', '--output', dest='output', action='store', type=str,
                     default='/exports/eddie/scratch/s1562020/adversarial/data/prepared/',
                     help='Output directory, to which to write output files.')
+
 
 # Main function definition
 @profile
@@ -48,7 +48,7 @@ def main ():
 
         # Relative paths to training- and test sets
         train_file = 'Training/Wtagging_fullycontained/training_W_tagging_fully_contained.root'
-        test_file1  = 'Testing/Wtagging/testing_Wprime.root'
+        test_file1 = 'Testing/Wtagging/testing_Wprime.root'
         test_file2 = 'Testing/background/testing_dijet.root'
         files = [train_file, test_file1, test_file2]
 
@@ -129,16 +129,15 @@ def main ():
             ]
 
         def rename (name):
+            """Rename ntuple branches to for consistency with naming in project code"""
             if name == 'W':
                 return 'signal'
-
             name = name.replace('fjet_', '')
             name = name.replace('_wta', '')
             name = name.replace('CaloTACombinedMassUncorrelated', 'm')
             name = name.replace('JetpTCorrByCombinedMass', 'pt')
             name = name.replace('training_weight_pt_W', 'weight_flat')
             name = name.replace('testing_weight_pt', 'weight')
-            
             return name
         
         data = None
@@ -200,5 +199,3 @@ if __name__ == '__main__':
     print ""
     main()
     pass
-
-            
