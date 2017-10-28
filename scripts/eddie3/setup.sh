@@ -51,7 +51,7 @@ if   [ "$CPU" == false ] && [ "$GPU" == true ]; then
 elif [ "$CPU" == "$GPU" ]; then
     echo "Using CPU by default"
 fi
-module load anaconda cuda/8.0.61 root/6.06.02
+module load anaconda/4.3.1 cuda/8.0.61 root/6.06.02
 source activate adversarial-$MODE
 
 # Set up paths for interactive testing
