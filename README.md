@@ -21,13 +21,12 @@ centrally provided LCG environment can be used.
 
 #### Anaconda
 
-To instead use a custom anaconda environment, on an lxplus7 node do the
+To instead use the custom, supported anaconda environment, do the
 [following](https://conda.io/docs/user-guide/tasks/manage-environments.html#building-identical-conda-environments):
 
-- **Install miniconda on lxplus7**
+- **Install miniconda**
+Log on to your preferred cluster, e.g. lxplus, and do the following
 ```
-$ ssh <uname>@lxplus7.cern.ch
-$ # ...
 $ wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
 $ bash Miniconda3-latest-Linux-x86_64.sh
 $ # Follow the screen prompts
@@ -39,19 +38,24 @@ environment, common for all installations of this package. Please ensure that
 your system variable `PATH` points to the location of your conda installation.
 - **Create the conda environment(s)**
 ```
-$ # After having cloned package
-$ # ...
+$ # After having cloned the 'adversarial' package
+$ cd adversarial
 $ source install.sh
 ```
 This creates two separate conda environments, `adversarial-{cpu,gpu}`, for
-running the code on CPU and GPU, respectively.
+running the code on CPU and GPU, respectively, using the `.yml` environment
+snapshots in [envs/](envs/), which ensures that all users are running in the
+exact same enviroment
 - **Activate the environment(s)**
 ```
 $ source setup.sh cpu
-# # or
+
+or
+
 $ source setup.sh gpu
-$ # Do your thing
-$ # ...
+
+Do your thing...
+
 $ source setup.sh unset
 ```
 
@@ -63,7 +67,6 @@ are very likely to occur. This can be set up using
 ```
 $ source setup.sh lcg
 ```
-on lxplus.
 
 ### Quick start
 
@@ -72,6 +75,8 @@ To get running on lxplus, do
 $ cd my/work/directory
 $ git clone git@github.com:asogaard/adversarial.git
 $ cd adversarial
+$ source scripts/install_conda.sh
+$ source install.sh
 $ source setup.sh
 $ ./run.py --help
 $ ./run.py --train --tensorflow --devices 8 --input /eos/atlas/user/a/asogaard/adversarial/data/
