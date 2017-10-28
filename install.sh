@@ -66,8 +66,10 @@ function fix_link {
 }
 
 # Check whether conda is installed
-if [ -z `which conda` ]; then
-    print "Please install `conda`, see e.g. https://github.com/asogaard/adversarial. Exiting installation."
+if ! hash conda 2>/dev/null; then
+    print "Please install `conda`. For instance, run"
+    print "  $ source scripts/install_conda.sh"
+    print "or see https://github.com/asogaard/adversarial. Exiting installation."
     return
 fi
 
