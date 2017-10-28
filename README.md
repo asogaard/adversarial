@@ -33,6 +33,12 @@ $ # Follow the screen prompts
 $ # ...
 $ rm Miniconda3-latest-Linux-x86_64.sh
 ``` 
+Alternatively, do
+```
+$ # After having cloned the 'adversarial' package
+$ cd adversarial
+$ source scripts/install_conda.sh
+```
 This install the conda package manager, allowing us to setup a custom
 environment, common for all installations of this package. Please ensure that
 your system variable `PATH` points to the location of your conda installation.
