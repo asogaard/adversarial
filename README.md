@@ -26,7 +26,9 @@ To instead use the custom, supported anaconda environment, do the
 
 - **Install miniconda**
 
-Log on to your preferred cluster, e.g. lxplus, and do the following
+If `conda` is not installed already, it can be done automatically during
+installation. Alternatively, you can do it manually by logging on to your
+preferred cluster, e.g. lxplus, and doing the following
 ```
 $ wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
 $ bash Miniconda3-latest-Linux-x86_64.sh
@@ -34,11 +36,9 @@ $ # Follow the screen prompts
 $ # ...
 $ rm Miniconda3-latest-Linux-x86_64.sh
 ``` 
-Alternatively, you will automatically be prompted to do this during
-installation.  This installs the conda package manager, allowing us to setup a
-custom environment, common for all installations of this package. Please ensure
-that your system variable `PATH` points to the location of your conda
-installation.
+This installs the conda package manager, allowing us to setup a custom
+environment, common for all installations of this package. Please ensure that
+your system variable `PATH` points to the location of your conda installation.
 
 - **Create the conda environment(s)**
 
