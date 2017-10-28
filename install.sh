@@ -67,10 +67,26 @@ function fix_link {
 
 # Check whether conda is installed
 if ! hash conda 2>/dev/null; then
-    print "Please install `conda`. For instance, run"
-    print "  $ source scripts/install_conda.sh"
-    print "or see https://github.com/asogaard/adversarial. Exiting installation."
-    return
+    print "conda was not installed."
+    question "Do you want to do it now?"
+    RESPONSE="$?"
+    if (( "$RESPONSE" )); then
+	print "Installing Miniconda."
+	wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
+	bash Miniconda3-latest-Linux-x86_64.sh
+	# Follow the screen prompts
+	# ...
+	rm -f Miniconda3-latest-Linux-x86_64.sh
+	if ! hash conda 2>/dev/null; then
+	    print "conda wasn't installed properly. Perhaps something went wrong in the installation, or 'PATH' was not set? Exiting."
+	    return 1
+	else
+	    print "conda was installed succesfully!"
+	fi
+    else
+	print "Please install conda manually, see e.g. https://github.com/asogaard/adversarial. Exiting."
+	return 1
+    fi
 fi
 
 # Environment names
