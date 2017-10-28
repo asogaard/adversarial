@@ -25,6 +25,7 @@ To instead use the custom, supported anaconda environment, do the
 [following](https://conda.io/docs/user-guide/tasks/manage-environments.html#building-identical-conda-environments):
 
 - **Install miniconda**
+
 Log on to your preferred cluster, e.g. lxplus, and do the following
 ```
 $ wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
@@ -42,7 +43,9 @@ $ source scripts/install_conda.sh
 This install the conda package manager, allowing us to setup a custom
 environment, common for all installations of this package. Please ensure that
 your system variable `PATH` points to the location of your conda installation.
+
 - **Create the conda environment(s)**
+
 ```
 $ # After having cloned the 'adversarial' package
 $ cd adversarial
@@ -52,7 +55,9 @@ This creates two separate conda environments, `adversarial-{cpu,gpu}`, for
 running the code on CPU and GPU, respectively, using the `.yml` environment
 snapshots in [envs/](envs/), which ensures that all users are running in the
 exact same enviroment
+
 - **Activate the environment(s)**
+
 ```
 $ source setup.sh cpu
 
