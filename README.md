@@ -14,24 +14,56 @@ TBA
 
 ### Environment
 
-On lxplus, the centrally provided SWAN environment is used to set up the
-required python packages. This is done in the `scripts/lxplus/setup.sh` script.
+The preferred method to set up the python environment required to run the code
+is to use [Anaconda](https://conda.io/docs/), which ensures that all clones of
+the library are run in exactly the same environment. Alternatively, the
+centrally provided LCG environment can be used.
+
+#### Anaconda
 
 To instead use a custom anaconda environment, on an lxplus7 node do the
-following:
+[following](https://conda.io/docs/user-guide/tasks/manage-environments.html#building-identical-conda-environments):
 
-**To install miniconda**
+- **Install miniconda on lxplus7**
 ```
+$ ssh <uname>@lxplus7.cern.ch
+$ # ...
 $ wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
 $ bash Miniconda3-latest-Linux-x86_64.sh
 $ # Follow the screen prompts
 $ # ...
 $ rm Miniconda3-latest-Linux-x86_64.sh
 ``` 
+This install the conda package manager, allowing us to setup a custom
+environment, common for all installations of this package. Please ensure that
+your system variable `PATH` points to the location of your conda installation.
+- **Create the conda environment(s)**
+```
+$ # After having cloned package
+$ # ...
+$ source install.sh
+```
+This creates two separate conda environments, `adversarial-{cpu,gpu}`, for
+running the code on CPU and GPU, respectively.
+- **Activate the environment(s)**
+```
+$ source setup.sh cpu
+# # or
+$ source setup.sh gpu
+$ # Do your thing
+$ # ...
+$ source setup.sh unset
+```
 
-**To create conda environment**
-...
+#### LCG
 
+On lxplus, the centrally provided SWAN LCG environment can used to set up the
+required python packages. However, this is not supported and version conflicts
+are very likely to occur. This can be set up using
+```
+$ source setup.sh lcg
+```
+on lxplus.
 
 ### Quick start
 
