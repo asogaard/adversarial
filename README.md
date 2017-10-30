@@ -55,7 +55,7 @@ exact same enviroment
 - **Activate the environment(s)**
 
 Everytime your starting a new shell, you should activate the installed
-environment by using the [setup.sh] script.
+environment by using the [setup.sh](setup.sh) script.
 ```
 $ source setup.sh cpu
 
