@@ -51,6 +51,12 @@ if [[ "$LCG" == true ]]; then
 	return 0
     fi
 else
+    # Check that installation was performed.
+    if ! hash conda 2>/dev/null; then
+	print "conda was not installed. Please run the 'install.sh' script. Exiting."
+	return 1
+    fi
+
     # Deactivate conda environment
     if [[ "$UNSET" == true ]]; then
 	if [[ "$(conda info --env | grep \* | sed 's/ .*//g')" != "root" ]]; then
