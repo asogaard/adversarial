@@ -15,7 +15,6 @@ from keras.models import Model
 from keras.layers import Dense, Input, Dropout
 from keras.engine.topology import InputLayer
 from keras.layers.normalization import BatchNormalization
-KERAS_VERSION=int(keras.__version__.split('.')[0])
 
 # Project import(s)
 from .layers import *
@@ -76,12 +75,6 @@ def stack_layers (input_layer, architecture, default, scope=None):
         opts = dict(**default)
         opts.update(spec)
 
-        # Compatibility for Keras version 1, where `units` argument is named
-        # `output_dim`.
-        if KERAS_VERSION == 1:
-            opts = rename_key(opts, 'units', 'output_dim')
-            pass
-        
         # Extract non-standard keyword arguments
         batchnorm = opts.pop('batchnorm', False)
         dropout   = opts.pop('dropout',   None)
@@ -133,13 +126,7 @@ def classifier_model (num_params, architecture=[], default=dict(), scope='classi
     classifier_output = Dense(1, activation='sigmoid', name=layer_name('output'))(classifier_stack)
 
     # Build model
-    opts = {
-        'inputs'  if KERAS_VERSION >= 2 else 'input':  classifier_input,
-        'outputs' if KERAS_VERSION >= 2 else 'output': classifier_output,
-        'name': scope,
-        }
-    model = Model(**opts)
-    #model = Model(inputs=classifier_input, outputs=classifier_output, name=scope)
+    model = Model(inputs=classifier_input, outputs=classifier_output, name=scope)
 
     # Return
     return model
@@ -197,15 +184,9 @@ def adversary_model (gmm_dimensions, gmm_components=None, architecture=[], defau
     adversary_output = PosteriorLayer(gmm_components, gmm_dimensions, name=layer_name('output'))([r_coeffs] + r_means + r_widths + [adversary_input_par])
 
     # Build model
-    opts = {
-        'inputs'  if KERAS_VERSION >= 2 else 'input':  [adversary_input_clf, adversary_input_par],
-        'outputs' if KERAS_VERSION >= 2 else 'output': adversary_output,
-        'name': scope,
-        }
-    model = Model(**opts)
-    #model = Model(inputs=[adversary_input_clf, adversary_input_par],
-    #              outputs=adversary_output,
-    #              name=scope)
+    model = Model(inputs=[adversary_input_clf, adversary_input_par],
+                  outputs=adversary_output,
+                  name=scope)
 
     # Return
     return model
@@ -259,15 +240,9 @@ def combined_model (classifier, adversary, lambda_reg=None, lr_ratio=None, scope
     combined_output_adv = adversary([gradient_reversal, combined_input_adv])
 
     # Build model
-    opts = {
-        'inputs'  if KERAS_VERSION >= 2 else 'input':  [combined_input_clf,  combined_input_adv],
-        'outputs' if KERAS_VERSION >= 2 else 'output': [combined_output_clf, combined_output_adv],
-        'name': scope,
-        }
-    model = Model(**opts)
-    #model = Model(inputs =[combined_input_clf,  combined_input_adv],
-    #              outputs=[combined_output_clf, combined_output_adv],
-    #              name=scope)
+    model = Model(inputs =[combined_input_clf,  combined_input_adv],
+                  outputs=[combined_output_clf, combined_output_adv],
+                  name=scope)
 
     # Return
     return model

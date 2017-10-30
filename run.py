@@ -25,26 +25,19 @@ np.random.seed(seed)
 import root_numpy
 
 import sklearn
-SKLEARN_VERSION=int(sklearn.__version__.split('.')[1])
-if SKLEARN_VERSION >= 18:
-    from sklearn.model_selection import StratifiedKFold
-else:
-    from sklearn.cross_validation import StratifiedKFold
-    pass
+from sklearn.model_selection import StratifiedKFold
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 plt.switch_backend('pdf')
 
-
 # -- Explicitly ignore DeprecationWarning from scikit-learn, which we can't do
 #    anything about anyway.
-# @TEMP Put back in -- check whether possible on lxplus
-#stderr = sys.stderr
-#with open(os.devnull, 'w') as sys.stderr:
-#    from hep_ml.reweight import GBReweighter, BinsReweighter
-#    pass
-#sys.stderr = stderr
+stderr = sys.stderr
+with open(os.devnull, 'w') as sys.stderr:
+    from hep_ml.reweight import GBReweighter, BinsReweighter
+    pass
+sys.stderr = stderr
 
 # Project import(s)
 from adversarial.data    import *
@@ -365,12 +358,8 @@ def main ():
 
         # Get indices for each fold in stratified k-fold training
         # @NOTE: No shuffling is performed -- assuming that's already done above.
-        if SKLEARN_VERSION >= 18:
-            skf_instance = StratifiedKFold(n_splits=args.folds)
-            skf = skf_instance.split(data.train.inputs, data.train.targets)
-        else:
-            skf = StratifiedKFold(data.train.targets, n_folds=args.folds)
-            pass
+        skf_instance = StratifiedKFold(n_splits=args.folds)
+        skf = skf_instance.split(data.train.inputs, data.train.targets)
 
         # Importe module creator methods and optimiser options
         from adversarial.models import classifier_model, adversary_model, combined_model
@@ -408,27 +397,6 @@ def main ():
                     classifier = classifier_model(num_features, **cfg['classifier']['model'])
 
                     # Compile model (necessary to save properly)
-                    if K.backend() == 'tensorflow':
-                        # Monkey-patch, re-defining binary cross-entropy loss
-                        # according to remarks:
-                        # [https://github.com/ibab/tensorflow-wavenet/issues/223#issuecomment-283155107]
-                        import tensorflow as tf
-                        def binary_crossentropy(output, target, from_logits=False):
-                            '''Binary crossentropy between an output tensor and a target tensor.
-                            From /cvmfs/sft.cern.ch/lcg/views/LCG_91/x86_64-slc6-gcc62-opt/lib/python2.7/site-packages/keras/backend/tensorflow_backend.py
-                            '''
-                            # Note: tf.nn.softmax_cross_entropy_with_logits
-                            # expects logits, Keras expects probabilities.
-                            if not from_logits:
-                                # transform back to logits
-                                epsilon = K.tensorflow_backend._to_tensor(K.tensorflow_backend._EPSILON, output.dtype.base_dtype)
-                                output = tf.clip_by_value(output, epsilon, 1 - epsilon)
-                                output = tf.log(output / (1 - output))
-                            return tf.nn.sigmoid_cross_entropy_with_logits(logits=output, labels=target)
-                        K.binary_crossentropy = binary_crossentropy
-                        pass
-
-
                     classifier.compile(**cfg['classifier']['compile'])
 
 
