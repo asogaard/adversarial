@@ -12,16 +12,32 @@ TBA
  required.
 
 
+### Quick start
+
+To get running on lxplus, do the following in a clean shell:
+```
+$ cd my/work/directory
+$ git clone git@github.com:asogaard/adversarial.git
+$ cd adversarial
+$ source install.sh
+$ source setup.sh
+$ ./run.py --help
+$ ./run.py --train --tensorflow --devices 8 --input /eos/atlas/user/a/asogaard/adversarial/data/
+```
+
+
 ### Environment
 
 The preferred method to set up the python environment required to run the code
 is to use [Anaconda](https://conda.io/docs/), which ensures that all clones of
 the library are run in exactly the same environment. Alternatively, the
-centrally provided LCG environment can be used.
+centrally provided LCG environment can be used. However, this is **not
+supported** and will require modifying the code to accommodate package version
+differences.
 
 #### Anaconda
 
-To instead use the custom, supported anaconda environment, do the
+To use the custom, supported anaconda environment, do the
 [following](https://conda.io/docs/user-guide/tasks/manage-environments.html#building-identical-conda-environments):
 
 - **Install miniconda**
@@ -75,19 +91,6 @@ required python packages. However, this is not supported and version conflicts
 are very likely to occur. This can be set up using
 ```
 $ source setup.sh lcg
-```
-
-### Quick start
-
-To get running on lxplus, do
-```
-$ cd my/work/directory
-$ git clone git@github.com:asogaard/adversarial.git
-$ cd adversarial
-$ source install.sh
-$ source setup.sh
-$ ./run.py --help
-$ ./run.py --train --tensorflow --devices 8 --input /eos/atlas/user/a/asogaard/adversarial/data/
 ```
 
 
