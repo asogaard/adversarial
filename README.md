@@ -38,12 +38,14 @@ differences.
 #### Anaconda
 
 To use the custom, supported anaconda environment, do the
-[following](https://conda.io/docs/user-guide/tasks/manage-environments.html#building-identical-conda-environments):
+[following](https://conda.io/docs/user-guide/tasks/manage-environments.html#building-identical-conda-environments)
+simply run the [install.sh](install.sh) script. It (optionally) **installs
+conda** and **creates the supported environments**.
 
-- **Install miniconda**
+- **Install conda**
 
-If `conda` is not installed already, it is **done automatically during
-installation**. Alternatively, you can do it manually by logging on to your
+If `conda` is not installed already, it is **done automatically** during the
+installation. Alternatively, you can do it manually by logging on to your
 preferred cluster, e.g. lxplus, and doing the following
 ```
 $ wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh
@@ -58,41 +60,37 @@ your system variable `PATH` points to the location of your conda installation.
 
 - **Create the conda environment(s)**
 
-```
-$ # After having cloned the 'adversarial' package
-$ cd adversarial
-$ source install.sh
-```
-This creates two separate conda environments, `adversarial-{cpu,gpu}`, for
-running the code on CPU and GPU, respectively, using the `.yml` environment
-snapshots in [envs/](envs/), which ensures that all users are running in the
-exact same enviroment
+The [install.sh](install.sh) script also creates two separate conda
+environments, `adversarial-cpu` and `adversarial-gpu`, for running the code on
+CPU and GPU, respectively, using the `.yml` environment snapshots in
+[envs/](envs/). This ensures that all users are running in the exact same
+enviroment.
 
 - **Activate the environment(s)**
 
-Everytime your starting a new shell, you should activate the installed
-environment by using the [setup.sh](setup.sh) script.
+Everytime your starting a new shell, before runnign the adversarial neural
+network code, you should activate the installed environment by using the
+[setup.sh](setup.sh) script.
 ```
-$ source setup.sh cpu
-
-or
-
-$ source setup.sh gpu
-
-Do your thing...
-
-$ source setup.sh unset
+$ source setup.sh cpu  # For running on CPU
+$ source setup.sh gpu  # -              GPU
+```
+To deactivate the environment, do
+```
+$ source setup.sh unset  # or
+$ source deactivate
 ```
 
 #### LCG
 
 On lxplus, the centrally provided SWAN LCG environment can used to set up the
-required python packages. However, this is not supported and version conflicts
-are very likely to occur. This can be set up using
+required python packages, although generally older versions of these. However,
+this is **not supported** and version conflicts are very likely to occur. Should
+you wish to try it out anyway, it can be set up using
 ```
 $ source setup.sh lcg
 ```
-
+with no installation required.
 
 
 ## Running on Eddie3 computing cluster
