@@ -26,8 +26,8 @@ To instead use the custom, supported anaconda environment, do the
 
 - **Install miniconda**
 
-If `conda` is not installed already, it can be done automatically during
-installation. Alternatively, you can do it manually by logging on to your
+If `conda` is not installed already, it is *done automatically during
+installation*. Alternatively, you can do it manually by logging on to your
 preferred cluster, e.g. lxplus, and doing the following
 ```
 $ wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh
