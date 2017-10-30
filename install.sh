@@ -72,11 +72,11 @@ if ! hash conda 2>/dev/null; then
     RESPONSE="$?"
     if (( "$RESPONSE" )); then
 	print "Installing Miniconda."
-	wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh
-	bash Miniconda2-latest-Linux-x86_64.sh
-	# Follow the screen prompts
-	# ...
-	rm -f Miniconda2-latest-Linux-x86_64.sh
+	# @TODO: Generalise to different OS's (in particular, macOS)
+	INSTALLFILE="Miniconda2-latest-Linux-x86_64.sh"
+	wget https://repo.continuum.io/miniconda/$INSTALLFILE
+	bash $INSTALLFILE
+	rm -f $INSTALLFILE
 	if ! hash conda 2>/dev/null; then
 	    print "conda wasn't installed properly. Perhaps something went wrong in the installation, or 'PATH' was not set? Exiting."
 	    return 1
