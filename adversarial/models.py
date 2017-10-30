@@ -88,7 +88,7 @@ def stack_layers (input_layer, architecture, default, scope=None):
         
         # 1: (Opt.) Add batch normalisation layer before dense layer
         if batchnorm:
-            l = BatchNormalization(name=keras_layer_name('BatchNormalization'), mode=2)(l)
+            l = BatchNormalization(name=keras_layer_name('BatchNormalization'))(l)
             pass
         
         # 2: Add dense layer according to specifications
