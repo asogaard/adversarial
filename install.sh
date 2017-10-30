@@ -12,18 +12,17 @@ function fix_link {
 
     # Validate input
     if [ -z "$ENV" ]; then
-	print "fix_link: No environment was specified"
+	warning "fix_link: No environment was specified"
 	return
     fi
 
     # Try to activate environment
     print "  Activating '$ENV'."
-    source activate "$ENV"
+    source activate "$ENV" 2>&1 1>/dev/null
 
     # Check if environment was succesfully activated
     ENV_ACTIVE="$(conda info --envs | grep \* | sed 's/ .*//g')"
     if [ "$ENV_ACTIVE" == "$ENV" ]; then
-	print "  Fixing problem with libstdc++.so.6 symlink"
 
 	# Base directory of active environment
 	ENVDIR="$(conda info --env | grep \* | sed 's/.* //g')"
@@ -38,7 +37,8 @@ function fix_link {
 	if [ -L "$LINKPATH" ]; then
 	    # Check whether link target is most latest available library
 	    if [ "$(readlink -f $LINKPATH)" == "$LATESTLIB" ]; then
-		print "  '$LINKPATH' already links to '$LATESTLIB'"
+		# $LINKPATH already links to $LATESTLIB
+		:
             else
 		# Try to update symlink target
 		print "  Changing target of"
@@ -50,18 +50,18 @@ function fix_link {
 		if (( $RESPONSE )); then
                     ln -s -f $LATESTLIB $LINKPATH
 		else
-                    print "  OK, not doing it, but be warned that errors might occur. You can always run the installation script again if you change your mind."
+                    warning "  OK, not doing it, but be warned that errors might occur. You can always run the installation script again if you change your mind."
 		fi
             fi
 	else
-            print "  Symlink '$LINKPATH' doesn't exist."
+            warning "  Symlink '$LINKPATH' doesn't exist."
 	fi
 
 	# Deactivate environment
 	print "  Deactivating '$ENV_CPU'."
-	source deactivate
+	source deactivate 2>&1 1>/dev/null
     else
-	print "Failed to activate '$ENV_CPU'."
+	warning "Failed to activate '$ENV_CPU'."
     fi
 }
 
@@ -94,11 +94,40 @@ ENV_CPU="adversarial-cpu"
 ENV_GPU="adversarial-gpu"
 
 # Install CPU environment
+ENVFILE=envs/$ENV_CPU.yml
 if [ "$(conda info --envs | grep $ENV_CPU)" ]; then
     print "Environment '$ENV_CPU' already exists"
+    
+    # Check consistency with baseline env.
+    print "  Checking consistency"
+
+    # -- Silently activate environment
+    source activate $ENV_CPU 2>&1 1>/dev/null 
+
+    # -- Write the enviroment specifications to file
+    TMPFILE=".tmp.env.txt"
+    conda env export > $TMPFILE
+    
+    # -- Compare current enviroment with default
+    DIFFERENCES="$(diff -y --left-column $TMPFILE $ENVFILE | grep -v "prefix:" | grep -v "(" | sed $'s/\t/    /g' )"
+    if (( "${#DIFFERENCES}" )); then
+	warning "  The existing '$ENV_CPU' env. differs from the default one in '$ENVFILE':"
+	POSINDEX="$(echo "$DIFFERENCES" | grep -b -o "|" | cut -d: -f1)"
+	printf "%-${POSINDEX}s| %s\n" "ACTIVE ENVIRONMENT" "DEFAULT ENVIRONMENT"
+	printf "%0.s-" $(seq 1 $(( 2 * $POSINDEX + 1)) )
+	echo ""
+	echo "$DIFFERENCES"
+	warning "  Beware that this might lead to problems when running the code."
+    fi
+
+    # -- Clean-up
+    rm -f $TMPFILE
+    
+    # -- Silently deactivate environment
+    source deactivate 2>&1 1>/dev/null
 else
     print "Creating CPU environment '$ENV_CPU'."
-    conda env create -f envs/$ENV_CPU.yml
+    conda env create -f $ENVFILE
 fi
 
 # -- Fix libstdc++ symblink problem

@@ -43,7 +43,7 @@ fi
 # Actual setting up
 if [[ "$LCG" == true ]]; then
     if [[ "$HOST" != "lxplus" ]]; then
-	print "Cannot setup LCG environment on $HOST. Exiting."
+	warning "Cannot setup LCG environment on $HOST. Exiting."
 	return 1
     else
 	print "Setting up LCG environment on $HOST"
@@ -53,7 +53,7 @@ if [[ "$LCG" == true ]]; then
 else
     # Check that installation was performed.
     if ! hash conda 2>/dev/null; then
-	print "conda was not installed. Please run the 'install.sh' script. Exiting."
+	warning "conda was not installed. Please run the 'install.sh' script. Exiting."
 	return 1
     fi
 
@@ -70,11 +70,11 @@ else
     if   [ "$CPU" == false ] && [ "$GPU" == true ]; then
 	MODE="gpu"
 	if ! hash nvidia-smi 2>/dev/null; then
-            echo "WARNING: Requesting GPUs on a node that doesn't have any. Exiting."
+            warning "Requesting GPUs on a node that doesn't have any. Exiting."
             return 1
 	fi
     elif [ "$CPU" == "$GPU" ]; then
-	echo "Using CPU by default"
+	print "Using CPU by default"
     fi
 
     # Activate appropriate conda environment
@@ -84,7 +84,7 @@ else
     if [[ "$ENV_EXISTS" ]]; then
 	source activate $ENV
     else
-	print "Conda environment '$ENV' does not exist. Please run the installation script."
+	warning "Conda environment '$ENV' does not exist. Please run the installation script."
     fi
 fi
 

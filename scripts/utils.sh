@@ -6,6 +6,10 @@ function print {
     echo -e "🎃  \033[1;38;5;208m$1\033[0m"
 }
 
+function warning {
+    echo -e "🚨  \033[1;38;5;196m$1\033[0m"
+}
+
 function question {
     # Define variables
     QUESTION="$1"
