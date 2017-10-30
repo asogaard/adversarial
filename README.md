@@ -84,7 +84,6 @@ To get running on lxplus, do
 $ cd my/work/directory
 $ git clone git@github.com:asogaard/adversarial.git
 $ cd adversarial
-$ source scripts/install_conda.sh
 $ source install.sh
 $ source setup.sh
 $ ./run.py --help
