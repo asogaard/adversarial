@@ -267,7 +267,6 @@ function create_env {
             CONDA_ENV_PATH="$(echo "$CONDA_ENV_PATH" | cut -d '/' -f -$((${#SLASHES} - 2)))"
             CONDA_ENV_PATH="$CONDA_ENV_PATH/envs/$env"
             export CONDA_ENV_PATH
-            print "Setting CONDA_ENV_PATH=$CONDA_ENV_PATH" # @TEMP
 	fi
 	
 	# Create environment

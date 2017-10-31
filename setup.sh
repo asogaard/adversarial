@@ -6,46 +6,46 @@
 source scripts/utils.sh
 
 # Extract flags
-ARGUMENTS=("$@")
+arguments=("$@")
 set -- # Unsetting positional arguments, to avoid error from "source deactivate"
 
-CPU=true
-GPU=false
-TEST=false
-UNSET=false
-LCG=false
-for ARG in "${ARGUMENTS[@]}"; do
-    if   [ "$ARG" == "cpu" ];  then
-        CPU=true
-    elif [ "$ARG" == "gpu" ];  then
-        GPU=true
-    elif [ "$ARG" == "test" ]; then
-        TEST=true
-    elif [ "$ARG" == "unset" ]; then
-        UNSET=true
-    elif [ "$ARG" == "LCG" ] || [ "$ARG" == "lcg" ]; then
-        LCG=true
+cpu=true
+gpu=false
+test=false
+unset=false
+lcg=false
+for arg in "${arguments[@]}"; do
+    if   [ "$arg" == "cpu" ];  then
+        cpu=true
+    elif [ "$arg" == "gpu" ];  then
+        gpu=true
+    elif [ "$arg" == "test" ]; then
+        test=true
+    elif [ "$arg" == "unset" ]; then
+        unset=true
+    elif [ "$arg" == "LCG" ] || [ "$arg" == "lcg" ]; then
+        lcg=true
     else
-        print "Argument '$ARG' was not understood."
+        print "Argument '$arg' was not understood."
     fi
 done
 
 # Determine host
-if   [[ "$HOSTNAME" == *"lxplus"* ]]; then
-    HOST="lxplus"
-elif [[ "$HOSTNAME" == *"ed.ac.uk"* ]]; then
-    HOST="eddie3"
+if   [[ "$hostname" == *"lxplus"* ]]; then
+    host="lxplus"
+elif [[ "$hostname" == *"ed.ac.uk"* ]]; then
+    host="eddie3"
 else
-    HOST="local"
+    host="local"
 fi
 
 # Actual setting up
-if [[ "$LCG" == true ]]; then
-    if [[ "$HOST" != "lxplus" ]]; then
-	warning "Cannot setup LCG environment on $HOST platform. Exiting."
+if [[ "$lcg" == true ]]; then
+    if [[ "$host" != "lxplus" ]]; then
+	warning "Cannot setup LCG environment on $host platform. Exiting."
 	return 1
     else
-	print "Setting up LCG environment on $HOST"
+	print "Setting up LCG environment on $host"
 	source scripts/lxplus/lcg.sh
 	return 0
     fi
@@ -57,7 +57,7 @@ else
     fi
 
     # Deactivate conda environment
-    if [[ "$UNSET" == true ]]; then
+    if [[ "$unset" == true ]]; then
 	if [[ "$(conda info --env | grep \* | sed 's/ .*//g')" != "root" ]]; then
 	    source deactivate
 	fi
@@ -65,32 +65,32 @@ else
     fi
 
     # Determine running mode (CPU/GPU)
-    MODE="cpu"
-    if   [ "$CPU" == false ] && [ "$GPU" == true ]; then
-	MODE="gpu"
+    mode="cpu"
+    if   [ "$cpu" == false ] && [ "$gpu" == true ]; then
+	mode="gpu"
 	if ! hash nvidia-smi 2>/dev/null; then
             warning "Requesting GPUs on a node that doesn't have any. Exiting."
             return 1
 	fi
-    elif [ "$CPU" == "$GPU" ]; then
+    elif [ "$cpu" == "$gpu" ]; then
 	print "Using CPU by default"
     fi
 
     # Activate appropriate conda environment
-    ENV="adversarial-$MODE"
-    print "Setting up conda environment '$ENV' on $HOST platform"
-    ENV_EXISTS="$(conda info --env | sed 's/ .*//g;s/^#//g' | grep $ENV)"
-    if [[ "$ENV_EXISTS" ]]; then
-	source activate $ENV
+    env="adversarial-$mode"
+    print "Setting up conda environment '$env' on $host platform"
+    env_exists="$(conda info --env | sed 's/ .*//g;s/^#//g' | grep $env)"
+    if [[ "$env_exists" ]]; then
+	source activate $env
     else
-	warning "Conda environment '$ENV' does not exist. Please run the installation script."
+	warning "Conda environment '$env' does not exist. Please run the installation script."
     fi
 fi
 
 ### # Host-specific setup
-### if   [[ "$HOSTNAME" == *"lxplus"* ]]; then
+### if   [[ "$hostname" == *"lxplus"* ]]; then
 ###     source scripts/lxplus/setup.sh "$@"
-### elif [[ "$HOSTNAME" == *"ed.ac.uk"* ]]; then
+### elif [[ "$hostname" == *"ed.ac.uk"* ]]; then
 ###     source scripts/eddie3/setup.sh "$@"
 ### else
 ###     echo "Host not recognised; unable to setup environment."

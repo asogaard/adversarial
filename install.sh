@@ -52,8 +52,8 @@ source scripts/install_utils.sh
 #### 		    print "  to be"
 #### 		    print "    $LATESTLIB"
 #### 		    question "  Is that OK?" "y"
-#### 		    RESPONSE="$?"
-#### 		    if (( $RESPONSE )); then
+#### 		    response="$?"
+#### 		    if (( $response )); then
 #### 			ln -s -f $LATESTLIB $LINKPATH
 #### 		    else
 #### 			warning "  OK, not doing it, but be warned that errors might occur. You can always run the installation script again if you change your mind."
@@ -77,8 +77,8 @@ source scripts/install_utils.sh
 if ! hash conda 2>/dev/null; then
     print "conda was not installed."
     question "Do you want to do it now?"
-    RESPONSE="$?"
-    if (( "$RESPONSE" )); then
+    response="$?"
+    if (( "$response" )); then
 
 	install_conda
 	
@@ -118,30 +118,32 @@ if ! hash conda 2>/dev/null; then
 fi
 
 # Environment names
-ENV_CPU="adversarial-cpu"
-ENV_GPU="adversarial-gpu"
+env_cpu="adversarial-cpu"
+env_gpu="adversarial-gpu"
 
 if   [[ "$(uname)" == *"Linux"* ]]; then
-    ENVFOLDER="linux"
+    envfolder="linux"
 elif [[ "$(uname)" == *"Darwin"* ]]; then
-    ENVFOLDER="macOS"
+    envfolder="macOS"
 else
     warning "Uname '$(uname)' not recognised. Exiting."
     return 1
 fi
 
 # Install CPU environment
-#### ENVFILE=envs/$ENV_CPU.yml
+#### ENVFILE=envs/$env_cpu.yml
 
-create_env $ENV_CPU envs/$ENVFOLDER/$ENV_CPU.yml
-#### if [ "$(conda info --envs | grep $ENV_CPU)" ]; then
-####     print "Environment '$ENV_CPU' already exists"
+create_env $env_cpu envs/$envfolder/$env_cpu.yml
+#create_env $env_gpu envs/$envfolder/$env_gpu.yml
+
+#### if [ "$(conda info --envs | grep $env_cpu)" ]; then
+####     print "Environment '$env_cpu' already exists"
 ####     
 ####     # Check consistency with baseline env.
 ####     print "  Checking consistency"
 #### 
 ####     # Silently activate environment
-####     source activate $ENV_CPU 2>&1 1>/dev/null 
+####     source activate $env_cpu 2>&1 1>/dev/null 
 #### 
 ####     # Write the enviroment specifications to file
 ####     TMPFILE=".tmp.env.txt"
@@ -150,7 +152,7 @@ create_env $ENV_CPU envs/$ENVFOLDER/$ENV_CPU.yml
 ####     # Compare current enviroment with default
 ####     DIFFERENCES="$(diff -y --left-column $TMPFILE $ENVFILE | grep -v "prefix:" | grep -v "(" | sed $'s/\t/    /g' )"
 ####     if (( "${#DIFFERENCES}" )); then
-#### 	warning "  The existing '$ENV_CPU' env. differs from the default one in '$ENVFILE':"
+#### 	warning "  The existing '$env_cpu' env. differs from the default one in '$ENVFILE':"
 #### 	POSINDEX="$(echo "$DIFFERENCES" | grep -b -o "|" | cut -d: -f1)"
 #### 	printf "%-${POSINDEX}s| %s\n" "ACTIVE ENVIRONMENT" "DEFAULT ENVIRONMENT"
 #### 	printf "%0.s-" $(seq 1 $(( 2 * $POSINDEX + 1)) )
@@ -175,23 +177,23 @@ create_env $ENV_CPU envs/$ENVFOLDER/$ENV_CPU.yml
 #### 	CONDA_ENV_PATH="$(which conda)"
 #### 	SLASHES="${CONDA_ENV_PATH//[^\/]}"
 #### 	CONDA_ENV_PATH="$(echo "$CONDA_ENV_PATH" | cut -d '/' -f -$((${#SLASHES} - 2)))"
-#### 	CONDA_ENV_PATH="$CONDA_ENV_PATH/envs/$ENV_CPU"
+#### 	CONDA_ENV_PATH="$CONDA_ENV_PATH/envs/$env_cpu"
 #### 	export CONDA_ENV_PATH
 #### 	print "Setting CONDA_ENV_PATH=$CONDA_ENV_PATH" # @TEMP
 ####     fi
 ####     
 ####     # Create environment
-####     print "Creating CPU environment '$ENV_CPU'."
+####     print "Creating CPU environment '$env_cpu'."
 ####     conda env create -f $ENVFILE
 #### 
 ####     # Fix ROOT setup problem on macOS (2/2)
 ####     if [[ "$(uname)" == *"Darwin"* ]]; then
 #### 	# Silently activate environment
-#### 	source activate $ENV_CPU 2>&1 1>/dev/null
+#### 	source activate $env_cpu 2>&1 1>/dev/null
 #### 	
 #### 	# Check if environment was succesfully activated
 #### 	ENV_ACTIVE="$(conda info --envs | grep \* | sed 's/ .*//g')"
-#### 	if [ "$ENV_ACTIVE" == "$ENV_CPU" ]; then
+#### 	if [ "$ENV_ACTIVE" == "$env_cpu" ]; then
 #### 	    
 #### 	    # Base directory of active environment
 ####             ENVDIR="$(conda info --env | grep \* | sed 's/.* //g')"
@@ -210,5 +212,5 @@ create_env $ENV_CPU envs/$ENVFOLDER/$ENV_CPU.yml
 #### fi
 #### 
 #### # Fix libstdc++ symblink problem
-#### fix_link $ENV_CPU
+#### fix_link $env_cpu
 #### print "Done!"
