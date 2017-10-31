@@ -95,9 +95,15 @@ function install_conda {
     # Clean-up
     rm -f $INSTALLFILE
     
+    # Re-source the bash initialisation script, to update PATH which might have
+    # been set.
+    if [[ -f ~/.bashrc ]]; then
+        source ~/.bashrc
+    fi    
+
     # Check whether installation worked
     if ! hash conda 2>/dev/null; then
-        warning "conda wasn't installed properly. Perhaps something went wrong in the installation, or 'PATH' was not set? If you suspec the later, update the 'PATH' environment variable and re-run the installation script. Exiting."
+        warning "conda wasn't installed properly. Perhaps something went wrong in the installation, or 'PATH' was not set? If you suspect the latter, update the 'PATH' environment variable and re-run the installation script. Exiting."
         return 1
     else
         print "conda was installed succesfully!"
@@ -174,19 +180,6 @@ function check_env_consistency {
 	fi
     done
     
-    # Compare current enviroment with default
-####     DIFFERENCES="$(diff -y --left-column $tmpfile $envfile | grep -v "prefix:" | grep -v "(" | sed\
-####      $'s/\t/    /g' )"
-####     if (( "${#DIFFERENCES}" )); then
-####         warning "  The existing '$env' env. differs from the default one in '$envfile':"
-####         POSINDEX="$(echo "$DIFFERENCES" | grep -b -o "|" | cut -d: -f1)"
-####         printf "%-${POSINDEX}s| %s\n" "ACTIVE ENVIRONMENT" "DEFAULT ENVIRONMENT"
-####         printf "%0.s-" $(seq 1 $(( 2 * $POSINDEX + 1)) )
-####         echo ""
-####         echo "$DIFFERENCES"
-####         warning "  Beware that this might lead to problems when running the code."
-####     fi
-    
     # Clean-up
     rm -f $tmpfile
     
@@ -223,34 +216,6 @@ function create_env {
 
 	check_env_consistency "$env" "$envfile"
 	
-#### 	# Check consistency with baseline env.
-#### 	print "  Checking consistency"
-#### 	
-#### 	# Silently activate environment
-#### 	source activate $env 2>&1 1>/dev/null
-#### 	
-#### 	# Write the enviroment specifications to file
-#### 	tmpfile=".tmp.env.txt"
-#### 	conda env export > $tmpfile
-#### 	
-#### 	# Compare current enviroment with default
-#### 	DIFFERENCES="$(diff -y --left-column $tmpfile $envfile | grep -v "prefix:" | grep -v "(" | sed $'s/\t/    /g' )"
-#### 	if (( "${#DIFFERENCES}" )); then
-####             warning "  The existing '$env' env. differs from the default one in '$envfile':"
-####             POSINDEX="$(echo "$DIFFERENCES" | grep -b -o "|" | cut -d: -f1)"
-####             printf "%-${POSINDEX}s| %s\n" "ACTIVE ENVIRONMENT" "DEFAULT ENVIRONMENT"
-####             printf "%0.s-" $(seq 1 $(( 2 * $POSINDEX + 1)) )
-####             echo ""
-####             echo "$DIFFERENCES"
-####             warning "  Beware that this might lead to problems when running the code."
-#### 	fi
-#### 	
-#### 	# Clean-up
-#### 	rm -f $tmpfile
-#### 	
-#### 	# Silently deactivate environment
-#### 	source deactivate 2>&1 1>/dev/null
-
     else
 	
 	# Fix ROOT setup problem on macOS (1/2)
