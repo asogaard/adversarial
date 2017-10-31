@@ -159,5 +159,5 @@ that order. Used `TAB` to auto-complete and see available command-line arguments
 
 -----
 
-<sup><a name="footnote1">1</a></sup>Generally, this package should work on Linux and
+<sup><a name="footnote1">1</a></sup> Generally, this package should work on Linux and
 macOS. Tested on lxplus and macOS High Sierra. No guarantees, though.
