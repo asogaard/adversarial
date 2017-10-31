@@ -270,7 +270,7 @@ function create_env {
 	fi
 	
 	# Create environment
-	print "Creating CPU environment '$env'."
+	print "Creating new environment '$env'."
 	conda env create -f $envfile
 	
 	# Fix ROOT setup problem on macOS (2/2)
