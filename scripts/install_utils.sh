@@ -17,8 +17,7 @@ function fix_link {
         return
     fi
 
-    # Try to activate environment
-    print "  Activating '$env'."
+    # Silently try to activate environment
     source activate "$env" 2>&1 1>/dev/null
 
     # Check if environment was succesfully activated
@@ -63,8 +62,7 @@ function fix_link {
 
         fi
 
-        # Deactivate environment
-        print "  Deactivating '$env'."
+        # Silently deactivate environment
         source deactivate 2>&1 1>/dev/null
     else
         warning "Failed to activate '$env'."
