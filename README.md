@@ -4,27 +4,34 @@
 
 TBA
 
+## Quick start
+
+To get running on any supported platform<sup>[1](#footnote1)</sup>, do the following in a clean shell:
+```
+# Set up package
+$ cd my/work/directory
+$ git clone git@github.com:asogaard/adversarial.git
+$ cd adversarial
+$ source install.sh
+$ source setup.sh
+
+# Stage some data
+$ mkdir -p input
+$ ln -s /eos/atlas/user/a/asogaard/adversarial/data/data.h5 input/  # lxplus
+$ rsync <username>@lxplus.cern.ch:/eos/atlas/user/a/asogaard/adversarial/data/data.h5 input/  # elsewhere
+
+# Test run
+$ ./run.py --help
+$ ./run.py --train --tensorflow
+```
+
+
 
 ## Running on lxplus
 
 **Notice:** Although supported, it is not recommended to perform any substantial
  training on lxplus, since the nodes are not suited for the heavy computations
  required.
-
-
-### Quick start
-
-To get running on lxplus, do the following in a clean shell:
-```
-$ cd my/work/directory
-$ git clone git@github.com:asogaard/adversarial.git
-$ cd adversarial
-$ source install.sh
-$ source setup.sh
-$ ./run.py --help
-$ ./run.py --train --tensorflow --devices 8 --input /eos/atlas/user/a/asogaard/adversarial/data/
-```
-
 
 ### Environment
 
@@ -149,3 +156,7 @@ $ ./submit.sh
 ```
 which will submit data staging, training/evaluation, and finalisation jobs, in
 that order. Used `TAB` to auto-complete and see available command-line arguments.
+
+
+<a name="footnote1">1</a>: Generally, this package should work on Linux and
+macOS. Tested on lxplus and macOS High Sierra. No guarantees, though.
