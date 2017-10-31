@@ -470,15 +470,19 @@ def initialise_backend (args):
 
     # Get number of cores on CPU(s), name of CPU devices, and number of physical
     # cores in each device.
-    num_cpus = len(filter(lambda line: line.startswith('cpu cores'),
-                          subprocess.check_output(["cat", "/proc/cpuinfo"]).split('\n')))
-    name_cpu = filter(lambda line: line.startswith('model name'),
-                      subprocess.check_output(["cat", "/proc/cpuinfo"]).split('\n'))[0] \
-                      .split(':')[-1].strip()
-    num_cores = int(filter(lambda line: line.startswith('cpu cores'),
-                           subprocess.check_output(["cat", "/proc/cpuinfo"]).split('\n'))[0] \
-                    .split(':')[-1].strip())
-    log.info("Found {} {} devices with {} cores each.".format(num_cpus, name_cpu, num_cores))
+    try:
+        cat_output = subprocess.check_output(["cat", "/proc/cpuinfo"]).split('\n')
+        num_cpus  = len(filter(lambda line: line.startswith('cpu cores'),  cat_output))
+        name_cpu  =     filter(lambda line: line.startswith('model name'), cat_output)[0] \
+                        .split(':')[-1].strip()
+        num_cores = int(filter(lambda line: line.startswith('cpu cores'),  cat_output)[0] \
+                        .split(':')[-1].strip())
+        log.info("Found {} {} devices with {} cores each.".format(num_cpus, name_cpu, num_cores))
+    except subprocess.CalledProcessError:
+        # @TODO: Implement CPU information for macOS
+        num_cores = 1
+        log.warning("Could not retrieve CPU information -- probably running on macOS. Therefore, multi-core running is disabled.")
+        pass
 
     # Configure backends
     if args.tensorflow:

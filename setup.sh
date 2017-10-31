@@ -36,14 +36,13 @@ if   [[ "$HOSTNAME" == *"lxplus"* ]]; then
 elif [[ "$HOSTNAME" == *"ed.ac.uk"* ]]; then
     HOST="eddie3"
 else
-    print "Host not recognised; unable to setup environment. Exiting."
-    return 1
+    HOST="local"
 fi
 
 # Actual setting up
 if [[ "$LCG" == true ]]; then
     if [[ "$HOST" != "lxplus" ]]; then
-	warning "Cannot setup LCG environment on $HOST. Exiting."
+	warning "Cannot setup LCG environment on $HOST platform. Exiting."
 	return 1
     else
 	print "Setting up LCG environment on $HOST"
@@ -79,7 +78,7 @@ else
 
     # Activate appropriate conda environment
     ENV="adversarial-$MODE"
-    print "Setting up conda environment '$ENV' on $HOST"
+    print "Setting up conda environment '$ENV' on $HOST platform"
     ENV_EXISTS="$(conda info --env | sed 's/ .*//g;s/^#//g' | grep $ENV)"
     if [[ "$ENV_EXISTS" ]]; then
 	source activate $ENV

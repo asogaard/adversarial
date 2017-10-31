@@ -23,7 +23,7 @@ function question {
     # Format responce as single lower-case character
     RESPONSE=${RAW_RESPONSE:-$DEFAULT}
     RESPONSE=${RESPONSE:0:1}
-    RESPONSE=`echo "${RESPONSE,,}"`
+    RESPONSE="$(echo "$RESPONSE" | awk '{print tolower($0)}')"
 
     # Return numeric value
     if   [ "$RESPONSE" == "y" ]; then
