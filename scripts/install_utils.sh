@@ -321,7 +321,7 @@ function create_env {
 		# Locate ROOT activation file
 		rootinitfile="$envdir/etc/conda/activate.d/activateROOT.sh"
 		
-		if [[ -z "$(cat $rootinitfile | grep "^ *source \$(which thisroot.sh)")" ]]; then
+		if [[ -f "$rootinitfile" ]] && [[ -z "$(cat $rootinitfile | grep "^ *source \$(which thisroot.sh)")" ]]; then
 		    
 		    # Replace whatever statement is used to source 'thisroot.sh' by 'source
 		    # $(which thisroot)' to remove dependence on the 'CONDA_ENV_PATH'.
