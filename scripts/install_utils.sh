@@ -39,7 +39,7 @@ function fix_link {
             # Check that link exists
             if [ -L "$linkpath" ]; then
                 # Check whether link target is most latest available library
-                if [ "$(readlink -f $linkpath)" == "$latestlib" ]; then
+                if [ "$(readlink -f $linkpath)" == "$(readlink -f $latestlib)" ]; then
                     # $linkpath already links to $latestlib
                     :
                 else
@@ -66,6 +66,75 @@ function fix_link {
         source deactivate 2>&1 1>/dev/null
     else
         warning "Failed to activate '$env'."
+    fi
+}
+
+
+# ------------------------------------------------------------------------------
+# Utility function to resolve Theano/gcc compiling problem
+function fix_theano_gcc () {
+
+    # gcc on CentOS* has a know problem [https://stackoverflow.com/q/13879302]
+    # which means that theano doesn't compile and therefore cannot be
+    # used. Manually add a cxxflag to .theanorc to permanently avoid this
+    # problem.
+
+    # Check if anything needs to be done
+    if [[ "$(uname)" != *"Linux"* ]]; then
+	# Not on linux; no problems.
+	return 0
+    fi
+
+    theanofile=~/.theanorc
+    cxxflag="-D__USE_XOPEN2K8"
+    
+    if [[ -f "$theanofile" ]] && [[ ! -z "$(cat $theanofile | grep "\\$cxxflag")" ]]; then
+	# Fix has been applied; no problems.
+	return 0
+    fi
+    
+    # Action required
+    warning "You seem to be running on an OS (Linux) where a know problem with gcc prevents Theano from compiling."
+    
+    # Check if ~/.theanorc file alfready exists
+    if [[ ! -f "$theanofile" ]]; then
+	
+	question "Is it OK to create the file '$theanofile' and add 'gcc.cxxflags = $cxxflag'?" "y"
+	response="$?"
+	if (( "$response" )); then
+	    # Create new ~/.theanorc file
+	    echo -e "[gcc]\ncxxflags = $cxxflag" >> $theanofile
+	    print "Created '$theanofile'. Should be good to go."
+	    return 0
+	else
+	    warning "OK, not creating '$theanofile', but you will need to use the TensorFlow backend for Keras or manually set the '$cxxflag' flag yourself."
+	    return 1
+	fi
+	
+    else
+	
+	if [[ -z "$(cat $theanofile | grep "\\$cxxflag")" ]]; then
+	    question "Is it OK to add 'gcc.cxxflags = $cxxflag' to the existing '$theanofile'?" "y"
+	    response="$?"
+	    if (( "$response" )); then
+		if   [[ "$(cat $theanofile | grep "cxxflags")" ]]; then
+		    # Add new item to existing cxxflags list
+		    sed -i.bak "s/cxxflags *= *\(.*\)/cxxflags = \1 $cxxflag/g" $theanofile
+		elif [[ "$(cat $theanofile | grep "[gcc]")" ]]; then
+		    # Add new cxxflags list to existing gcc field
+		    sed -i.bak "s/\[gcc\]/\[gcc\]\ncxxflags = $cxxflag/g" $theanofile
+		else
+		    # Add new gcc field
+		    echo -e "\n[gcc]\ncxxflags = $cxxflag" >> $theanofile
+		fi
+		print "Appended '$theanofile'. Should be good to go."
+		return 0
+	    else
+		warning "OK, not appending '$theanofile', but you will need to use the TensorFlow backend for Keras or manually set the '$cxxflag' flag yourself."
+		return 1
+	    fi
+	fi
+
     fi
 }
 
@@ -119,16 +188,16 @@ function check_env_consistency {
 
     # Validate input
     if [[ -z "$env" ]]; then
-        warning "Please specify the environment name as first argument to 'create_env_consistency'."
+        warning "Please specify the environment name as first argument to 'check_env_consistency'."
         return 1
     fi
     if [[ -z "$envfile" ]] || [[ "$envfile" != *".yml" ]]; then
-        warning "Please specify the environment file (.yml) as second argument to 'create_env_consistency'."
+        warning "Please specify the environment file (.yml) as second argument to 'check_env_consistency'."
         return 1
     fi
     
     # Check consistency with baseline env.
-    print "  Checking consistency of conda environment '$env' with file '$envfile'."
+    print "Checking consistency of conda environment '$env' with file '$envfile'."
     
     # Silently activate environment
     source activate $env 2>&1 1>/dev/null
@@ -236,10 +305,11 @@ function create_env {
 	print "Creating new environment '$env'."
 	conda env create -f $envfile
 	
+        # Silently activate environment
+        source activate $env 2>&1 1>/dev/null
+
 	# Fix ROOT setup problem on macOS (2/2)
 	if [[ "$(uname)" == *"Darwin"* ]]; then
-            # Silently activate environment
-            source activate $env 2>&1 1>/dev/null
 	    
             # Check if environment was succesfully activated
             env_active="$(conda info --envs | grep \* | sed 's/ .*//g')"
@@ -251,9 +321,12 @@ function create_env {
 		# Locate ROOT activation file
 		rootinitfile="$envdir/etc/conda/activate.d/activateROOT.sh"
 		
-		# Replace whatever statement is used to source 'thisroot.sh' by 'source
-		# $(which thisroot)' to remove dependence on the 'CONDA_ENV_PATH'.
-		sed -i.bak 's/\(^.*thisroot.sh\)/#\1\'$'\nsource $(which thisroot.sh)/g' $rootinitfile
+		if [[ -z "$(cat $rootinitfile | grep "^ *source \$(which thisroot.sh)")" ]]; then
+		    
+		    # Replace whatever statement is used to source 'thisroot.sh' by 'source
+		    # $(which thisroot)' to remove dependence on the 'CONDA_ENV_PATH'.
+		    sed -i.bak 's/\(^.*thisroot.sh\)/#\1\'$'\nsource $(which thisroot.sh)/g' $rootinitfile
+		fi
             fi
 	fi
 	
@@ -261,8 +334,9 @@ function create_env {
 	source deactivate 2>&1 1>/dev/null
     fi
 
-    # Fix libstdc++ symblink problem
+    # Fix known issues
     fix_link $env
-    print "Done!"
-    
+    fix_theano_gcc
+
+    print "Done!"    
 }
