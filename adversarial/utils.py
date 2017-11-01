@@ -347,12 +347,14 @@ def train_in_parallel (model, data_train, data_validation={}, config={}, callbac
         Exception: If the Keras backend is not Tensorflow.
     """
 
-    # @TODO:
-    # - Implement `Data` class?
-
     # Check(s)
     data_train, data_validation = validate_training_input(data_train, data_validation)
     assert mode in ['gpu', 'cpu'], "Requested mode '{}' not recognised".format(mode)
+
+    # Silently fall back to `train_in_sequence` if only one device is requested.
+    if num_devices == 1:
+        train_in_sequence(model, data_train, data_validation, config=config)
+        pass
 
     # Check backend for compatibility
     import keras.backend as K
