@@ -1,8 +1,14 @@
 # adversarial
 
+Tools for training and evaluating adversarially trained neural networks for
+de-correlated jet tagging.
+
+
+
 ## Contents
 
 TBA
+
 
 ## Quick start
 
@@ -29,6 +35,7 @@ $ ./run.py --train --tensorflow
 ```
 
 
+
 ## Environment
 
 The preferred method to set up the python environment required to run the code
@@ -37,6 +44,7 @@ the library are run in exactly the same environment. Alternatively, on lxplus,
 the centrally provided LCG environment can be used. However, this is **not
 supported** and will require modifying the code to accommodate package version
 differences.
+
 
 ### Anaconda
 
@@ -97,24 +105,24 @@ $ source setup.sh lcg
 with no installation required.
 
 
-## <a name="supported-platforms">Supported platforms</a>
-The code has been checked and found to work on the following platforms.
 
-### lxplus
+## <a name="supported-platforms">Supported platforms</a> The code has been
+checked and found to work on the following operating systems: macOS 10.13 High
+Sierra (local), CentOS 6/7 (lxplus/lxplus7), and Scientific Linux 7 (Eddie3).
 
 **Notice:** Although supported, it is not recommended to perform any substantial
- training on lxplus, since the nodes are not suited for the heavy computations
- required.
+ training on lxplus or on your personal computer, since they are (likely) not
+ suited for the heavy computations required.
 
 
-## University of Edinburgh Eddie3 compute cluster
+### University of Edinburgh Eddie3 compute cluster
 
 Main wiki page describing the cluster is available
 [here](https://www.wiki.ed.ac.uk/display/ResearchServices/Eddie). As Eddie3
 provides compute nodes with out to 8 Nvidia Telsa K80 GPU's, this is a
 recommended environment for training the networks.
 
-### Interactive sessions
+#### Interactive sessions
 
 To perform interactive test, log in to nodes with specific a parallel
 environment and configuration. This is done like e.g.
@@ -137,7 +145,7 @@ $ ./run.py -i $INPUTDIR -o $OUTPUTDIR --tensorflow --gpu --devices 4
 Tab-completion is enabled for `run.py`.
 
 
-### Submitting jobs
+#### Submitting jobs
 
 To submit jobs to batch, do
 ```
