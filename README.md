@@ -163,11 +163,11 @@ conda environments. The devices used are *** (CPU) and Nvidia Tesla K80 (GPU).
 
 | Devices \ Mode | Theano     | Tensorflow |
 |:--------------:|:----------:|:----------:|
-|<td colspan="2"><center><b>CPU</b></center></td>
+| **CPU**        |            |            |
 | 1              | TBD        | TBD        |
 | 2              | _N/A_      | TBD        |
 | 4              | _N/A_      | TBD        |
-|<td colspan="2"><center><b>GPU</b></center></td>
+| **GPU**        |            |            |
 | 1              | 52 sec.    | 20 sec.    |
 | 2              | _N/A_      | 14 sec.    |
 | 4              | _N/A_      | 10 sec.    |
