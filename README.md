@@ -114,7 +114,7 @@ with no installation required.
 ## <a name="supported-platforms">Supported platforms</a> 
 
 The code has been checked and found to work on the following operating systems: macOS 10.13 High
-Sierra (local), CentOS 6/7 (lxplus/lxplus7), and Scientific Linux 7 (Eddie3).
+Sierra (local) and Scientific Linux 6/7 (lxplus/lxplus7/Eddie3).
 
 **Notice:** Although supported, it is not recommended to perform any substantial
  training on lxplus or on your personal computer, since they are (likely) not
