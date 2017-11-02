@@ -21,6 +21,8 @@ $ cd adversarial
 $ source install.sh
 $ source setup.sh
 ```
+This installs the supported conda [environments](#environments) and activates
+the one for CPU running.
 
 **Stage some data**
 ```
@@ -33,10 +35,12 @@ If run elsewhere than lxplus, this will download a 1.4GB HDF5 data file.
 $ ./run.py --help
 $ ./run.py --train --tensorflow
 ```
+This shows the supported arguments to the [run.py](run.py) script, and starts
+training using the TensorFlow backend.
 
 
 
-## Environment
+## <a name="environments">Environment</a>
 
 The preferred method to set up the python environment required to run the code
 is to use [Anaconda](https://conda.io/docs/), which ensures that all clones of
