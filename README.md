@@ -36,7 +36,8 @@ $ ./run.py --help
 $ ./run.py --train --tensorflow
 ```
 This shows the supported arguments to the [run.py](run.py) script, and starts
-training using the TensorFlow backend.
+training using the TensorFlow backend. Tab-completion is enabled for
+[run.py](run.py).
 
 
 
@@ -52,16 +53,15 @@ differences.
 
 ### Anaconda
 
-To use the custom, supported anaconda environment, do the
-[following](https://conda.io/docs/user-guide/tasks/manage-environments.html#building-identical-conda-environments)
-simply run the [install.sh](install.sh) script. It (optionally) **installs
-conda** and **creates the supported environments**.
+To use the custom, supported anaconda environment, simply run the
+[install.sh](install.sh) script. It (optionally) **installs conda** and
+**creates the supported environments**.
 
 #### Install conda
 
 If `conda` is not installed already, it is **done automatically** during the
 installation. Alternatively, you can do it manually by logging on to your
-preferred cluster, e.g. lxplus, and doing the following
+preferred platform, e.g. lxplus, and doing the following:
 ```
 $ wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh
 $ bash Miniconda2-latest-Linux-x86_64.sh
@@ -83,14 +83,15 @@ enviroment.
 
 #### Activate the environment(s)
 
-Everytime your starting a new shell, before runnign the adversarial neural
+Everytime you are starting a new shell, before running the adversarial neural
 network code, you should activate the installed environment by using the
 [setup.sh](setup.sh) script.
+
 ```
 $ source setup.sh cpu  # For running on CPU
 $ source setup.sh gpu  # -              GPU
 ```
-To deactivate the environment, do
+To deactivate the environment, do:
 ```
 $ source setup.sh unset  # or
 $ source deactivate
@@ -99,10 +100,10 @@ $ source deactivate
 
 ### LCG
 
-On lxplus, the centrally provided SWAN LCG environment can used to set up the
-required python packages, although generally older versions of these. However,
-this is **not supported** and version conflicts are very likely to occur. Should
-you wish to try it out anyway, it can be set up using
+On lxplus, the centrally provided SWAN LCG environment can used to set up most
+of the required python packages, although generally older versions of
+these. However, this is **not supported** and version conflicts are very likely
+to occur. Should you wish to try it out anyway, it can be set up using:
 ```
 $ source setup.sh lcg
 ```
@@ -110,8 +111,9 @@ with no installation required.
 
 
 
-## <a name="supported-platforms">Supported platforms</a> The code has been
-checked and found to work on the following operating systems: macOS 10.13 High
+## <a name="supported-platforms">Supported platforms</a> 
+
+The code has been checked and found to work on the following operating systems: macOS 10.13 High
 Sierra (local), CentOS 6/7 (lxplus/lxplus7), and Scientific Linux 7 (Eddie3).
 
 **Notice:** Although supported, it is not recommended to perform any substantial
@@ -123,7 +125,7 @@ Sierra (local), CentOS 6/7 (lxplus/lxplus7), and Scientific Linux 7 (Eddie3).
 
 Main wiki page describing the cluster is available
 [here](https://www.wiki.ed.ac.uk/display/ResearchServices/Eddie). As Eddie3
-provides compute nodes with out to 8 Nvidia Telsa K80 GPU's, this is a
+provides compute nodes with up to 8 Nvidia Telsa K80 GPU's, this is a
 recommended environment for training the networks.
 
 #### Interactive sessions
@@ -141,14 +143,6 @@ number of CPUs/GPUs requested, and the value of the `h_vmem` is the requested
 amount of memory per CPU. The `gpu` parallel environment provides one CPU for
 each requested GPU.
 
-To quickly setup the interactive environment, do e.g.
-```
-$ source setup.sh gpu test # 'test' flag sets INPUTDIR and OUTPUTDIR environment variables
-$ ./run.py -i $INPUTDIR -o $OUTPUTDIR --tensorflow --gpu --devices 4
-```
-Tab-completion is enabled for `run.py`.
-
-
 #### Submitting jobs
 
 To submit jobs to batch, do
@@ -156,4 +150,4 @@ To submit jobs to batch, do
 $ ./submit.sh
 ```
 which will submit data staging, training/evaluation, and finalisation jobs, in
-that order. Used `TAB` to auto-complete and see available command-line arguments.
+that order. Use `TAB` to auto-complete and see available command-line arguments.
