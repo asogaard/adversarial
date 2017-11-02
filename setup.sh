@@ -9,7 +9,7 @@ source scripts/utils.sh
 arguments=("$@")
 set -- # Unsetting positional arguments, to avoid error from "source deactivate"
 
-cpu=true
+cpu=false
 gpu=false
 test=false
 unset=false
@@ -26,14 +26,15 @@ for arg in "${arguments[@]}"; do
     elif [ "$arg" == "LCG" ] || [ "$arg" == "lcg" ]; then
         lcg=true
     else
-        print "Argument '$arg' was not understood."
+        warning "Argument '$arg' was not understood."
+	return 1
     fi
 done
 
 # Determine host
-if   [[ "$hostname" == *"lxplus"* ]]; then
+if   [[ "$(hostname)" == *"lxplus"* ]]; then
     host="lxplus"
-elif [[ "$hostname" == *"ed.ac.uk"* ]]; then
+elif [[ "$(hostname)" == *"ed.ac.uk"* ]]; then
     host="eddie3"
 else
     host="local"
@@ -67,10 +68,18 @@ else
     # Determine running mode (CPU/GPU)
     mode="cpu"
     if   [ "$cpu" == false ] && [ "$gpu" == true ]; then
-	mode="gpu"
+	mode="gpu-test" # @TEMP
 	if ! hash nvidia-smi 2>/dev/null; then
             warning "Requesting GPUs on a node that doesn't have any. Exiting."
             return 1
+	fi
+	# Setup Cuda/CuDNN
+	if [[ "$host" == "eddie3" ]]; then
+	    print "Loading Cuda module"
+	    module unload cuda  # Fails silently
+	    module load cuda/8.0.61
+	else
+	    warning "GPU mode requested. Make sure you have Cuda/CuDNN installed"
 	fi
     elif [ "$cpu" == "$gpu" ]; then
 	print "Using CPU by default"

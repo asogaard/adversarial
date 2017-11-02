@@ -31,7 +31,7 @@ fi
 
 # Environment names
 env_cpu="adversarial-cpu"
-env_gpu="adversarial-gpu"
+env_gpu="adversarial-gpu-test"
 
 if   [[ "$(uname)" == *"Linux"* ]]; then
     envfolder="linux"
@@ -44,4 +44,4 @@ fi
 
 # Install CPU environment
 create_env $env_cpu envs/$envfolder/$env_cpu.yml
-#create_env $env_gpu envs/$envfolder/$env_gpu.yml
+create_env $env_gpu envs/$envfolder/$env_gpu.yml
