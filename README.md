@@ -68,7 +68,7 @@ $ bash Miniconda2-latest-Linux-x86_64.sh
 $ # Follow the screen prompts
 $ # ...
 $ rm Miniconda2-latest-Linux-x86_64.sh
-``` 
+```
 This installs the conda package manager, allowing us to setup a custom
 environment, common for all installations of this package. Please ensure that
 your system variable `PATH` points to the location of your conda installation.
@@ -111,7 +111,7 @@ with no installation required.
 
 
 
-## <a name="supported-platforms">Supported platforms</a> 
+## <a name="supported-platforms">Supported platforms</a>
 
 The code has been checked and found to work on the following operating systems: macOS 10.13 High
 Sierra (local) and Scientific Linux 6/7 (lxplus/Eddie3), and CentOS 7 (lxplus7).
@@ -135,7 +135,7 @@ environment and configuration. This is done like e.g.
 
 ```
 $ qlogin -pe sharedmem 4 -l h_vmem=10G # CPU running
-$ qlogin -pe gpu 4       -l h_vmem=10G # GPU 
+$ qlogin -pe gpu 4       -l h_vmem=10G # GPU
 ```
 
 where the integer argument to the parallel environment argument (`-pe`) is the
@@ -161,13 +161,15 @@ standalone classifier, running on 3.5M training samples (cross-val) per epoch
 using the default network- and training configurations within the supported
 conda environments. The devices used are *** (CPU) and Nvidia Tesla K80 (GPU).
 
-| Devices \ Mode | <td colspan=2>Backend
-|                | Theano     | Tensorflow |
-|:--------------:|:----------:|:----------:|
-| 1              | TBD        | TBD        |
-| 2              | _N/A_      | TBD        |
-| 4              | _N/A_      | TBD        |
-|:--------------:|:----------:|:----------:|
+
+<| Devices + Mode | Backend    |            |
+ |                | Theano     | Tensorflow |
+ | -------------- | ---------- | ---------- |
+ | 1              | TBD        | TBD        |
+ | 2              | _N/A_      | TBD        |
+ | 4              | _N/A_      | TBD        |
+
+| --------------:|:----------:|:----------:|
 | 1              | 52 sec.    | 20 sec.    |
 | 2              | _N/A_      | 14 sec.    |
 | 4              | _N/A_      | 10 sec.    |
