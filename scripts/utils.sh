@@ -2,15 +2,15 @@
 # Bash utility methods
 
 # Functions to print fancy text
-function print {
+function print () {
     echo -e "🎃  \033[0;38;5;208m$1\033[0m"
 }
 
-function warning {
+function warning () {
     echo -e "🚨  \033[0;38;5;196m$1\033[0m"
 }
 
-function question {
+function question () {
 
     # Define variables
     question="$1"

@@ -31,7 +31,7 @@ fi
 
 # Environment names
 env_cpu="adversarial-cpu"
-env_gpu="adversarial-gpu-test"
+env_gpu="adversarial-gpu"
 
 if   [[ "$(uname)" == *"Linux"* ]]; then
     envfolder="linux"

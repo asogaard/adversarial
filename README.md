@@ -151,3 +151,32 @@ $ ./submit.sh
 ```
 which will submit data staging, training/evaluation, and finalisation jobs, in
 that order. Use `TAB` to auto-complete and see available command-line arguments.
+
+
+
+## Benchmarks
+
+The following shows the time per epoch, excluding overhead, used to train the
+standalone classifier, running on 3.5M training samples (cross-val) per epoch
+using the default network- and training configurations within the supported
+conda environments. The devices used are *** (CPU) and Nvidia Tesla K80 (GPU).
+
+| Devices \ Mode | <td colspan=2>Backend
+|                | Theano     | Tensorflow |
+|:--------------:|:----------:|:----------:|
+| 1              | TBD        | TBD        |
+| 2              | _N/A_      | TBD        |
+| 4              | _N/A_      | TBD        |
+|:--------------:|:----------:|:----------:|
+| 1              | 52 sec.    | 20 sec.    |
+| 2              | _N/A_      | 14 sec.    |
+| 4              | _N/A_      | 10 sec.    |
+
+Typically, the performance bottleneck is found to be data transfer, limiting GPU
+utilisation to around 30-40%.
+
+
+## Known issues
+
+* Running in the CPU environment on macOS with the Theano backend does not
+  support OpenMP due to use of clang compiler. See e.g. [here](https://groups.google.com/d/msg/theano-users/-oIdjtN-HmY/7jBixrHC6aAJ).
