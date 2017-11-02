@@ -161,15 +161,13 @@ standalone classifier, running on 3.5M training samples (cross-val) per epoch
 using the default network- and training configurations within the supported
 conda environments. The devices used are *** (CPU) and Nvidia Tesla K80 (GPU).
 
-
-<| Devices + Mode | Backend    |            |
- |                | Theano     | Tensorflow |
- | -------------- | ---------- | ---------- |
- | 1              | TBD        | TBD        |
- | 2              | _N/A_      | TBD        |
- | 4              | _N/A_      | TBD        |
-
-| --------------:|:----------:|:----------:|
+| Devices \ Mode | Theano     | Tensorflow |
+|:--------------:|:----------:|:----------:|
+|<td colspan="2"><center><b>CPU</b></center></td>
+| 1              | TBD        | TBD        |
+| 2              | _N/A_      | TBD        |
+| 4              | _N/A_      | TBD        |
+|<td colspan="2"><center><b>GPU</b></center></td>
 | 1              | 52 sec.    | 20 sec.    |
 | 2              | _N/A_      | 14 sec.    |
 | 4              | _N/A_      | 10 sec.    |
