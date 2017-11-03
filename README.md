@@ -21,7 +21,7 @@ $ cd adversarial
 $ source install.sh
 $ source setup.sh
 ```
-This installs the supported conda [environments](#environments) and activates
+This installs the supported conda [environments](#environment) and activates
 the one for CPU running.
 
 **Stage some data**
