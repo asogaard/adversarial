@@ -41,7 +41,7 @@ training using the TensorFlow backend. Tab-completion is enabled for
 
 
 
-## <a name="environments">Environment</a>
+## Environment
 
 The preferred method to set up the python environment required to run the code
 is to use [Anaconda](https://conda.io/docs/), which ensures that all clones of
@@ -111,7 +111,7 @@ with no installation required.
 
 
 
-## <a name="supported-platforms">Supported platforms</a>
+## Supported platforms
 
 The code has been checked and found to work on the following operating systems: macOS 10.13 High
 Sierra (local) and Scientific Linux 6/7 (lxplus/Eddie3), and CentOS 7 (lxplus7).
