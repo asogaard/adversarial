@@ -237,6 +237,13 @@ function check_env_consistency {
 	pip_package_name="$(echo $pip_package | cut -d= -f1)"
 	pip_package_version="$(echo $pip_package | cut -d= -f3)"
 
+	if [[ "$pip_package_name" == *"git"*":"* ]]; then
+	    pip_package_actualname="$(echo $pip_package_name | sed 's/.*\/\(.*\)\.git.*/\1/g')"
+	    print "  - It seems like pip package '$pip_package_name$' ($pip_package_actualname) is taken straight from git."
+	    print "    Please make sure that the installed version is consistent with this."
+	    continue
+	fi
+	
 	pattern="$(sed 's/\./\\\./g' <<< "$pip_package_name ($pip_package_version)" | sed 's/)/.*)/g')"
 	if [[ -z "$(cat $tmpfile | grep -i "$pattern")" ]]; then
 	    warning "No pip package matching '$pip_package' was found in the active '$env' environment"
@@ -274,9 +281,13 @@ function create_env {
     if [[ -z "$envfile" ]] || [[ "$envfile" != *".yml" ]]; then
 	warning "Please specify the environment file (.yml) as second argument to 'create_env'."
 	return 1
+    elif [ ! -f "$envfile" ]; then
+	warning "Wanted to create '$env', but specified environment file '$envfile' doesn't exist."
+	return 1
     fi
 
-    print "Creating conda environment '$env' from file '$envfile'."
+    #print "Creating conda environment '$env' from file '$envfile'."
+    print "Setting up conda environment '$env'."
     
     # Check if environment already exists
     if [ "$(conda info --envs | grep $env)" ]; then
@@ -302,7 +313,7 @@ function create_env {
 	fi
 	
 	# Create environment
-	print "Creating new environment '$env'."
+	print "Creating new environment '$env' from file '$envfile'."
 	conda env create -f $envfile
 	
         # Silently activate environment

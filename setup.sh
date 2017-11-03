@@ -84,14 +84,14 @@ else
 	    warning "GPU mode requested. Make sure you have Cuda/CuDNN installed"
 	fi
 
-	# Set `MKL_THREADING_LAYER` environment variable, necessary for running
-	# Theano 1.0.0rc1 on GPU
-	export MKL_THREADING_LAYER=GNU
-
     elif [ "$cpu" == "$gpu" ]; then
 	print "Using CPU by default"
     fi
 
+    # Set `MKL_THREADING_LAYER` environment variable, necessary for running
+    # Theano 1.0.0rc1
+    export MKL_THREADING_LAYER=GNU
+    
     # Activate appropriate conda environment
     env="adversarial-$mode"
     print "Setting up conda environment '$env' on $host platform"
