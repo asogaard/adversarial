@@ -379,56 +379,61 @@ def main ():
             # Loop `k` folds
             #for fold, (train, validation) in
             #enumerate(skf.split(data.train.inputs, data.train.targets)):
-            for fold, (train, validation) in enumerate(skf):
-                with Profile("Fold {}/{}".format(fold + 1, args.folds)):
-
-                    # StratifiedKFold provides stratification, but since the
-                    # input arrays are not randomised, neither will the
-                    # folds. Therefore, the fold should be taken with respect to
-                    # a set of randomised indices rather than range(N).
-                    train      = random_indices[train]
-                    validation = random_indices[validation]
-
-                    # Define unique tag and name for current classifier
-                    tag  = '{}of{}'.format(fold + 1, args.folds)
-                    name = '{}__{}'.format(basename, tag)
-
-                    # Get classifier
-                    classifier = classifier_model(num_features, **cfg['classifier']['model'])
-
-                    # Compile model (necessary to save properly)
-                    classifier.compile(**cfg['classifier']['compile'])
-
-
-                    # Fit classifier model
-                    result = train_in_parallel(classifier,
-                                               {'input':   data.train.inputs,
-                                                'target':  data.train.targets,
-                                                'weights': data.train.weights,
-                                                'mask':    train},
-                                               {'input':   data.train.inputs,
-                                                'target':  data.train.targets,
-                                                'weights': data.train.weights,
-                                                'mask':    validation},
-                                               config=cfg['classifier'],
-                                               num_devices=args.devices, mode=args.mode, seed=seed)
-
-                    histories.append(result['history'])
-
-                    # Save classifier model and training history to file, both
-                    # in unique output directory and in the directory for
-                    # pre-trained classifiers
-                    for destination in [args.output, 'trained/']:
-                        classifier.save        (destination + '{}.h5'        .format(name))
-                        classifier.save_weights(destination + '{}_weights.h5'.format(name))
-                        with open(destination + 'history__{}.json'.format(name), 'wb') as f:
-                            json.dump(result['history'], f)
+            try:
+                for fold, (train, validation) in enumerate(skf):
+                    with Profile("Fold {}/{}".format(fold + 1, args.folds)):
+                        
+                        # StratifiedKFold provides stratification, but since the
+                        # input arrays are not randomised, neither will the
+                        # folds. Therefore, the fold should be taken with respect to
+                        # a set of randomised indices rather than range(N).
+                        train      = random_indices[train]
+                        validation = random_indices[validation]
+                        
+                        # Define unique tag and name for current classifier
+                        tag  = '{}of{}'.format(fold + 1, args.folds)
+                        name = '{}__{}'.format(basename, tag)
+                        
+                        # Get classifier
+                        classifier = classifier_model(num_features, **cfg['classifier']['model'])
+                        
+                        # Compile model (necessary to save properly)
+                        classifier.compile(**cfg['classifier']['compile'])
+                        
+                        
+                        # Fit classifier model                    
+                        result = train_in_parallel(classifier,
+                                                   {'input':   data.train.inputs,
+                                                    'target':  data.train.targets,
+                                                    'weights': data.train.weights,
+                                                    'mask':    train},
+                                                   {'input':   data.train.inputs,
+                                                    'target':  data.train.targets,
+                                                    'weights': data.train.weights,
+                                                    'mask':    validation},
+                                                   config=cfg['classifier'],
+                                                   num_devices=args.devices, mode=args.mode, seed=seed)
+                        
+                        histories.append(result['history'])
+                        
+                        # Save classifier model and training history to file, both
+                        # in unique output directory and in the directory for
+                        # pre-trained classifiers
+                        for destination in [args.output, 'trained/']:
+                            classifier.save        (destination + '{}.h5'        .format(name))
+                            classifier.save_weights(destination + '{}_weights.h5'.format(name))
+                            with open(destination + 'history__{}.json'.format(name), 'wb') as f:
+                                json.dump(result['history'], f)
+                                pass
                             pass
+                        
+                        # Add to list of classifiers
+                        classifiers.append(classifier)
                         pass
-
-                    # Add to list of classifiers
-                    classifiers.append(classifier)
                     pass
+                pass
+            except KeyboardInterrupt:
+                log.warning("Training was stopped early.")
                 pass
         else:
             log.info("Loading cross-validation classifiers from file")
@@ -529,15 +534,19 @@ def main ():
             cfg['classifier']['fit']['epochs'] = opt_epochs
 
             # Train final classifier
-            result = train_in_parallel(classifier,
-                                       {'input':   data.train.inputs,
-                                        'target':  data.train.targets,
-                                        'weights': data.train.weights},
-                                       config=cfg['classifier'],
-                                       mode=args.mode,
-                                       num_devices=args.devices,
-                                       seed=seed)
-
+            try:
+                result = train_in_parallel(classifier,
+                                           {'input':   data.train.inputs,
+                                            'target':  data.train.targets,
+                                            'weights': data.train.weights},
+                                           config=cfg['classifier'],
+                                           mode=args.mode,
+                                           num_devices=args.devices,
+                                           seed=seed)
+            except KeyboardInterrupt:
+                log.warning("Training was stopped early.")
+                pass
+            
             # Save classifier model and training history to file, both
             # in unique output directory and in the directory for
             # pre-trained classifiers
@@ -666,18 +675,22 @@ def main ():
             combined.compile(**cfg['combined']['compile'])
 
             # Train final classifier
-            result = train_in_parallel(combined,
-                                       {'input':   [data.inputs, data.decorrelation],
-                                        'target':  [data.targets, np.ones_like(data.targets)],
-                                        'weights': [data.weights, np.multiply(data.weights, 1 - data.targets)]},
-                                       # @TODO:
-                                       # - Try to use [data.weights, data.weights_flat * ...]
-                                       config=cfg['combined'],
-                                       mode=args.mode,
-                                       num_devices=args.devices,
-                                       seed=seed,
-                                       callbacks=callbacks)
-
+            try:
+                result = train_in_parallel(combined,
+                                           {'input':   [data.inputs, data.decorrelation],
+                                            'target':  [data.targets, np.ones_like(data.targets)],
+                                            'weights': [data.weights, np.multiply(data.weights, 1 - data.targets)]},
+                                           # @TODO:
+                                           # - Try to use [data.weights, data.weights_flat * ...]
+                                           config=cfg['combined'],
+                                           mode=args.mode,
+                                           num_devices=args.devices,
+                                           seed=seed,
+                                           callbacks=callbacks)
+            except KeyboardInterrupt:
+                log.warning("Training was stopped early.")
+                pass
+                        
             # Save combined model and training history to file, both
             # in unique output directory and in the directory for
             # pre-trained classifiers
