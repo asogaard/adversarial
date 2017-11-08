@@ -3,14 +3,20 @@
 Tools for training and evaluating adversarially trained neural networks for
 de-correlated jet tagging.
 
+
+
+## Table of contents
+
 - [Introduction](#introdution)
 - [Quick start](#quick-start)
 - [Environment](#environment)
+  - [Anaconda](#anaconda)
+  - [LCG](#lcg)
 - [Supported platforms](#supported-platforms)
+  - [Eddie3 compute cluster](#eddie3-compute-cluster)
 - [Benchmarks](#benchmarks)
 - [Known issues](#known-issues)
 
------
 
 ## Introduction
 
@@ -128,7 +134,7 @@ Sierra (local) and Scientific Linux 6/7 (lxplus/Eddie3), and CentOS 7 (lxplus7).
  suited for the heavy computations required.
 
 
-### University of Edinburgh Eddie3 compute cluster
+### Eddie3 compute cluster
 
 Main wiki page describing the cluster is available
 [here](https://www.wiki.ed.ac.uk/display/ResearchServices/Eddie). As Eddie3
