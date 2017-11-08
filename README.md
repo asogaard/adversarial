@@ -162,12 +162,12 @@ using the default network- and training configurations within the supported
 conda environments. The devices used are Intel Xeon CPU E7-4820 v2 @ 2.00GHz
 (CPU) and Nvidia Tesla K80 (GPU).
 
-| **CPU** | Theano               | Tensorflow       |
+| **CPU** | **Theano**           | **Tensorflow**   |
 |:-------:|:--------------------:|:---------------: |
 | 1       | ca. 800 sec. / epoch | 245 sec. / epoch |
 | 2       | _N/A_                | 210 sec. / epoch |
 | 4       | _N/A_                | 185 sec. / epoch |
-| **GPU** | Theano               | Tensorflow       |
+| **GPU** | **Theano**           | **Tensorflow**   |
 | 1       |      52 sec. / epoch |  20 sec. / epoch |
 | 2       | _N/A_                |  14 sec. / epoch |
 | 4       | _N/A_                |  10 sec. / epoch |
