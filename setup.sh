@@ -42,6 +42,7 @@ fi
 
 # Actual setting up
 if [[ "$lcg" == true ]]; then
+
     if [[ "$host" != "lxplus" ]]; then
 	warning "Cannot setup LCG environment on $host platform. Exiting."
 	return 1
@@ -51,6 +52,7 @@ if [[ "$lcg" == true ]]; then
 	return 0
     fi
 else
+
     # Check that installation was performed.
     if ! hash conda 2>/dev/null; then
 	warning "conda was not installed. Please run the 'install.sh' script. Exiting."
@@ -58,10 +60,12 @@ else
     fi
 
     # Deactivate conda environment
+    if [[ "$(conda info --env | grep \* | sed 's/ .*//g')" != "root" ]]; then
+	source deactivate
+    fi
+
+    # Unset complete
     if [[ "$unset" == true ]]; then
-	if [[ "$(conda info --env | grep \* | sed 's/ .*//g')" != "root" ]]; then
-	    source deactivate
-	fi
 	return 0
     fi
 

@@ -6,7 +6,7 @@ source scripts/utils.sh
 
 # ------------------------------------------------------------------------------
 # Utility function to resolve libstdc++ link problems
-function fix_link {
+function fix_link () {
 
     # Define variable
     env="$1"
@@ -141,7 +141,7 @@ function fix_theano_gcc () {
 
 # ------------------------------------------------------------------------------
 # Install Miniconda2 
-function install_conda {
+function install_conda () {
     
     print "Installing Miniconda."
     
@@ -179,8 +179,10 @@ function install_conda {
     fi
 }
 
-
-function check_env_consistency {
+# ------------------------------------------------------------------------------
+# Check consistency of existing conda environment with .yml file from which it
+# should be created
+function check_env_consistency () {
 
     # Define variable(s)
     env="$1"
@@ -267,7 +269,7 @@ function check_env_consistency {
 
 # ------------------------------------------------------------------------------
 # Create conda environment from .yml file
-function create_env {
+function create_env () {
 
     # Define variable(s)
     env="$1"
@@ -286,7 +288,6 @@ function create_env {
 	return 1
     fi
 
-    #print "Creating conda environment '$env' from file '$envfile'."
     print "Setting up conda environment '$env'."
     
     # Check if environment already exists
@@ -322,6 +323,8 @@ function create_env {
 	# Fix ROOT setup problem on macOS (2/2)
 	if [[ "$(uname)" == *"Darwin"* ]]; then
 	    
+	    unset CONDA_ENV_PATH
+
             # Check if environment was succesfully activated
             env_active="$(conda info --envs | grep \* | sed 's/ .*//g')"
             if [ "$env_active" == "$env" ]; then
