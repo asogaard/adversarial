@@ -3,13 +3,14 @@
 Tools for training and evaluating adversarially trained neural networks for
 de-correlated jet tagging.
 
-1. [Introduction](#introdution)
--  [Quick start](#quick-start)
--  [Environment](#environment)
--  [Supported platform](#supported-platforms)
--  [Benchmarks](#benchmarks)
--  [Known issues](#known-issues)
+- [Introduction](#introdution)
+- [Quick start](#quick-start)
+- [Environment](#environment)
+- [Supported platform](#supported-platforms)
+- [Benchmarks](#benchmarks)
+- [Known issues](#known-issues)
 
+-----
 
 ## Introduction
 
