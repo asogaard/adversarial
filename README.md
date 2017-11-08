@@ -125,7 +125,7 @@ Sierra (local) and Scientific Linux 6/7 (lxplus/Eddie3), and CentOS 7 (lxplus7).
 
 Main wiki page describing the cluster is available
 [here](https://www.wiki.ed.ac.uk/display/ResearchServices/Eddie). As Eddie3
-provides compute nodes with up to 8 Nvidia Telsa K80 GPU's, this is a
+provides compute nodes with up to 8 Nvidia Telsa K80 GPUs, this is a
 recommended environment for training the networks.
 
 #### Interactive sessions
@@ -159,21 +159,22 @@ that order. Use `TAB` to auto-complete and see available command-line arguments.
 The following shows the time per epoch, excluding overhead, used to train the
 standalone classifier, running on 3.5M training samples (cross-val) per epoch
 using the default network- and training configurations within the supported
-conda environments. The devices used are *** (CPU) and Nvidia Tesla K80 (GPU).
+conda environments. The devices used are Intel Xeon CPU E7-4820 v2 @ 2.00GHz
+(CPU) and Nvidia Tesla K80 (GPU).
 
-| Devices \ Mode | Theano     | Tensorflow |
-|:--------------:|:----------:|:----------:|
-| **CPU**        |            |            |
-| 1              | TBD        | TBD        |
-| 2              | _N/A_      | TBD        |
-| 4              | _N/A_      | TBD        |
-| **GPU**        |            |            |
-| 1              | 52 sec.    | 20 sec.    |
-| 2              | _N/A_      | 14 sec.    |
-| 4              | _N/A_      | 10 sec.    |
+| **CPU** | Theano               | Tensorflow       |
+|:-------:|:--------------------:|:---------------: |
+| 1       | ca. 800 sec. / epoch | 245 sec. / epoch |
+| 2       | _N/A_                | 210 sec. / epoch |
+| 4       | _N/A_                | 185 sec. / epoch |
+| **GPU** | Theano               | Tensorflow       |
+| 1       |      52 sec. / epoch |  20 sec. / epoch |
+| 2       | _N/A_                |  14 sec. / epoch |
+| 4       | _N/A_                |  10 sec. / epoch |
 
 Typically, the performance bottleneck is found to be data transfer, limiting GPU
 utilisation to around 30-40%.
+
 
 
 ## Known issues
