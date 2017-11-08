@@ -6,7 +6,7 @@ de-correlated jet tagging.
 - [Introduction](#introdution)
 - [Quick start](#quick-start)
 - [Environment](#environment)
-- [Supported platform](#supported-platforms)
+- [Supported platforms](#supported-platforms)
 - [Benchmarks](#benchmarks)
 - [Known issues](#known-issues)
 
