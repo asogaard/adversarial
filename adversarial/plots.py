@@ -375,7 +375,15 @@ def plot_profiles (data, args, var, name='tagger_profile', title=''):
     # Create figure
     fig, ax = plt.subplots()
 
-    direction = ">" if 'NN' in var else "<"
+    # Get cut direction
+    if isinstance(var, str):
+        direction = ">" if 'NN' in var else "<"
+    else:
+        # Assume `var` is a Keras model describing a classifier taking
+        # `data.input` as input, with signal-like samples having predictions
+        # close to 1, and background-like samples close to 0.
+        direction = ">"
+        pass
 
     # Plotting variables
     edges = np.linspace(0, 300, 60 + 1, endpoint=True)
@@ -391,7 +399,7 @@ def plot_profiles (data, args, var, name='tagger_profile', title=''):
         tagger = data[var]
     else:
         # Assume `var` is a Keras model describing a classifier taking
-        # `data['X']` as input
+        # `data.input` as input
         classifier, var = var, var.name
         tagger = classifier.predict(data.inputs, batch_size=2048).flatten()
         pass

@@ -697,7 +697,7 @@ def main ():
         # Save combiend model diagram
         plot_model(combined, to_file=args.output + 'model_combined.png', show_shapes=True)
 
-        if args.train: # @TEMP
+        if args.train:
             log.info("Training full, combined model")
 
             # Create custom objective function for posterior: - log(p) of the

@@ -5,9 +5,9 @@
 source scripts/utils.sh
 
 # Variable definitions
-usertarget="" # Default
-username="" # Default
-target=./input
+usertarget=/exports/eddie/scratch/s1562020/adversarial/data # Default
+username=asogaard # Default
+target=input
 source=/eos/atlas/user/a/asogaard/adversarial/data
 filename=data.h5
 
@@ -82,7 +82,7 @@ else
     question "Is that OK?" "y"
     response="$?"
     if (( "$response" )); then
-	rsync -tz $username@lxplus.cern.ch:$source/$filename $usertarget/
+	scp $username@lxplus.cern.ch:$source/$filename $usertarget/
     else
 	warning "Exiting."
 	return 1
