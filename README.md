@@ -15,7 +15,7 @@ de-correlated jet tagging.
 - [Supported platforms](#supported-platforms)
   - [Eddie3 compute cluster](#eddie3-compute-cluster)
 - [Benchmarks](#benchmarks)
-- [TensorBoard](#TensorBoard)
+- [TensorBoard](#tensorboard)
 - [Known issues](#known-issues)
 
 
@@ -204,7 +204,7 @@ The output TensorBoard is published to `http://localhost:6006` on the running se
 $ ssh <user>@<host> -L 16006:127.0.0.1:6006
 ```
 
-and navigating to `http://localhost:16006` on the local machine. The file outputs from running with TensorBoard callbacks are stored in the `logs/` directory of the project, and running TensorBoard manually is possible by doing 
+and navigating to `http://localhost:16006` on the local machine. The file outputs from running with TensorBoard callbacks are stored in the `logs/` directory of the project, and running TensorBoard manually is possible by doing
 
 ```
 $ tensorboard --logdir logs/<timestamp>
