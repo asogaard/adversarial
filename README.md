@@ -15,6 +15,7 @@ de-correlated jet tagging.
 - [Supported platforms](#supported-platforms)
   - [Eddie3 compute cluster](#eddie3-compute-cluster)
 - [Benchmarks](#benchmarks)
+- [TensorBoard](#TensorBoard)
 - [Known issues](#known-issues)
 
 
@@ -188,6 +189,28 @@ conda environments. The devices used are Intel Xeon CPU E7-4820 v2 @ 2.00GHz
 Typically, the performance bottleneck is found to be data transfer, limiting GPU
 utilisation to around 30-40%.
 
+
+## TensorBoard
+
+For convenience, the project natively supports TensorBoard for monitoring the training progress. To use TensorBoard, run using the `--tensorboard` flag, i.e.
+
+```
+$ run.py --train --tensorflow --tensorboard
+```
+
+The output TensorBoard is published to `http://localhost:6006` on the running server. If the code is run through ssh, it is still possible to access the results locally, by doing
+
+```
+$ ssh <user>@<host> -L 16006:127.0.0.1:6006
+```
+
+and navigating to `http://localhost:16006` on the local machine. The file outputs from running with TensorBoard callbacks are stored in the `logs/` directory of the project, and running TensorBoard manually is possible by doing 
+
+```
+$ tensorboard --logdir logs/<timestamp>
+```
+
+Notice that TensorBoard requires using the TensorFlow backend. (_This might not be strictly true, but it's asserted nonetheless._)
 
 
 ## Known issues

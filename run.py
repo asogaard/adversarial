@@ -194,6 +194,8 @@ def main ():
 
         # Start TensorBoard instance
         if args.tensorboard:
+            assert args.tensorflow, "TensorBoard requires TensorFlow backend."
+            
             log.info("Starting TensorBoard instance in background.")
             log.info("The output will be available at:")
             log.info("  http://localhost:6006")
@@ -990,6 +992,7 @@ def main ():
     # --------------------------------------------------------------------------
     
     if args.tensorboard:
+        # @TODO: Improve, using `ps`.
         log.info("TensorBoard process ({}) is running in background. Enter `q` to close it. Enter anything else to quit the program while leaving TensorBoard running.".format(tensorboard_pid))
         response = raw_input(">> ")
         if response.strip() == 'q':
