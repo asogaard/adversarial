@@ -10,6 +10,8 @@ import gzip
 import glob
 import json
 import pickle
+import datetime
+import subprocess
 from pprint import pprint
 import logging as log
 import itertools
@@ -61,7 +63,7 @@ parser.add_argument('-c', '--config', dest='config',  action='store', type=str,
 parser.add_argument('-p', '--patch', dest='patches', action='append', type=str,
                     help='Patch file(s) with which to update configuration file.')
 parser.add_argument('--devices',     dest='devices', action='store', type=int,
-                    default=1, help='Number of CPU/GPU devices to use with Tensorflow.')
+                    default=1, help='Number of CPU/GPU devices to use with TensorFlow.')
 parser.add_argument('--folds',       dest='folds',    action='store', type=int,
                     default=2, help='Number of folds to use for stratified cross-validation.')
 
@@ -71,11 +73,13 @@ parser.add_argument('-v', '--verbose', dest='verbose', action='store_const',
 parser.add_argument('-g', '--gpu',  dest='gpu',        action='store_const',
                     const=True, default=False, help='Run on GPU')
 parser.add_argument('--tensorflow', dest='tensorflow', action='store_const',
-                    const=True, default=False, help='Use Tensorflow backend')
+                    const=True, default=False, help='Use TensorFlow backend')
 parser.add_argument('--train', dest='train', action='store_const',
                     const=True, default=False, help='Perform training')
 parser.add_argument('--plot', dest='plot', action='store_const',
                     const=True, default=False, help='Perform plotting')
+parser.add_argument('--tensorboard', dest='tensorboard', action='store_const',
+                    const=True, default=False, help='Use TensorBoard for monitoring')
 
 
 # Main function definition
@@ -139,7 +143,7 @@ def main ():
         import keras
         import keras.backend as K
         from keras.models import load_model
-        from keras.callbacks import Callback
+        from keras.callbacks import Callback, TensorBoard
         KERAS_VERSION=int(keras.__version__.split('.')[0])
         if KERAS_VERSION == 2:
             from keras.utils.vis_utils import plot_model
@@ -188,6 +192,16 @@ def main ():
                                              opts.pop('decay')))
             pass
 
+        # Start TensorBoard instance
+        if args.tensorboard:
+            log.info("Starting TensorBoard instance in background.")
+            log.info("The output will be available at:")
+            log.info("  http://localhost:6006")
+            tensorboard_dir = 'logs/{}/'.format('-'.join(re.split('-|:| ', str(datetime.datetime.now()).split('.')[0])))
+            tensorboard_pid = subprocess.Popen(["tensorboard", "--logdir", tensorboard_dir]).pid
+            log.info("TensorBoard has PID {}.".format(tensorboard_pid))
+            pass
+            
         pass
 
 
@@ -382,8 +396,6 @@ def main ():
             log.info("Training cross-validation classifiers")
 
             # Loop `k` folds
-            #for fold, (train, validation) in
-            #enumerate(skf.split(data.train.inputs, data.train.targets)):
             try:
                 for fold, (train, validation) in enumerate(skf):
                     with Profile("Fold {}/{}".format(fold + 1, args.folds)):
@@ -405,7 +417,14 @@ def main ():
                         # Compile model (necessary to save properly)
                         classifier.compile(**cfg['classifier']['compile'])
 
-
+                        # Create callbacks
+                        callbacks = []
+                        
+                        # -- TensorBoard
+                        if args.tensorboard:
+                            callbacks += [TensorBoard(log_dir=tensorboard_dir + 'classifier/fold{}/'.format(fold))]
+                            pass
+                                                
                         # Fit classifier model
                         result = train_in_parallel(classifier,
                                                    {'input':   data.train.inputs,
@@ -417,7 +436,10 @@ def main ():
                                                     'weights': data.train.weights,
                                                     'mask':    validation},
                                                    config=cfg['classifier'],
-                                                   num_devices=args.devices, mode=args.mode, seed=seed)
+                                                   num_devices=args.devices,
+                                                   mode=args.mode,
+                                                   seed=seed,
+                                                   callbacks=callbacks)
 
                         histories.append(result['history'])
 
@@ -532,6 +554,14 @@ def main ():
             # cross-validation
             cfg['classifier']['fit']['epochs'] = opt_epochs
 
+            # Create callbacks
+            callbacks = []
+
+            # -- TensorBoard
+            if args.tensorboard:
+                callbacks += [TensorBoard(log_dir=tensorboard_dir + 'classifier/')]
+                pass
+
             # Train final classifier
             try:
                 result = train_in_parallel(classifier,
@@ -541,7 +571,8 @@ def main ():
                                            config=cfg['classifier'],
                                            mode=args.mode,
                                            num_devices=args.devices,
-                                           seed=seed)
+                                           seed=seed,
+                                           callbacks=callbacks)
             except KeyboardInterrupt:
                 log.warning("Training was stopped early.")
                 pass
@@ -681,6 +712,9 @@ def main ():
         # Save adversarial model diagram
         plot_model(adversary, to_file=args.output + 'model_adversary.png', show_shapes=True)
 
+        # Create callback array
+        callbacks = list()
+
         # Create callback logging the adversary p.d.f.'s during training
         callback_posterior = PosteriorCallback(data.test, args, adversary)
 
@@ -689,9 +723,12 @@ def main ():
 
         # List all callbacks to be used
         if args.plot:
-            callbacks = [callback_posterior, callback_profiles]
-        else:
-            callbacks = []
+            callbacks += [callback_posterior, callback_profiles]
+            pass
+
+        # (opt.) Add TensorBoard callback
+        if args.tensorboard:
+            callbacks += [TensorBoard(log_dir=tensorboard_dir + 'combined/')]
             pass
 
         # Set up combined, adversarial model
@@ -718,7 +755,7 @@ def main ():
             # Train final classifier
             try:
                 result = train_in_parallel(combined,
-                                           {'input':   [data.inputs, data.decorrelation],
+                                           {'input':   [data.inputs,  data.decorrelation],
                                             'target':  [data.targets, np.ones_like(data.targets)],
                                             'weights': [data.weights, np.multiply(data.weights, 1 - data.targets)]},
                                            # @TODO:
@@ -948,6 +985,21 @@ def main ():
             pass
         pass
 
+
+    # Clean-up
+    # --------------------------------------------------------------------------
+    
+    if args.tensorboard:
+        log.info("TensorBoard process ({}) is running in background. Enter `q` to close it. Enter anything else to quit the program while leaving TensorBoard running.".format(tensorboard_pid))
+        response = raw_input(">> ")
+        if response.strip() == 'q':
+            subprocess.call(["kill", str(tensorboard_pid)])
+        else:
+            log.info("TensorBoard process is left running. To manually kill it later, do:")
+            log.info("$ kill {}".format(tensorboard_pid))
+            pass
+        pass
+    
     return 0
 
 

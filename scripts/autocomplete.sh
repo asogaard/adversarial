@@ -19,7 +19,7 @@ _run()
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
-    opts="-h --help -i --input -o --output -c --config -p --patch --devices --folds -v --verbose -g --gpu --tensorflow --train --plot"
+    opts="-h --help -i --input -o --output -c --config -p --patch --devices --folds -v --verbose -g --gpu --tensorflow --train --plot --tensorboard"
 
     if [[ ${cur} == -* ]] ; then
         COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
