@@ -382,26 +382,26 @@ def main ():
             try:
                 for fold, (train, validation) in enumerate(skf):
                     with Profile("Fold {}/{}".format(fold + 1, args.folds)):
-                        
+
                         # StratifiedKFold provides stratification, but since the
                         # input arrays are not randomised, neither will the
                         # folds. Therefore, the fold should be taken with respect to
                         # a set of randomised indices rather than range(N).
                         train      = random_indices[train]
                         validation = random_indices[validation]
-                        
+
                         # Define unique tag and name for current classifier
                         tag  = '{}of{}'.format(fold + 1, args.folds)
                         name = '{}__{}'.format(basename, tag)
-                        
+
                         # Get classifier
                         classifier = classifier_model(num_features, **cfg['classifier']['model'])
-                        
+
                         # Compile model (necessary to save properly)
                         classifier.compile(**cfg['classifier']['compile'])
-                        
-                        
-                        # Fit classifier model                    
+
+
+                        # Fit classifier model
                         result = train_in_parallel(classifier,
                                                    {'input':   data.train.inputs,
                                                     'target':  data.train.targets,
@@ -413,9 +413,9 @@ def main ():
                                                     'mask':    validation},
                                                    config=cfg['classifier'],
                                                    num_devices=args.devices, mode=args.mode, seed=seed)
-                        
+
                         histories.append(result['history'])
-                        
+
                         # Save classifier model and training history to file, both
                         # in unique output directory and in the directory for
                         # pre-trained classifiers
@@ -426,7 +426,7 @@ def main ():
                                 json.dump(result['history'], f)
                                 pass
                             pass
-                        
+
                         # Add to list of classifiers
                         classifiers.append(classifier)
                         pass
@@ -546,7 +546,7 @@ def main ():
             except KeyboardInterrupt:
                 log.warning("Training was stopped early.")
                 pass
-            
+
             # Save classifier model and training history to file, both
             # in unique output directory and in the directory for
             # pre-trained classifiers
@@ -580,6 +580,42 @@ def main ():
         # Store classifier output as tagger variable.
         data.add_field('NN', classifier.predict(data.inputs, batch_size=2048 * 8).flatten().astype(K.floatx()))
         pass
+
+
+    # Saving classifier in lwtnn-friendly format.
+    # --------------------------------------------------------------------------
+    def lwtnn_save(model, name, basedir='./trained/lwtnn/'):
+        """Method for saving classifier in lwtnn-friendly format.
+        See [https://github.com/lwtnn/lwtnn/wiki/Keras-Converter]
+        """
+        # Check(s).
+        if not basedir.endswith('/'):
+            basedir += '/'
+            pass
+
+        # Make sure output directory exists
+        if not os.path.exists(basedir):
+            print "Creating output directory:\n  {}".format(basedir)
+            os.makedirs(basedir)
+            pass
+
+
+        # Get the architecture as a json string
+        arch = model.to_json()
+
+        # Save the architecture string to a file
+        with open(basedir + name + '_architecture.json', 'w') as arch_file:
+            arch_file.write(arch)
+            pass
+
+        # Now save the weights as an HDF5 file
+        model.save_weights(basedir + name + '_weights.h5')
+
+        # Save full model to HDF5 file
+        model.save(basedir + name + '.h5')
+        return
+
+    lwtnn_save(classifier, 'nn')
 
 
     # Plotting ROCs (only NN)
@@ -690,7 +726,7 @@ def main ():
             except KeyboardInterrupt:
                 log.warning("Training was stopped early.")
                 pass
-                        
+
             # Save combined model and training history to file, both
             # in unique output directory and in the directory for
             # pre-trained classifiers
@@ -729,6 +765,11 @@ def main ():
         pass
 
     plot_posterior(data, args, adversary, name='posterior_end', title="End of training")
+
+
+    # Saving "vanilla" classifier in lwtnn-friendly format.
+    # --------------------------------------------------------------------------
+    lwtnn_save(classifier, 'ann')
 
 
     # Perform DDT transform
