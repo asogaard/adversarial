@@ -74,6 +74,8 @@ parser.add_argument('--tensorflow', dest='tensorflow', action='store_const',
                     const=True, default=False, help='Use Tensorflow backend')
 parser.add_argument('--train', dest='train', action='store_const',
                     const=True, default=False, help='Perform training')
+parser.add_argument('--plot', dest='plot', action='store_const',
+                    const=True, default=False, help='Perform plotting')
 
 
 # Main function definition
@@ -93,6 +95,9 @@ def main ():
         # Set print level
         log.basicConfig(format="%(levelname)s: %(message)s",
                         level=log.DEBUG if args.verbose else log.INFO)
+
+        # Create common colour array
+        colours = map(lambda d: d['color'], list(plt.rcParams["axes.prop_cycle"]))
 
         #  Modify input/output directory names to conform to convention
         if not args.input .endswith('/'): args.input  += '/'
@@ -458,58 +463,52 @@ def main ():
         pass
 
 
+    # Get optimal number of training epochs
+    # --------------------------------------------------------------------------
+    if args.train:
+        epochs = 1 + np.arange(len(histories[0]['loss']))        
+        val_avg = np.mean([hist['val_loss'] for hist in histories], axis=0)
+        opt_epochs = epochs[np.argmin(val_avg)]
+        
+        log.info("Using optimal number of {:d} training epochs".format(opt_epochs))
+        pass
+
+
     # Plotting: Cost log for classifier-only fit
     # --------------------------------------------------------------------------
-
-    # Optimal number of training epochs
-    opt_epochs = None
-
-    with Profile("Plotting: Cost log, cross-val."):
-
-        fig, ax = plt.subplots()
-        colours = map(lambda d: d['color'], list(plt.rcParams["axes.prop_cycle"]))
-
-        # @NOTE: Assuming no early stopping
-        epochs = 1 + np.arange(len(histories[0]['loss']))
-
-        for fold, hist in enumerate(histories):
-            plt.plot(epochs, hist['val_loss'], color=colours[1], linewidth=0.6, alpha=0.3,
-                     label='Validation (fold)' if fold == 0 else None)
+    if args.plot:
+        with Profile("Plotting: Cost log, cross-val."):
+            
+            # Perform plotting
+            fig, ax = plt.subplots()
+            
+            for fold, hist in enumerate(histories):
+                plt.plot(epochs, hist['val_loss'], color=colours[1], linewidth=0.6, alpha=0.3,
+                         label='Validation (fold)' if fold == 0 else None)
+                pass
+            
+            plt.plot(epochs, val_avg,   color=colours[1], label='Validation (avg.)')
+            
+            for fold, hist in enumerate(histories):
+                plt.plot(epochs, hist['loss'],     color=colours[0], linewidth=1.0, alpha=0.3,
+                         label='Training (fold)'   if fold == 0 else None)
+                pass
+            
+            train_avg = np.mean([hist['loss'] for hist in histories], axis=0)
+            plt.plot(epochs, train_avg, color=colours[0], label='Train (avg.)')
+            
+            plt.title('Classifier-only, stratified {}-fold training'.format(args.folds), fontweight='medium')
+            plt.xlabel("Training epochs",    horizontalalignment='right', x=1.0)
+            plt.ylabel("Objective function", horizontalalignment='right', y=1.0)
+            
+            epochs = [0] + list(epochs)
+            step = max(int(np.floor(len(epochs) / 10.)), 1)
+            
+            plt.xticks(filter(lambda x: x % step == 0, epochs))
+            plt.legend()
+            
+            plt.savefig(args.output + 'costlog_classifier.pdf')
             pass
-
-        val_avg = np.mean([hist['val_loss'] for hist in histories], axis=0)
-        plt.plot(epochs, val_avg,   color=colours[1], label='Validation (avg.)')
-
-        # Store the optimal number of training epochs
-        if args.train:
-            opt_epochs = epochs[np.argmin(val_avg)]
-            log.info("Using optimal number of {:d} training epochs".format(opt_epochs))
-            pass
-
-        for fold, hist in enumerate(histories):
-            plt.plot(epochs, hist['loss'],     color=colours[0], linewidth=1.0, alpha=0.3,
-                     label='Training (fold)'   if fold == 0 else None)
-            pass
-
-        train_avg = np.mean([hist['loss'] for hist in histories], axis=0)
-        plt.plot(epochs, train_avg, color=colours[0], label='Train (avg.)')
-
-        plt.title('Classifier-only, stratified {}-fold training'.format(args.folds), fontweight='medium')
-        plt.xlabel("Training epochs",    horizontalalignment='right', x=1.0)
-        plt.ylabel("Objective function", horizontalalignment='right', y=1.0)
-
-        epochs = [0] + list(epochs)
-        step = max(int(np.floor(len(epochs) / 10.)), 1)
-
-        plt.xticks(filter(lambda x: x % step == 0, epochs))
-        plt.legend()
-
-        #plt.text(0.03, 0.95, "ATLAS",
-        #         weight='bold', style='italic', size='large',
-        #         ha='left', va='top',
-        #         transform=ax.transAxes)
-
-        plt.savefig(args.output + 'costlog_classifier.pdf')
         pass
 
 
@@ -623,9 +622,11 @@ def main ():
 
     # Tagger variables
     variables = ['Tau21', 'D2', 'NN']
-
-    with Profile("Plotting: ROCs (only NN)"):
-        plot_roc(data.test, args, variables, name='tagger_ROCs_NN')
+    
+    if args.plot:
+        with Profile("Plotting: ROCs (only NN)"):
+            plot_roc(data.test, args, variables, name='tagger_ROCs_NN')
+            pass
         pass
 
 
@@ -687,7 +688,11 @@ def main ():
         callback_profiles  = ProfilesCallback(data.test, args, classifier)
 
         # List all callbacks to be used
-        callbacks = [callback_posterior, callback_profiles]
+        if args.plot:
+            callbacks = [callback_posterior, callback_profiles]
+        else:
+            callbacks = []
+            pass
 
         # Set up combined, adversarial model
         combined = combined_model(classifier,
@@ -764,7 +769,9 @@ def main ():
         data.add_field('ANN', classifier.predict(data.inputs, batch_size=2048 * 8).flatten().astype(K.floatx()))
         pass
 
-    plot_posterior(data, args, adversary, name='posterior_end', title="End of training")
+    if args.plot:
+        plot_posterior(data, args, adversary, name='posterior_end', title="End of training")
+        pass
 
 
     # Saving "vanilla" classifier in lwtnn-friendly format.
@@ -781,10 +788,11 @@ def main ():
 
         # Tau21DDT(1)
         xmin, xmax = 1.5, 4.0
+
+        # (opt.) Plot
         intercept, slope = plot_decorrelation(data.background,
                                               args,
                                               name='tagger_decorrelation__1',
-                                              #title=r"%s: All background jets" % (latex('tau21DDT_1')),
                                               fit_range=(xmin, xmax))
 
         # Compute tau21DDT
@@ -802,10 +810,11 @@ def main ():
         log.warning("Weighted fraction of W events passing Tau21DDT_2 selection: {:.1f}%".format(eff_W * 100.))
 
         msk = selection(data.background) #data.background['pt'] > 2 * data.background['m']
+
+        # (opt.) Plot
         intercept, slope = plot_decorrelation(data.background.slice(msk),
                                               args,
                                               name='tagger_decorrelation__2',
-                                              #title=r"%s: Background jets, $p_{T} > 2 \times m$ ($\varepsilon_{W} = %.1f%%$)" % (latex('tau21DDT_2'), eff_W * 100.),
                                               fit_range=(xmin, xmax))
 
         # Compute tau21DDT
@@ -826,12 +835,13 @@ def main ():
         log.warning("Weighted fraction of W events passing Tau21DDT_3 selection: {:.1f}%".format(eff_W * 100.))
 
         msk = selection(data.background)
+
+        # (opt.) Plot
         intercept, slope = plot_decorrelation(data.background.slice(msk),
                                               args,
                                               name='tagger_decorrelation__3',
-                                              #title=r"%s: Background jets, $p_{T} > 2 \times m$, %s $> %.1f$ ($\varepsilon_{W} = %.1f%%$)" % (latex('tau21DDT_3'), latex('rhoDDT'), xmin, eff_W * 100.),
                                               fit_range=(xmin, xmax))
-
+        
         # Compute tau21DDT
         Tau21DDT = data['Tau21'] - slope * (data['rhoDDT'] - xmin)
 
@@ -849,40 +859,42 @@ def main ():
 
     # Plotting: Cost log for adversarial fit
     # --------------------------------------------------------------------------
-    with Profile("Plotting: Cost log, adversarial, full"):
-
-        fig, ax = plt.subplots()
-        colours = map(lambda d: d['color'], list(plt.rcParams["axes.prop_cycle"]))
-        epochs = 1 + np.arange(len(history['loss']))
-        lambda_reg = cfg['combined']['model']['lambda_reg']
-        lr_ratio   = cfg['combined']['model']['lr_ratio']
-
-        classifier_loss = np.mean([loss for key,loss in history.iteritems() if key.startswith('combined') and int(key.split('_')[-1]) % 2 == 1 ], axis=0)
-        adversary_loss  = np.mean([loss for key,loss in history.iteritems() if key.startswith('combined') and int(key.split('_')[-1]) % 2 == 0 ], axis=0) * lambda_reg
-        combined_loss   = classifier_loss + adversary_loss
-
-        plt.plot(epochs, classifier_loss, color=colours[0],  linewidth=1.4,  label='Classifier')
-        plt.plot(epochs, adversary_loss,  color=colours[1],  linewidth=1.4,  label=r'Adversary ($\lambda$ = {})'.format(lambda_reg))
-        plt.plot(epochs, combined_loss,   color=colours[-1], linestyle='--', label='Combined')
-
-        plt.title('Adversarial training', fontweight='medium')
-        plt.xlabel("Training epochs", horizontalalignment='right', x=1.0)
-        plt.ylabel("Objective function",   horizontalalignment='right', y=1.0)
-
-        epochs = [0] + list(epochs)
-        step = max(int(np.floor(len(epochs) / 10.)), 1)
-
-        plt.xticks(filter(lambda x: x % step == 0, epochs))
-        plt.legend()
-
-        plt.text(0.03, 0.95, "ATLAS",
-                 weight='bold', style='italic', size='large',
-                 ha='left', va='top',
-                 transform=ax.transAxes)
-
-        plt.savefig(args.output + 'costlog_combined.pdf')
+    if args.plot:
+        with Profile("Plotting: Cost log, adversarial, full"):
+            
+            fig, ax = plt.subplots()
+            colours = map(lambda d: d['color'], list(plt.rcParams["axes.prop_cycle"]))
+            epochs = 1 + np.arange(len(history['loss']))
+            lambda_reg = cfg['combined']['model']['lambda_reg']
+            lr_ratio   = cfg['combined']['model']['lr_ratio']
+            
+            classifier_loss = np.mean([loss for key,loss in history.iteritems() if key.startswith('combined') and int(key.split('_')[-1]) % 2 == 1 ], axis=0)
+            adversary_loss  = np.mean([loss for key,loss in history.iteritems() if key.startswith('combined') and int(key.split('_')[-1]) % 2 == 0 ], axis=0) * lambda_reg
+            combined_loss   = classifier_loss + adversary_loss
+            
+            plt.plot(epochs, classifier_loss, color=colours[0],  linewidth=1.4,  label='Classifier')
+            plt.plot(epochs, adversary_loss,  color=colours[1],  linewidth=1.4,  label=r'Adversary ($\lambda$ = {})'.format(lambda_reg))
+            plt.plot(epochs, combined_loss,   color=colours[-1], linestyle='--', label='Combined')
+            
+            plt.title('Adversarial training', fontweight='medium')
+            plt.xlabel("Training epochs", horizontalalignment='right', x=1.0)
+            plt.ylabel("Objective function",   horizontalalignment='right', y=1.0)
+            
+            epochs = [0] + list(epochs)
+            step = max(int(np.floor(len(epochs) / 10.)), 1)
+            
+            plt.xticks(filter(lambda x: x % step == 0, epochs))
+            plt.legend()
+            
+            plt.text(0.03, 0.95, "ATLAS",
+                     weight='bold', style='italic', size='large',
+                     ha='left', va='top',
+                     transform=ax.transAxes)
+            
+            plt.savefig(args.output + 'costlog_combined.pdf')
+            pass
         pass
-
+    
 
     # Plotting
     # --------------------------------------------------------------------------
@@ -893,35 +905,41 @@ def main ():
 
     # Plotting: Distributions
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    with Profile("Plotting: Distributions"):
-        for var in variables:
-            print "-- {}".format(var)
-            plot_distribution(data, args, var)
+    if args.plot:
+        with Profile("Plotting: Distributions"):
+            for var in variables:
+                print "-- {}".format(var)
+                plot_distribution(data, args, var)
+                pass
             pass
         pass
 
 
     # Plotting: Jet mass spectra
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    with Profile("Plotting: Jet mass spectra"):
-        plot_jetmass_comparison(data, args, cut_eff=0.5)
-        for var in variables:
-            print "-- {}".format(var)
-            plot_jetmass(data, args, var, cut_eff=[0.5, 0.4, 0.3, 0.2, 0.1])
+    if args.plot:
+        with Profile("Plotting: Jet mass spectra"):
+            plot_jetmass_comparison(data, args, cut_eff=0.5)
+            for var in variables:
+                print "-- {}".format(var)
+                plot_jetmass(data, args, var, cut_eff=[0.5, 0.4, 0.3, 0.2, 0.1])
+                pass
             pass
         pass
 
 
     # Plotting: ROCs (NN and ANN)
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    with Profile("Plotting: ROCs (NN and ANN)"):
-        plot_roc(data.test, args, variables, name='tagger_ROCs_ANN')
+    if args.plot:
+        with Profile("Plotting: ROCs (NN and ANN)"):
+            plot_roc(data.test, args, variables, name='tagger_ROCs_ANN')
+            pass
         pass
 
 
     # Plotting: Profiles
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    if True:
+    if args.plot:
         with Profile("Plotting: Profiles"):
             for var in variables:
                 print "-- {}".format(var)

@@ -663,6 +663,10 @@ def plot_decorrelation (data, args, name='decorrelation_profile', title='', fit_
         intercept, slope = fit.GetParameter(0), fit.GetParameter(1)
         pass
 
+    # (opt.) Early stopping, if plotting is not requested
+    if not args.plot:
+        return intercept, slope
+
     # Fill transformed ROOT TProfile
     tau21DDT = data['Tau21'] - (data['rhoDDT'] - fit_range[0]) * slope
     profDDT = ROOT.TProfile('tau21DDT_profile', "", len(edges) - 1, edges)
