@@ -5,9 +5,9 @@
 source scripts/utils.sh
 
 # Variable definitions
-usertarget=/exports/eddie/scratch/s1562020/adversarial/data # Default
-username=asogaard # Default
-target=input
+usertarget=""  # Default
+username="" # Default
+target=input/
 source=/eos/atlas/user/a/asogaard/adversarial/data
 filename=data.h5
 
