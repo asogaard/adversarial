@@ -51,39 +51,42 @@ from adversarial.plots   import *
 # Command-line arguments parser
 import argparse
 
-parser = argparse.ArgumentParser(description="Perform training (and evaluation?) of adversarial neural networks for de-correlated jet tagging.")
+def parse_args (cmdline_args=sys.argv[1:]):
+    parser = argparse.ArgumentParser(description="Perform training (and evaluation?) of adversarial neural networks for de-correlated jet tagging.")
 
-# -- Inputs
-parser.add_argument('-i', '--input',  dest='input',   action='store', type=str,
-                    default='./input/', help='Input directory, from which to read ROOT files.')
-parser.add_argument('-o', '--output', dest='output',  action='store', type=str,
-                    default='./output/', help='Output directory, to which to write results.')
-parser.add_argument('-c', '--config', dest='config',  action='store', type=str,
-                    default='./configs/default.json', help='Configuration file.')
-parser.add_argument('-p', '--patch', dest='patches', action='append', type=str,
-                    help='Patch file(s) with which to update configuration file.')
-parser.add_argument('--devices',     dest='devices', action='store', type=int,
-                    default=1, help='Number of CPU/GPU devices to use with TensorFlow.')
-parser.add_argument('--folds',       dest='folds',    action='store', type=int,
-                    default=2, help='Number of folds to use for stratified cross-validation.')
+    # -- Inputs
+    parser.add_argument('-i', '--input',  dest='input',   action='store', type=str,
+                        default='./input/', help='Input directory, from which to read ROOT files.')
+    parser.add_argument('-o', '--output', dest='output',  action='store', type=str,
+                        default='./output/', help='Output directory, to which to write results.')
+    parser.add_argument('-c', '--config', dest='config',  action='store', type=str,
+                        default='./configs/default.json', help='Configuration file.')
+    parser.add_argument('-p', '--patch', dest='patches', action='append', type=str,
+                        help='Patch file(s) with which to update configuration file.')
+    parser.add_argument('--devices',     dest='devices', action='store', type=int,
+                        default=1, help='Number of CPU/GPU devices to use with TensorFlow.')
+    parser.add_argument('--folds',       dest='folds',    action='store', type=int,
+                        default=2, help='Number of folds to use for stratified cross-validation.')
 
-# -- Flags
-parser.add_argument('-v', '--verbose', dest='verbose', action='store_const',
-                    const=True, default=False, help='Print verbose')
-parser.add_argument('-g', '--gpu',  dest='gpu',        action='store_const',
-                    const=True, default=False, help='Run on GPU')
-parser.add_argument('--tensorflow', dest='tensorflow', action='store_const',
-                    const=True, default=False, help='Use TensorFlow backend')
-parser.add_argument('--train', dest='train', action='store_const',
-                    const=True, default=False, help='Perform training (classifier and adversarial)')
-parser.add_argument('--train-classifier', dest='train_classifier', action='store_const',
-                    const=True, default=False, help='Perform classifier pre-training')
-parser.add_argument('--train-adversarial', dest='train_adversarial', action='store_const',
-                    const=True, default=False, help='Perform adversarial training')
-parser.add_argument('--plot', dest='plot', action='store_const',
-                    const=True, default=False, help='Perform plotting')
-parser.add_argument('--tensorboard', dest='tensorboard', action='store_const',
-                    const=True, default=False, help='Use TensorBoard for monitoring')
+    # -- Flags
+    parser.add_argument('-v', '--verbose', dest='verbose', action='store_const',
+                        const=True, default=False, help='Print verbose')
+    parser.add_argument('-g', '--gpu',  dest='gpu',        action='store_const',
+                        const=True, default=False, help='Run on GPU')
+    parser.add_argument('--tensorflow', dest='tensorflow', action='store_const',
+                        const=True, default=False, help='Use TensorFlow backend')
+    parser.add_argument('--train', dest='train', action='store_const',
+                        const=True, default=False, help='Perform training')
+    parser.add_argument('--train-classifier', dest='train_classifier', action='store_const',
+                        const=True, default=False, help='Perform classifier pre-training')
+    parser.add_argument('--train-adversarial', dest='train_adversarial', action='store_const',
+                        const=True, default=False, help='Perform adversarial training')
+    parser.add_argument('--plot', dest='plot', action='store_const',
+                        const=True, default=False, help='Perform plotting')
+    parser.add_argument('--tensorboard', dest='tensorboard', action='store_const',
+                        const=True, default=False, help='Use TensorBoard for monitoring')
+
+    return parser.parse_args(cmdline_args)
 
 
 # Main function definition
@@ -93,9 +96,6 @@ def main ():
     # Initialisation
     # --------------------------------------------------------------------------
     with Profile("Initialisation"):
-
-        # Parse command-line arguments
-        args = parser.parse_args()
 
         # Add 'mode' field manually
         args = argparse.Namespace(mode='gpu' if args.gpu else 'cpu', **vars(args))
@@ -201,7 +201,7 @@ def main ():
             tensorboard_dir = 'logs/{}/'.format('-'.join(re.split('-|:| ', str(datetime.datetime.now()).split('.')[0])))
             if args.tensorboard:
                 assert args.tensorflow, "TensorBoard requires TensorFlow backend."
-                
+
                 log.info("Starting TensorBoard instance in background.")
                 log.info("The output will be available at:")
                 log.info("  http://localhost:6006")
@@ -1017,6 +1017,10 @@ def main ():
 
 # Main function call
 if __name__ == '__main__':
-    print ""
-    main()
+    
+    # Parse command-line arguments
+    args = parse_args()
+
+    # Call main function
+    main(args)
     pass
