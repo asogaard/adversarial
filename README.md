@@ -14,8 +14,9 @@ de-correlated jet tagging.
   - [LCG](#lcg)
 - [Supported platforms](#supported-platforms)
   - [Eddie3 compute cluster](#eddie3-compute-cluster)
-- [Benchmarks](#benchmarks)
+- [Optimisation](#optimisation)
 - [TensorBoard](#tensorboard)
+- [Benchmarks](#benchmarks)
 - [Known issues](#known-issues)
 
 
@@ -168,26 +169,18 @@ that order. Use `TAB` to auto-complete and see available command-line arguments.
 
 
 
-## Benchmarks
+## Optimisation
 
-The following shows the time per epoch, excluding overhead, used to train the
-standalone classifier, running on 3.5M training samples (cross-val) per epoch
-using the default network- and training configurations within the supported
-conda environments. The devices used are Intel Xeon CPU E7-4820 v2 @ 2.00GHz
-(CPU) and Nvidia Tesla K80 (GPU).
+#### @TODO: Cross-platform installation procedure
 
-| **CPU** | **Theano**           | **Tensorflow**   |
-|:-------:|:--------------------:|:---------------: |
-| 1       | ca. 800 sec. / epoch | 245 sec. / epoch |
-| 2       | _N/A_                | 210 sec. / epoch |
-| 4       | _N/A_                | 185 sec. / epoch |
-| **GPU** | **Theano**           | **Tensorflow**   |
-| 1       |      52 sec. / epoch |  20 sec. / epoch |
-| 2       | _N/A_                |  14 sec. / epoch |
-| 4       | _N/A_                |  10 sec. / epoch |
+_Follow installation guide here: [https://github.com/HIPS/Spearmint](https://github.com/HIPS/Spearmint)._
 
-Typically, the performance bottleneck is found to be data transfer, limiting GPU
-utilisation to around 30-40%.
+To run the optimisation, do e.g.
+```
+$ mongod --fork --logpath optimisation/log.txt --dbpath optimisation/db/
+$ python Spearmint/spearmint/main.py optimisation/experiments/classifier/
+```
+
 
 
 ## TensorBoard
@@ -211,6 +204,30 @@ $ tensorboard --logdir logs/<timestamp>
 ```
 
 Notice that TensorBoard requires using the TensorFlow backend. (_This might not be strictly true, but it's asserted nonetheless._)
+
+
+
+## Benchmarks
+
+The following shows the time per epoch, excluding overhead, used to train the
+standalone classifier, running on 3.5M training samples (cross-val) per epoch
+using the default network- and training configurations within the supported
+conda environments. The devices used are Intel Xeon CPU E7-4820 v2 @ 2.00GHz
+(CPU) and Nvidia Tesla K80 (GPU).
+
+| **CPU** | **Theano**           | **Tensorflow**   |
+|:-------:|:--------------------:|:---------------: |
+| 1       | ca. 800 sec. / epoch | 245 sec. / epoch |
+| 2       | _N/A_                | 210 sec. / epoch |
+| 4       | _N/A_                | 185 sec. / epoch |
+| **GPU** | **Theano**           | **Tensorflow**   |
+| 1       |      52 sec. / epoch |  20 sec. / epoch |
+| 2       | _N/A_                |  14 sec. / epoch |
+| 4       | _N/A_                |  10 sec. / epoch |
+
+Typically, the performance bottleneck is found to be data transfer, limiting GPU
+utilisation to around 30-40%.
+
 
 
 ## Known issues
