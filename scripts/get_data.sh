@@ -7,7 +7,7 @@ source scripts/utils.sh
 # Variable definitions
 usertarget="" # Default
 username="" # Default
-target=input/
+target=input
 source=/eos/atlas/user/a/asogaard/adversarial/data
 filename=data.h5
 
