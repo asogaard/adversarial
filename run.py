@@ -75,7 +75,11 @@ parser.add_argument('-g', '--gpu',  dest='gpu',        action='store_const',
 parser.add_argument('--tensorflow', dest='tensorflow', action='store_const',
                     const=True, default=False, help='Use TensorFlow backend')
 parser.add_argument('--train', dest='train', action='store_const',
-                    const=True, default=False, help='Perform training')
+                    const=True, default=False, help='Perform training (classifier and adversarial)')
+parser.add_argument('--train-classifier', dest='train_classifier', action='store_const',
+                    const=True, default=False, help='Perform classifier pre-training')
+parser.add_argument('--train-adversarial', dest='train_adversarial', action='store_const',
+                    const=True, default=False, help='Perform adversarial training')
 parser.add_argument('--plot', dest='plot', action='store_const',
                     const=True, default=False, help='Perform plotting')
 parser.add_argument('--tensorboard', dest='tensorboard', action='store_const',
@@ -143,7 +147,7 @@ def main ():
         import keras
         import keras.backend as K
         from keras.models import load_model
-        from keras.callbacks import Callback, TensorBoard
+        from keras.callbacks import Callback, TensorBoard, EarlyStopping
         KERAS_VERSION=int(keras.__version__.split('.')[0])
         if KERAS_VERSION == 2:
             from keras.utils.vis_utils import plot_model
@@ -193,17 +197,19 @@ def main ():
             pass
 
         # Start TensorBoard instance
-        if args.tensorboard:
-            assert args.tensorflow, "TensorBoard requires TensorFlow backend."
-            
-            log.info("Starting TensorBoard instance in background.")
-            log.info("The output will be available at:")
-            log.info("  http://localhost:6006")
+        if args.tensorflow:  # args.tensorboard:
             tensorboard_dir = 'logs/{}/'.format('-'.join(re.split('-|:| ', str(datetime.datetime.now()).split('.')[0])))
-            tensorboard_pid = subprocess.Popen(["tensorboard", "--logdir", tensorboard_dir]).pid
-            log.info("TensorBoard has PID {}.".format(tensorboard_pid))
+            if args.tensorboard:
+                assert args.tensorflow, "TensorBoard requires TensorFlow backend."
+                
+                log.info("Starting TensorBoard instance in background.")
+                log.info("The output will be available at:")
+                log.info("  http://localhost:6006")
+                tensorboard_pid = subprocess.Popen(["tensorboard", "--logdir", tensorboard_dir]).pid
+                log.info("TensorBoard has PID {}.".format(tensorboard_pid))
+                pass
             pass
-            
+
         pass
 
 
@@ -394,7 +400,7 @@ def main ():
         histories   = list()
 
         # Train or load classifiers
-        if args.train:
+        if args.train or args.train_classifier:
             log.info("Training cross-validation classifiers")
 
             # Loop `k` folds
@@ -421,12 +427,15 @@ def main ():
 
                         # Create callbacks
                         callbacks = []
-                        
+
+                        # -- Early stopping
+                        #callbacks += [EarlyStopping(patience=10)]  # @NOTE: Problem for finding global minimum...
+
                         # -- TensorBoard
-                        if args.tensorboard:
+                        if args.tensorflow:  # tensorboard:
                             callbacks += [TensorBoard(log_dir=tensorboard_dir + 'classifier/fold{}/'.format(fold))]
                             pass
-                                                
+
                         # Fit classifier model
                         result = train_in_parallel(classifier,
                                                    {'input':   data.train.inputs,
@@ -489,48 +498,48 @@ def main ():
 
     # Get optimal number of training epochs
     # --------------------------------------------------------------------------
-    if args.train:
-        epochs = 1 + np.arange(len(histories[0]['loss']))        
+    if args.train or args.train_classifier:
+        epochs = 1 + np.arange(len(histories[0]['loss']))
         val_avg = np.mean([hist['val_loss'] for hist in histories], axis=0)
         opt_epochs = epochs[np.argmin(val_avg)]
-        
+
         log.info("Using optimal number of {:d} training epochs".format(opt_epochs))
         pass
 
 
     # Plotting: Cost log for classifier-only fit
     # --------------------------------------------------------------------------
-    if args.plot:
+    if args.plot and (args.train or args.train_classifier):
         with Profile("Plotting: Cost log, cross-val."):
-            
+
             # Perform plotting
             fig, ax = plt.subplots()
-            
+
             for fold, hist in enumerate(histories):
                 plt.plot(epochs, hist['val_loss'], color=colours[1], linewidth=0.6, alpha=0.3,
                          label='Validation (fold)' if fold == 0 else None)
                 pass
-            
+
             plt.plot(epochs, val_avg,   color=colours[1], label='Validation (avg.)')
-            
+
             for fold, hist in enumerate(histories):
                 plt.plot(epochs, hist['loss'],     color=colours[0], linewidth=1.0, alpha=0.3,
                          label='Training (fold)'   if fold == 0 else None)
                 pass
-            
+
             train_avg = np.mean([hist['loss'] for hist in histories], axis=0)
             plt.plot(epochs, train_avg, color=colours[0], label='Train (avg.)')
-            
+
             plt.title('Classifier-only, stratified {}-fold training'.format(args.folds), fontweight='medium')
             plt.xlabel("Training epochs",    horizontalalignment='right', x=1.0)
             plt.ylabel("Objective function", horizontalalignment='right', y=1.0)
-            
+
             epochs = [0] + list(epochs)
             step = max(int(np.floor(len(epochs) / 10.)), 1)
-            
+
             plt.xticks(filter(lambda x: x % step == 0, epochs))
             plt.legend()
-            
+
             plt.savefig(args.output + 'costlog_classifier.pdf')
             pass
         pass
@@ -543,7 +552,7 @@ def main ():
         # Define variables
         name = 'full_classifier'
 
-        if args.train:
+        if args.train or args.train_classifier:
             log.info("Training full classifier")
 
             # Get classifier
@@ -560,7 +569,7 @@ def main ():
             callbacks = []
 
             # -- TensorBoard
-            if args.tensorboard:
+            if args.tensorflow:  # tensorboard:
                 callbacks += [TensorBoard(log_dir=tensorboard_dir + 'classifier/')]
                 pass
 
@@ -655,7 +664,7 @@ def main ():
 
     # Tagger variables
     variables = ['Tau21', 'D2', 'NN']
-    
+
     if args.plot:
         with Profile("Plotting: ROCs (only NN)"):
             plot_roc(data.test, args, variables, name='tagger_ROCs_NN')
@@ -723,14 +732,14 @@ def main ():
         # Create callback logging the adversary p.d.f.'s during training
         callback_profiles  = ProfilesCallback(data.test, args, classifier)
 
-        # List all callbacks to be used
+        # (opt.) List all callbacks to be used
         if args.plot:
             callbacks += [callback_posterior, callback_profiles]
             pass
 
         # (opt.) Add TensorBoard callback
-        if args.tensorboard:
-            callbacks += [TensorBoard(log_dir=tensorboard_dir + 'combined/')]
+        if args.tensorflow:  # tensorboard:
+            callbacks += [TensorBoard(log_dir=tensorboard_dir + 'adversarial/')]
             pass
 
         # Set up combined, adversarial model
@@ -741,11 +750,11 @@ def main ():
         # Save combiend model diagram
         plot_model(combined, to_file=args.output + 'model_combined.png', show_shapes=True)
 
-        if args.train:
+        if args.train or args.train_adversarial:
             log.info("Training full, combined model")
 
             # Create custom objective function for posterior: - log(p) of the
-            # posterior p.d.f.
+            # posterior p.d.f. This corresponds to binary cross-entropy for 1.
             def maximise (p_true, p_pred):
                 return - K.log(p_pred)
 
@@ -880,7 +889,7 @@ def main ():
                                               args,
                                               name='tagger_decorrelation__3',
                                               fit_range=(xmin, xmax))
-        
+
         # Compute tau21DDT
         Tau21DDT = data['Tau21'] - slope * (data['rhoDDT'] - xmin)
 
@@ -898,42 +907,42 @@ def main ():
 
     # Plotting: Cost log for adversarial fit
     # --------------------------------------------------------------------------
-    if args.plot:
+    if args.plot and (args.train or args.train_classifier):
         with Profile("Plotting: Cost log, adversarial, full"):
-            
+
             fig, ax = plt.subplots()
             colours = map(lambda d: d['color'], list(plt.rcParams["axes.prop_cycle"]))
             epochs = 1 + np.arange(len(history['loss']))
             lambda_reg = cfg['combined']['model']['lambda_reg']
             lr_ratio   = cfg['combined']['model']['lr_ratio']
-            
+
             classifier_loss = np.mean([loss for key,loss in history.iteritems() if key.startswith('combined') and int(key.split('_')[-1]) % 2 == 1 ], axis=0)
             adversary_loss  = np.mean([loss for key,loss in history.iteritems() if key.startswith('combined') and int(key.split('_')[-1]) % 2 == 0 ], axis=0) * lambda_reg
             combined_loss   = classifier_loss + adversary_loss
-            
+
             plt.plot(epochs, classifier_loss, color=colours[0],  linewidth=1.4,  label='Classifier')
             plt.plot(epochs, adversary_loss,  color=colours[1],  linewidth=1.4,  label=r'Adversary ($\lambda$ = {})'.format(lambda_reg))
             plt.plot(epochs, combined_loss,   color=colours[-1], linestyle='--', label='Combined')
-            
+
             plt.title('Adversarial training', fontweight='medium')
             plt.xlabel("Training epochs", horizontalalignment='right', x=1.0)
             plt.ylabel("Objective function",   horizontalalignment='right', y=1.0)
-            
+
             epochs = [0] + list(epochs)
             step = max(int(np.floor(len(epochs) / 10.)), 1)
-            
+
             plt.xticks(filter(lambda x: x % step == 0, epochs))
             plt.legend()
-            
+
             plt.text(0.03, 0.95, "ATLAS",
                      weight='bold', style='italic', size='large',
                      ha='left', va='top',
                      transform=ax.transAxes)
-            
+
             plt.savefig(args.output + 'costlog_combined.pdf')
             pass
         pass
-    
+
 
     # Plotting
     # --------------------------------------------------------------------------
@@ -990,7 +999,7 @@ def main ():
 
     # Clean-up
     # --------------------------------------------------------------------------
-    
+
     if args.tensorboard:
         # @TODO: Improve, using `ps`.
         log.info("TensorBoard process ({}) is running in background. Enter `q` to close it. Enter anything else to quit the program while leaving TensorBoard running.".format(tensorboard_pid))
@@ -1002,7 +1011,7 @@ def main ():
             log.info("$ kill {}".format(tensorboard_pid))
             pass
         pass
-    
+
     return 0
 
 
