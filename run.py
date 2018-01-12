@@ -29,9 +29,10 @@ import root_numpy
 import sklearn
 from sklearn.model_selection import StratifiedKFold
 
-import matplotlib as mpl
+import matplotlib
+matplotlib.use('agg')
 import matplotlib.pyplot as plt
-plt.switch_backend('pdf')
+#plt.switch_backend('pdf')
 
 # -- Explicitly ignore DeprecationWarning from scikit-learn, which we can't do
 #    anything about anyway.
