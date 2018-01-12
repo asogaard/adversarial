@@ -20,7 +20,7 @@ from keras.engine.topology import Layer
 #### # >> AttributeError: 'module' object has no attribute 'control_flow_ops'
 #### # occurring when using older TensorFlow backend (__version__ < 1.2.1, at least).
 #### # From [https://github.com/fchollet/keras/issues/3857#issuecomment-251385542]
-#### if K.backend() == 'tensorflow':    
+#### if K.backend() == 'tensorflow':
 ####     import tensorflow
 ####     if int(tensorflow.__version__.split('.')[1]) < 2:
 ####         tensorflow.python.control_flow_ops = tensorflow
@@ -42,7 +42,7 @@ else:
 def cumulative (x):
     """Cumulative distribution function for the unit gaussian."""
     return 0.5 * (1. + erf(x / np.sqrt(2.)))
-    
+
 
 def gaussian_integral_on_unit_interval (mean, width):
     """Compute the integral of unit gaussians on the unit interval.
@@ -70,8 +70,8 @@ def gaussian (x, coeff, mean, width):
 
     Returns
         Function value of unit gaussian(s) evaluated at `x`.
-    """ 
-    return coeff * K.exp( - K.square(x - mean) / 2. / K.square(width)) / K.sqrt( 2. * K.square(width) * np.pi) 
+    """
+    return coeff * K.exp( - K.square(x - mean) / 2. / K.square(width)) / K.sqrt( 2. * K.square(width) * np.pi)
 
 
 
@@ -122,10 +122,10 @@ class PosteriorLayer (Layer):
             pdf += this_pdf
             pass
 
-        return pdf # K.reshape(pdf, (K.shape(pdf)[0], 1))
+        return K.reshape(pdf, (K.shape(pdf)[0],))   # pdf # K.reshape(pdf, (K.shape(pdf)[0], 1))
 
     def compute_output_shape (self, input_shape):
-        return (input_shape[0], self.output_dim)
+        return (input_shape[0][0], self.output_dim)
 
     def get_config (self):
         config = {"name": self.__class__.__name__,
@@ -134,7 +134,7 @@ class PosteriorLayer (Layer):
         base_config = super(PosteriorLayer, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
 
-    pass  
+    pass
 
 
 # ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
@@ -144,11 +144,11 @@ if K.backend() == 'tensorflow':
     # Tensorflow implementation based on
     # [https://stackoverflow.com/questions/45099737/implement-theano-operation-in-tensorflow]
     log.info("Implementing gradient reversal layer in TensorFlow")
-    
+
     import tensorflow as tf
     def ReverseGradient (hp_lambda):
         """Function factory for gradient reversal."""
-        
+
         def reverse_gradient_function (X, hp_lambda=hp_lambda):
             """Flips the sign of the incoming gradient during training."""
             try:
@@ -156,66 +156,66 @@ if K.backend() == 'tensorflow':
             except AttributeError:
                 reverse_gradient_function.num_calls = 1
                 pass
-            
+
             grad_name = "GradientReversal%d" % reverse_gradient_function.num_calls
-            
+
             @tf.RegisterGradient(grad_name)
             def _flip_gradients(op, grad):
                 return [tf.negative(grad) * hp_lambda]
-            
+
             g = K.get_session().graph
             with g.gradient_override_map({'Identity': grad_name}):
                 y = tf.identity(X)
                 pass
-            
+
             return y
-        
+
         return reverse_gradient_function
 
 else:
     # Theano implementation based on
     # [https://github.com/fchollet/keras/issues/3119#issuecomment-230289301]
     log.info("Implementing gradient reversal layer in Theano")
-        
+
     import theano
     class ReverseGradient (theano.Op):
         """Theano operation to reverse the gradients
         Introduced in http://arxiv.org/pdf/1409.7495.pdf
         """
-        
+
         view_map = {0: [0]}
-        
+
         __props__ = ('hp_lambda', )
-        
+
         def __init__ (self, hp_lambda):
             super(ReverseGradient, self).__init__()
             self.hp_lambda = hp_lambda
-            
+
         def make_node (self, x):
             assert hasattr(self, '_props'), "Your version of theano is too old to support __props__."
             x = theano.tensor.as_tensor_variable(x)
             return theano.Apply(self, [x], [x.type()])
-        
+
         def perform (self, node, inputs, output_storage):
             xin, = inputs
             xout, = output_storage
             xout[0] = xin
-            
+
         def grad (self, input, output_gradients):
             return [-self.hp_lambda * output_gradients[0]]
-        
+
         def infer_shape (self, node, i0_shapes):
             return i0_shapes
-        
+
         pass
-    
+
     pass # end: tensorflow/theano
 
 
 # Layer implementation based on
 # [https://github.com/fchollet/keras/issues/3119#issuecomment-230289301]
 class GradientReversalLayer (Layer):
-    """Reverse a gradient 
+    """Reverse a gradient
     <feedforward> return input x
     <backward> return -lambda * delta
     """
@@ -227,21 +227,21 @@ class GradientReversalLayer (Layer):
         self.hp_lambda = hp_lambda
         self.gr_op = ReverseGradient(self.hp_lambda)
         pass
-    
+
     def build (self, input_shape):
         self.trainable_weights = []
         return
-    
+
     def call (self, x, mask=None):
         return self.gr_op(x)
-    
+
     def compute_output_shape (self, input_shape):
         return input_shape
-    
+
     def get_config (self):
         config = {"name":      self.__class__.__name__,
                   "hp_lambda": self.hp_lambda}
         base_config = super(GradientReversalLayer, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
-    
+
     pass
