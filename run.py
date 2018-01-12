@@ -81,6 +81,10 @@ def parse_args (cmdline_args=sys.argv[1:]):
                         const=True, default=False, help='Perform classifier pre-training')
     parser.add_argument('--train-adversarial', dest='train_adversarial', action='store_const',
                         const=True, default=False, help='Perform adversarial training')
+    parser.add_argument('--optimise-classifier', dest='optimise_classifier', action='store_const',
+                        const=True, default=False, help='Optimise stand-alone classifier')
+    parser.add_argument('--optimise-adversarial', dest='optimise_adversarial', action='store_const',
+                        const=True, default=False, help='Optimise adversarial network')
     parser.add_argument('--plot', dest='plot', action='store_const',
                         const=True, default=False, help='Perform plotting')
     parser.add_argument('--tensorboard', dest='tensorboard', action='store_const',
@@ -115,6 +119,44 @@ def main (args):
         if not os.path.exists(args.output):
             print "Creating output directory:\n  {}".format(args.output)
             os.makedirs(args.output)
+            pass
+
+        # Validate train/optimise flags 
+        if args.optimise_classifier and args.optimise_adversarial:
+            raise Exception(("Cannot optimise stand-alone classifier and "
+                             "adversarial network simultaneously."))
+        elif args.optimise_classifier:
+
+            # Stand-alone classifier optimisation
+            if not args.train_classifier:
+                log.warning("Setting `train_classifier` to True.")
+                args.train_classifier = True
+                pass
+            if args.train_adversarial:
+                log.warning("Setting `train_adversarial` to False.")
+                args.train_adversarial = False
+                pass
+            if args.train:
+                log.warning("Setting `train` to False.")
+                args.train = False
+                pass
+            
+        elif args.optimise_adversarial:
+
+            # Adversarial network optimisation
+            if args.train_classifier:
+                log.warning("Setting `train_classifier` to False.")
+                args.train_classifier = False
+                pass
+            if not args.train_adversarial:
+                log.warning("Setting `train_adversarial` to True.")
+                args.train_adversarial = True
+                pass
+            if args.train:
+                log.warning("Setting `train` to False.")
+                args.train = False
+                pass
+            
             pass
 
         # @TODO:
@@ -507,6 +549,12 @@ def main (args):
         pass
 
 
+    # Early stopping in case of stand-alone classifier optimisation
+    # --------------------------------------------------------------------------
+    if args.optimise_classifier:
+        return np.min(val_avg)
+
+
     # Plotting: Cost log for classifier-only fit
     # --------------------------------------------------------------------------
     if args.plot and (args.train or args.train_classifier):
@@ -821,6 +869,13 @@ def main (args):
         plot_posterior(data, args, adversary, name='posterior_end', title="End of training")
         pass
 
+
+    # Early stopping in case of adversarial network
+    # --------------------------------------------------------------------------
+    if args.optimise_adversarial:
+        # @TODO: Decide on proper metric! Stratified k-fold cross-validation?
+        return np.min(val_avg)
+    
 
     # Saving "vanilla" classifier in lwtnn-friendly format.
     # --------------------------------------------------------------------------
