@@ -1,9 +1,9 @@
 # Basic import(s)
-import json
 import os
+import sys
+import json
 
 # Project import(s)
-import sys
 sys.path.append(os.path.abspath('../../../'))  # This is pretty bad practice...
 import run
 
@@ -27,7 +27,7 @@ class cd:
     pass
 
 
-def create_patch (params, path='tmp.patch.json'):
+def create_patch (params, path):
     """Create temporary patch file to use in optimisation.
 
     The method traverses the entries in dict `params`, which have a hierarchial
@@ -73,37 +73,47 @@ def create_patch (params, path='tmp.patch.json'):
     print "Saving the folloing patch to '{}':".format(path)
     print result
     print "- " * 40
+
+    # -- Make sure target directory exists
+    if '/' in path:
+        directory = '/'.join(path.split('/')[:-1])
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+            pass
+        pass
+
+    # -- Dump JSON to file
     with open(path, 'w') as patchfile:
         json.dump(result, patchfile, indent=4, sort_keys=True)
         pass
 
-    return os.path.realpath(path)
+    return
 
 
-def objective (params):
-    """Objective function to be _minimised_ by Spearmint."""
+# Main function, called by the Spearmint optimisation procedure
+def main(job_id, params):
+
+    # Logging
+    print "Call to main function (#{})".format(job_id)
+    print "  Parameters: {}".format(params)
 
     # Create temporary patch file
-    patch = create_patch(params)
+    patch = os.path.realpath('patches/patch.{:08d}.json'.format(job_id))
+    create_patch(params, patch)
 
-    # Get result
-    args = run.parse_args(['--patch', patch, '--tensorflow', '--folds', '5'])
+    # Set arguments
+    # @TODO: Dynamically decide `--gpu`, `--devices N`?
+    args = run.parse_args(['--optimise-classifier', '--patch', patch, '--tensorflow', '--gpu', '--devices', '3' '--folds', '5'])
     print args
 
+    # Call main script from the correct directory
     run_dir = os.path.realpath('/'.join(run.__file__.split('/')[:-1]))
     print "Calling `run.py` in {}.".format(run_dir)
     with cd(run_dir):
         result = run.main(args)
         pass
-    print ">>{}<<".format(result)
 
-    # ...
-    result = params['classifier/compile/lr'] + params['classifier/compile/decay']
+    # Ensure correct type, otherwise Spearmint does not accept value
     result = float(result)
     return result
 
-# Main function, called by the Spearmint optimisation procedure
-def main(job_id, params):
-    print "Call to main function (#{})".format(job_id)
-    print "  Parameters: {}".format(params)
-    return objective(params)
