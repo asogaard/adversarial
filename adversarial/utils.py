@@ -16,6 +16,46 @@ import numpy as np
 # Project import(s)
 from .profile import Profile, profile
 
+# Global variable(s)
+_gpu_utilisation = None
+
+def gpu_utilisation ():
+    """Return dictionary of available GPUs and current utilisation.
+
+    Assumes NVIDIA GPUs."""
+
+    global _gpu_utilisation
+
+    # Only query if not previously set
+    if _gpu_utilisation is None:
+
+        # Initialise output variable
+        result = dict()
+
+        try:
+            # Try calling `nvidia-smi`
+            ret = subprocess.check_output(["nvidia-smi"]).split('\n')
+
+            # Get GPU names
+            indices = np.where(['+' in l for l in ret])[0][3:-2] - 2  # Assuming regular structure of `nvidia-smi` output
+            names = map(lambda s: int(s.split("|")[1].split()[0]), [ret[i] for i in indices])
+
+            # Get GPU utilisations as integer in [0,100]
+            utilisations = map(lambda s: int(s.split('|')[-2].split()[0][:-1]), filter(lambda s: '%' in s, ret))
+
+            # Create dictionary
+            result = dict(zip(names, utilisations))
+
+        except OSError:
+            # `nvidia-smi` command, and thus GPUs, not available
+            pass
+
+        # Set global value
+        _gpu_utilisation = result
+        pass
+
+    return _gpu_utilisation
+
 
 def rename_key (d, old, new):
     """Rename key in dict, if it exists."""
@@ -499,7 +539,7 @@ def initialise_backend (args):
 
             # Set this environment variable to "0,1,...", to make Tensorflow
             # use the first N available GPUs
-            os.environ['CUDA_VISIBLE_DEVICES'] = ','.join(map(str,range(args.devices)))
+            os.environ['CUDA_VISIBLE_DEVICES'] = ','.join(map(str, dict(filter(lambda t: t[1] < 80 and t[0] < args.devices, gpu_utilisation().iteritems())).keys())) #','.join(map(str,range(args.devices)))
 
         else:
             # Setting this enviorment variable to "" makes all GPUs
