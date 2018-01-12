@@ -171,15 +171,12 @@ that order. Use `TAB` to auto-complete and see available command-line arguments.
 
 ## Optimisation
 
-#### @TODO: Cross-platform installation procedure
-
-_Follow installation guide here: [https://github.com/HIPS/Spearmint](https://github.com/HIPS/Spearmint)._
-
 To run the optimisation, do e.g.
 ```
 $ mongod --fork --logpath optimisation/log.txt --dbpath optimisation/db/
-$ python Spearmint/spearmint/main.py optimisation/experiments/classifier/
+$ python -m spearmint/main optimisation/experiments/classifier/
 ```
+Notice that the `-m` flag is important, to run `spearmint` as a module.
 
 
 
