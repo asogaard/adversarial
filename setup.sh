@@ -61,7 +61,7 @@ else
 
     # Deactivate conda environment
     if [[ "$(conda info --env | grep \* | sed 's/ .*//g')" != "root" ]]; then
-	source deactivate
+	source deactivate > /dev/null 2>&1 
     fi
 
     # Unset complete
@@ -101,21 +101,11 @@ else
     print "Setting up conda environment '$env' on $host platform"
     env_exists="$(conda info --env | sed 's/ .*//g;s/^#//g' | grep $env)"
     if [[ "$env_exists" ]]; then
-	source activate $env
+	source activate $env > /dev/null 2>&1 
     else
 	warning "Conda environment '$env' does not exist. Please run the installation script."
     fi
 fi
-
-### # Host-specific setup
-### if   [[ "$hostname" == *"lxplus"* ]]; then
-###     source scripts/lxplus/setup.sh "$@"
-### elif [[ "$hostname" == *"ed.ac.uk"* ]]; then
-###     source scripts/eddie3/setup.sh "$@"
-### else
-###     echo "Host not recognised; unable to setup environment."
-###     return
-### fi
 
 # Enable auto-complete for command-line arguments
 source scripts/autocomplete.sh
