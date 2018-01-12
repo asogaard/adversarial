@@ -173,8 +173,7 @@ that order. Use `TAB` to auto-complete and see available command-line arguments.
 
 To run the optimisation, do e.g.
 ```bash
-$ mongod --fork --logpath optimisation/log.txt --dbpath optimisation/db/
-$ rm optimisation/db/mongod.lock  # (Opt.) To avoid MongoDB timeout
+$ source optimsation/scripts/start.sh
 $ python -m spearmint.main optimisation/experiments/classifier/
 ```
 Notice that the `-m` flag is important, to run `spearmint` as a module.
