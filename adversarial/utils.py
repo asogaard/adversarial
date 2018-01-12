@@ -411,7 +411,6 @@ def train_in_parallel (model, data_train, data_validation={}, config={}, callbac
         'name': model.name + '_parallelised',
         }
     parallelised = Model(**opts)
-    #parallelised = Model(inputs=list(flatten(inputs)), outputs=list(flatten(outputs)), name=model.name + '_parallelised')
 
     # Replicate fields which are specific to each output node
     for field in ['loss', 'loss_weights']:
