@@ -30,7 +30,7 @@ TBA
 To get running on any [supported platform](#supported-platforms), do the following in a clean shell:
 
 **Set up package**
-```
+```bash
 $ git clone git@github.com:asogaard/adversarial.git
 $ cd adversarial
 $ source install.sh
@@ -40,13 +40,13 @@ This installs the supported conda [environments](#environment) and activates
 the one for CPU running.
 
 **Stage some data**
-```
+```bash
 $ source scripts/get_data.sh
 ```
 If run elsewhere than lxplus, this will download a 1.4GB HDF5 data file.
 
 **Test run**
-```
+```bash
 $ ./run.py --help
 $ ./run.py --train --tensorflow
 ```
@@ -77,7 +77,7 @@ To use the custom, supported anaconda environment, simply run the
 If `conda` is not installed already, it is **done automatically** during the
 installation. Alternatively, you can do it manually by logging on to your
 preferred platform, e.g. lxplus, and doing the following:
-```
+```bash
 $ wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh
 $ bash Miniconda2-latest-Linux-x86_64.sh
 $ # Follow the screen prompts
@@ -102,12 +102,12 @@ Everytime you are starting a new shell, before running the adversarial neural
 network code, you should activate the installed environment by using the
 [setup.sh](setup.sh) script.
 
-```
+```bash
 $ source setup.sh cpu  # For running on CPU
 $ source setup.sh gpu  # -              GPU
 ```
 To deactivate the environment, do:
-```
+```bash
 $ source setup.sh unset  # or
 $ source deactivate
 ```
@@ -119,7 +119,7 @@ On lxplus, the centrally provided SWAN LCG environment can used to set up most
 of the required python packages, although generally older versions of
 these. However, this is **not supported** and version conflicts are very likely
 to occur. Should you wish to try it out anyway, it can be set up using:
-```
+```bash
 $ source setup.sh lcg
 ```
 with no installation required.
@@ -148,7 +148,7 @@ recommended environment for training the networks.
 To perform interactive test, log in to nodes with specific a parallel
 environment and configuration. This is done like e.g.
 
-```
+```bash
 $ qlogin -pe sharedmem 4 -l h_vmem=10G # CPU running
 $ qlogin -pe gpu 4       -l h_vmem=10G # GPU
 ```
@@ -161,7 +161,7 @@ each requested GPU.
 #### Submitting jobs
 
 To submit jobs to batch, do
-```
+```bash
 $ ./submit.sh
 ```
 which will submit data staging, training/evaluation, and finalisation jobs, in
@@ -172,7 +172,7 @@ that order. Use `TAB` to auto-complete and see available command-line arguments.
 ## Optimisation
 
 To run the optimisation, do e.g.
-```
+```bash
 $ mongod --fork --logpath optimisation/log.txt --dbpath optimisation/db/
 $ python -m spearmint.main optimisation/experiments/classifier/
 ```
@@ -183,20 +183,17 @@ Notice that the `-m` flag is important, to run `spearmint` as a module.
 ## TensorBoard
 
 For convenience, the project natively supports TensorBoard for monitoring the training progress. To use TensorBoard, run using the `--tensorboard` flag, i.e.
-
-```
+```bash
 $ run.py --train --tensorflow --tensorboard
 ```
 
 The output TensorBoard is published to `http://localhost:6006` on the running server. If the code is run through ssh, it is still possible to access the results locally, by doing
-
-```
+```bash
 $ ssh <user>@<host> -L 16006:127.0.0.1:6006
 ```
 
 and navigating to `http://localhost:16006` on the local machine. The file outputs from running with TensorBoard callbacks are stored in the `logs/` directory of the project, and running TensorBoard manually is possible by doing
-
-```
+```bash
 $ tensorboard --logdir logs/<timestamp>
 ```
 
