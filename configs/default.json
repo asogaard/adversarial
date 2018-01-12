@@ -1,67 +1,67 @@
-{    
+{
     "classifier": {
-	"model": {
-	    "default": {
-		"units":      256,
-		"activation": "tanh",
-		"batchnorm":  true,
-		"dropout":    0.2
-	    },
-	    "architecture": [
-		{},
-		{},
-		{},
-		{},
-		{}
-	    ]
-	},
-	"fit": {
-	    "epochs":     50,
-	    "batch_size": 8192,
-	    "shuffle":    true
-	},
-	"compile" : {
-	    "loss":      "binary_crossentropy",
-	    "lr":        1.0E-03,
-	    "decay":     1.0E-04,
-	    "optimizer": "Adam"
-	}
+      	"model": {
+      	    "default": {
+            	"units":      256,
+            	"activation": "tanh",
+            	"batchnorm":  true,
+            	"dropout":    0.2
+      	    },
+      	    "architecture": [
+            	{},
+            	{},
+            	{},
+            	{},
+            	{}
+      	    ]
+      	},
+      	"fit": {
+      	    "epochs":     200,
+      	    "batch_size": 8192,
+      	    "shuffle":    true
+      	},
+      	"compile" : {
+      	    "loss":      "binary_crossentropy",
+      	    "lr":        1.0E-03,
+      	    "decay":     1.0E-04,
+      	    "optimizer": "Adam"
+      	}
     },
     "adversary": {
-	"model": {
-	    "default": {
-		"units":      64,
-		"activation": "tanh",
-		"batchnorm":  true,
-		"dropout":    null
-	    },
-	    "architecture": [
-		{},
-		{},
-		{}
-	    ],
-	    "gmm_components": 10
-	},
-	"fit": {},
-	"compile": {}
+      	"model": {
+      	    "default": {
+            	"units":      64,
+            	"activation": "tanh",
+            	"batchnorm":  true,
+            	"dropout":    null
+      	    },
+      	    "architecture": [
+            	{},
+            	{},
+            	{}
+      	    ],
+      	    "gmm_components": 10
+      	},
+      	"fit": {},
+      	"compile": {}
     },
     "combined": {
-	"model": {
-	    "lambda_reg": 100,
-	    "lr_ratio" : null
-	},
-	"fit": {
-	    "epochs": 100,
-	    "batch_size" : 8192,
-	    "shuffle": true,
-	    "validation_split": 0.2
-	},
-	"compile": {
+      	"model": {
+      	    "lambda_reg": 100,
+      	    "lr_ratio" : null
+      	},
+      	"fit": {
+      	    "epochs": 400,
+      	    "batch_size" : 8192,
+      	    "shuffle": true,
+      	    "validation_split": 0.2
+      	},
+      	"compile": {
             "loss":         ["binary_crossentropy", null],
-	    "loss_weights": [1.0E-06, 1.0E+00],
+      	    "loss_weights": [1.0E-06, 1.0E+00],
             "lr":           1.0E-03,
             "decay":        1.0E-03,
             "optimizer":    "Adam"
-	}
+      	}
     }
 }
