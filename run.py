@@ -91,7 +91,7 @@ def parse_args (cmdline_args=sys.argv[1:]):
 
 # Main function definition
 @profile
-def main ():
+def main (args):
 
     # Initialisation
     # --------------------------------------------------------------------------
