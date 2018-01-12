@@ -173,10 +173,10 @@ that order. Use `TAB` to auto-complete and see available command-line arguments.
 
 To run the optimisation, do e.g.
 ```bash
-$ source optimsation/scripts/start.sh
+$ source optimsation/scripts/start.sh  # To start the MongoDB server
 $ python -m spearmint.main optimisation/experiments/classifier/
 ```
-Notice that the `-m` flag is important, to run `spearmint` as a module.
+Notice that the `-m` flag is important, to run `spearmint` as a module. Several other utility scripts for the optimisation are available in [optimisation/scripts/](optimisation/scripts/).
 
 
 
