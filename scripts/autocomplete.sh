@@ -1,4 +1,4 @@
-_submit() 
+_submit()
 {
     local cur prev opts
     COMPREPLY=()
@@ -13,13 +13,13 @@ _submit()
 }
 complete -F _submit -o default ./submit.sh
 
-_run() 
+_run()
 {
     local cur prev opts
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
-    opts="-h --help -i --input -o --output -c --config -p --patch --devices --folds -v --verbose -g --gpu --tensorflow --train --plot --tensorboard"
+    opts="-h --help -i --input -o --output -c --config -p --patch --devices --folds -v --verbose -g --gpu --tensorflow --train --train-classifier --train-adversarial --optimise-classifier --optimise-adversarial --plot --tensorboard"
 
     if [[ ${cur} == -* ]] ; then
         COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
