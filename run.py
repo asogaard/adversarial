@@ -68,6 +68,8 @@ def parse_args (cmdline_args=sys.argv[1:]):
                         default=1, help='Number of CPU/GPU devices to use with TensorFlow.')
     parser.add_argument('--folds',       dest='folds',    action='store', type=int,
                         default=2, help='Number of folds to use for stratified cross-validation.')
+    parser.add_argument('--jobname',     dest='jobname',  action='store', type=str,
+                        default="", help='Name of job, used for TensorBoard output.')
 
     # -- Flags
     parser.add_argument('-v', '--verbose', dest='verbose', action='store_const',
@@ -122,7 +124,7 @@ def main (args):
             os.makedirs(args.output)
             pass
 
-        # Validate train/optimise flags 
+        # Validate train/optimise flags
         if args.optimise_classifier and args.optimise_adversarial:
             raise Exception(("Cannot optimise stand-alone classifier and "
                              "adversarial network simultaneously."))
@@ -141,7 +143,7 @@ def main (args):
                 log.warning("Setting `train` to False.")
                 args.train = False
                 pass
-            
+
         elif args.optimise_adversarial:
 
             # Adversarial network optimisation
@@ -157,7 +159,7 @@ def main (args):
                 log.warning("Setting `train` to False.")
                 args.train = False
                 pass
-            
+
             pass
 
         # @TODO:
@@ -241,7 +243,8 @@ def main (args):
 
         # Start TensorBoard instance
         if args.tensorflow:  # args.tensorboard:
-            tensorboard_dir = 'logs/{}/'.format('-'.join(re.split('-|:| ', str(datetime.datetime.now()).split('.')[0])))
+            tensorboard_dir = 'logs/{}/'.format('-'.join(re.split('-|:| ', str(datetime.datetime.now()).replace('.', 'T'))) if args.jobname == "" else args.jobname) 
+            log.info("Writing TensorBoard logs to '{}'".format(tensorboard_dir))
             if args.tensorboard:
                 assert args.tensorflow, "TensorBoard requires TensorFlow backend."
 
@@ -618,7 +621,7 @@ def main (args):
             callbacks = []
 
             # -- TensorBoard
-            if args.tensorflow:  # tensorboard:
+            if args.tensorflow:
                 callbacks += [TensorBoard(log_dir=tensorboard_dir + 'classifier/')]
                 pass
 
@@ -787,7 +790,7 @@ def main (args):
             pass
 
         # (opt.) Add TensorBoard callback
-        if args.tensorflow:  # tensorboard:
+        if args.tensorflow:
             callbacks += [TensorBoard(log_dir=tensorboard_dir + 'adversarial/')]
             pass
 
@@ -876,7 +879,7 @@ def main (args):
     if args.optimise_adversarial:
         # @TODO: Decide on proper metric! Stratified k-fold cross-validation?
         return np.min(val_avg)
-    
+
 
     # Saving "vanilla" classifier in lwtnn-friendly format.
     # --------------------------------------------------------------------------
@@ -1002,7 +1005,6 @@ def main (args):
 
     # Plotting
     # --------------------------------------------------------------------------
-
     # Tagger variables
     variables = ['Tau21', 'D2', 'NN', 'ANN', 'Tau21DDT_1', 'Tau21DDT_2', 'Tau21DDT_3']
 
@@ -1055,7 +1057,6 @@ def main (args):
 
     # Clean-up
     # --------------------------------------------------------------------------
-
     if args.tensorboard:
         # @TODO: Improve, using `ps`.
         log.info("TensorBoard process ({}) is running in background. Enter `q` to close it. Enter anything else to quit the program while leaving TensorBoard running.".format(tensorboard_pid))
@@ -1073,7 +1074,7 @@ def main (args):
 
 # Main function call
 if __name__ == '__main__':
-    
+
     # Parse command-line arguments
     args = parse_args()
 
