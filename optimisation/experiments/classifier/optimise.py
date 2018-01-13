@@ -104,7 +104,7 @@ def main(job_id, params):
 
     # Set arguments
     # @TODO: Dynamically decide `--gpu`, `--devices N`?
-    args = run.parse_args(['--optimise-classifier', '--patch', patch, '--jobname', 'classifier-' + jobname ,'--tensorflow', '--gpu', '--devices', '3', '--folds', '5'])
+    args = run.parse_args(['--optimise-classifier', '--patch', patch, '--jobname', 'classifier-' + jobname ,'--tensorflow', '--gpu', '--devices', '7', '--folds', '5'])
     print args
 
     # Call main script from the correct directory
