@@ -40,7 +40,8 @@ if [ -d "$dir" ]; then
 
       # Perform actual cleaning
       rm -rf $dir/experiments/*/output
-      rm -f $dir/logs/log.txt*
+      rm -rf $dir/experiments/*/patches
+      rm -f  $dir/logs/log.txt*
       rm -rf $dir/db/*
     else
       print "OK, exiting."
