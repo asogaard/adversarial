@@ -175,6 +175,9 @@ To run the optimisation, do e.g.
 ```bash
 $ source optimsation/scripts/start.sh  # To start the MongoDB server
 $ python -m spearmint.main optimisation/experiments/classifier/
+$ # or, to fork the process:
+$ nohup python -m spearmint.main optimisation/experiments/classifier/ >
+spearmint.log 2>&1 &
 ```
 Notice that the `-m` flag is important, to run `spearmint` as a module. Several other utility scripts for the optimisation are available in [optimisation/scripts/](optimisation/scripts/).
 
