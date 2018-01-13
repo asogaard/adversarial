@@ -423,8 +423,19 @@ def train_in_parallel (model, data_train, data_validation={}, config={}, callbac
     device_data_validation = [apply_slice(data_validation, idx) for idx in device_splits_validation] if use_validation else None
 
     # Create parallelised model
+    # -- Get number of CPUs
+    try:
+        cat_output = subprocess.check_output(["cat", "/proc/cpuinfo"]).split('\n')
+        num_cpus  = len(filter(lambda line: line.startswith('cpu cores'),  cat_output))
+    except subprocess.CalledProcessError:
+        # @TODO: Implement CPU information for macOS
+        num_cpus = 1
+        pass
+    
     # -- Put inputs on main CPU (PS)
-    with tf.device('/cpu:0'):
+    cpu_index = int(np.random.rand() * (num_cpus + 1))
+    log.info("Putting inputs on /cpu:{}".format(cpu_index))
+    with tf.device('/cpu:{}'.format(cpu_index)):
         inputs = list()
         for device in range(num_devices):
             # Loop inputs (possibly one or zero)
