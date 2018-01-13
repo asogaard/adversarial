@@ -29,31 +29,19 @@ if [ -d "$dir" ]; then
   # Check return code
   ret="$?"
   if (( "$ret" )); then
+    warning "Recieved return code $ret."
 
-    # Try to repair
-    warning "Recieved return code $ret. Trying to repair server."
-    source $dir/scripts/repair.sh
+    if (( "$ret" == 100 )); then
+	rm -f $dir/db/mongod.lock
 
-    # Check if successful
-    ret="$?"
-    if (( "$ret" )); then
-      return "$ret"
-    else
-
-      # Try to start server again
-      print "Trying to start server again."
-      mongod $mongod_arguments
-
-      # Check if successful
-      ret="$?"
-      if (( "$ret" )); then
-        warning "Restart was unsuccessful."
-        return "$ret"
-      fi
-
+	# Try to start server again
+	print "Try to start server again."
     fi
 
   fi
+
+  # Perform repair
+  source $dir/scripts/repair.sh
 
   # Perform cleanup
   source $dir/scripts/cleanup.sh
