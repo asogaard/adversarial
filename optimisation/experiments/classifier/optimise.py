@@ -98,12 +98,13 @@ def main(job_id, params):
     print "  Parameters: {}".format(params)
 
     # Create temporary patch file
-    patch = os.path.realpath('patches/patch.{:08d}.json'.format(job_id))
+    jobname = 'patch.{:08d}'.format(job_id)
+    patch = os.path.realpath('patches/{}.json'.format(jobname))
     create_patch(params, patch)
 
     # Set arguments
     # @TODO: Dynamically decide `--gpu`, `--devices N`?
-    args = run.parse_args(['--optimise-classifier', '--patch', patch, '--tensorflow', '--gpu', '--devices', '3', '--folds', '5'])
+    args = run.parse_args(['--optimise-classifier', '--patch', patch, '--jobname', 'classifier-' + jobname ,'--tensorflow', '--gpu', '--devices', '3', '--folds', '5'])
     print args
 
     # Call main script from the correct directory
