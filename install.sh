@@ -29,6 +29,13 @@ if ! hash conda 2>/dev/null; then
     fi
 fi
 
+# Set necessary flags
+# --
+# Used when compiling scipy.weave (from Spearmint) -- possibly also Theano -- to
+# avoid compilation error. See also StackOverflow question linked in
+# scripts/install_utils.sh
+CFLAGS=-D__USE_XOPEN2K8  
+
 # Environment names
 env_cpu="adversarial-cpu"
 env_gpu="adversarial-gpu"
