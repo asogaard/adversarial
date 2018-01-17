@@ -7,8 +7,8 @@ de-correlated jet tagging.
 
 ## Table of contents
 
-- [To-do](#to-do)
 - [Introduction](#introdution)
+- [To-do](#to-do)
 - [Quick start](#quick-start)
 - [Environment](#environment)
   - [Anaconda](#anaconda)
@@ -21,19 +21,30 @@ de-correlated jet tagging.
 - [Known issues](#known-issues)
 
 
+
+## Introduction
+
+_To be added..._
+
+
+
 ## To-do
 
+Below is a list of items which should ideally be addressed as part of the development and study of de-correlated tagger(s). Developers should feel free to assign themselves to any task they see fit
+
 - [ ] Validation tests
-- [ ] Rel. 21 ntuples
+- [ ] Setup optimisation framework ([@asogaard](www.github.com/asogaard))
+- [ ] Get rel. 21 MC ntuples
+- [ ] Get data/MC files from W/top-tagging CONF/paper
+- [ ] Determine scheme for feature selection
+- [ ] Optimise classifier
+- [ ] Determine optimisation metric for adversary
+- [ ] Determine convergence condition for adversarial training
 - [ ] Implementation in BoostedJetTaggers
 - [ ] Test on e.g. W/Z-peak in data
 - [ ] uBoost implementation
 - [ ] uBoost comparison
 
-
-## Introduction
-
-TBA
 
 
 ## Quick start
