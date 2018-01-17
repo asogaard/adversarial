@@ -36,6 +36,7 @@ Below is a list of items which should ideally be addressed as part of the develo
 - [ ] Setup optimisation framework ([@asogaard](www.github.com/asogaard))
 - [ ] Get rel. 21 MC ntuples
 - [ ] Get data/MC files from W/top-tagging CONF/paper
+- [ ] Implement re-weighting for flat prior, compare performance
 - [ ] Determine scheme for feature selection
 - [ ] Optimise classifier
 - [ ] Determine optimisation metric for adversary
