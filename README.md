@@ -7,6 +7,7 @@ de-correlated jet tagging.
 
 ## Table of contents
 
+- [To-do](#to-do)
 - [Introduction](#introdution)
 - [Quick start](#quick-start)
 - [Environment](#environment)
@@ -18,6 +19,16 @@ de-correlated jet tagging.
 - [TensorBoard](#tensorboard)
 - [Benchmarks](#benchmarks)
 - [Known issues](#known-issues)
+
+
+## To-do
+
+- [ ] Validation tests
+- [ ] Rel. 21 ntuples
+- [ ] Implementation in BoostedJetTaggers
+- [ ] Test on e.g. W/Z-peak in data
+- [ ] uBoost implementation
+- [ ] uBoost comparison
 
 
 ## Introduction
