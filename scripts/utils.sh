@@ -1,7 +1,12 @@
 #!/bin/bash
 # Bash utility methods
 
-# Functions to print fancy text
+# Check whether a named process is running
+function is_running () {
+    pgrep "$1" > /dev/null
+}
+
+# Print fancy text
 function print () {
     echo -e "🎃  \033[0;38;5;208m$1\033[0m"
 }
@@ -28,15 +33,15 @@ function question () {
 
     # Return numeric value
     if   [ "$response" == "y" ]; then
-	return 1
+        return 1
     elif [ "$response" == "n" ]; then
-	return 0
+        return 0
     else
-	print "Response '$raw_response' not recognised. Using default value '$default'."
-	if   [ "$default" == "y" ]; then
-	    return 1
-	else
-	    return 0
-	fi
+        print "Response '$raw_response' not recognised. Using default value '$default'."
+        if   [ "$default" == "y" ]; then
+            return 1
+        else
+            return 0
+        fi
     fi
 }
