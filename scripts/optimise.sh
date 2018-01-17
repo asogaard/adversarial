@@ -10,7 +10,7 @@ experiment="$1"
 # Check(s)
 if [ -z "$experiment" ]; then
     warning "start_spearmint: Please provide an experiment name, i.e."
-    warning " $ source path/to/repair.sh <path/to/experiment>"
+    warning " $ source path/to/optimise.sh experiment"
     return 1
 fi
 
