@@ -241,6 +241,14 @@ def main (args):
                                              opts.pop('decay')))
             pass
 
+        # If the `model/architecture` parameter is provided as an int, convert
+        # to list of empty dicts
+        for network in ['classifier', 'adversary']:
+            if isinstance(cfg[network]['model']['architecture'], int):
+                cfg[network]['model']['architecture'] = [{} for _ in range(cfg[network]['model']['architecture'])]
+                pass
+            pass
+
         # Set keras.Model.fit.verbose flag to 2 for optimisation
         if args.optimise_classifier:
             cfg['classifier']['fit']['verbose'] = 2
@@ -487,10 +495,7 @@ def main (args):
                         #callbacks += [EarlyStopping(patience=10)]  # @NOTE: Problem for finding global minimum...
 
                         # -- TensorBoard
-                        if args.tensorflow:  # tensorboard:
-                            #callbacks += [TensorBoard(log_dir=tensorboard_dir +
-                            #'classifier/fold{}/'.format(fold),
-                            #histogram_freq=1)]
+                        if args.tensorflow:
                             callbacks += [TensorBoard(log_dir=tensorboard_dir + 'classifier/fold{}/'.format(fold))]
                             pass
 
