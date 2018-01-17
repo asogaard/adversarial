@@ -30,7 +30,7 @@ _To be added..._
 
 ## To-do
 
-Below is a list of items which should ideally be addressed as part of the development and study of de-correlated tagger(s). Developers should feel free to assign themselves to any task they see fit
+Below is a list of items which should ideally be addressed as part of the development and study of de-correlated tagger(s). Developers should feel free to assign themselves to any task they see fit.
 
 - [ ] Validation tests
 - [ ] Setup optimisation framework ([@asogaard](www.github.com/asogaard))
