@@ -1,11 +1,6 @@
 #!/bin/bash
 # Bash utility methods
 
-# Check whether a named process is running
-function is_running () {
-    pgrep "$1" > /dev/null
-}
-
 # Print fancy text
 function print () {
     echo -e "🎃  \033[0;38;5;208m$1\033[0m"
@@ -44,4 +39,22 @@ function question () {
             return 0
         fi
     fi
+}
+
+# Check whether a named process is running
+function is_running () {
+    pgrep -u `whoami` -f "$1" > /dev/null
+}
+
+# Try to kill running processes matching regex pattern
+function try_kill () {
+
+    # Check(s)
+    if [ -z "$1" ]; then
+        warning "try_kill: No name provided. Exiting."
+        return 1
+    fi
+
+    # Kill any running matching pattern
+    pkill -u `whoami` -f "$1"
 }
