@@ -78,7 +78,11 @@ def create_patch (params, path):
     if '/' in path:
         directory = '/'.join(path.split('/')[:-1])
         if not os.path.exists(directory):
-            os.makedirs(directory)
+            try:
+                os.makedirs(directory)
+            except OSError:
+                # "File exists" error -- for some reason.
+                pass
             pass
         pass
 
