@@ -241,9 +241,18 @@ def main (args):
                                              opts.pop('decay')))
             pass
 
+        # Set keras.Model.fit.verbose flag to 2 for optimisation
+        if args.optimise_classifier:
+            cfg['classifier']['fit']['verbose'] = 2
+            pass
+        
+        if args.optimise_adversarial:
+            cfg['combined']['fit']['verbose'] = 2
+            pass
+
         # Start TensorBoard instance
         if args.tensorflow:  # args.tensorboard:
-            tensorboard_dir = 'logs/{}/'.format('-'.join(re.split('-|:| ', str(datetime.datetime.now()).replace('.', 'T'))) if args.jobname == "" else args.jobname) 
+            tensorboard_dir = 'logs/tensorboard/{}/'.format('-'.join(re.split('-|:| ', str(datetime.datetime.now()).replace('.', 'T'))) if args.jobname == "" else args.jobname) 
             log.info("Writing TensorBoard logs to '{}'".format(tensorboard_dir))
             if args.tensorboard:
                 assert args.tensorflow, "TensorBoard requires TensorFlow backend."
@@ -479,6 +488,9 @@ def main (args):
 
                         # -- TensorBoard
                         if args.tensorflow:  # tensorboard:
+                            #callbacks += [TensorBoard(log_dir=tensorboard_dir +
+                            #'classifier/fold{}/'.format(fold),
+                            #histogram_freq=1)]
                             callbacks += [TensorBoard(log_dir=tensorboard_dir + 'classifier/fold{}/'.format(fold))]
                             pass
 
