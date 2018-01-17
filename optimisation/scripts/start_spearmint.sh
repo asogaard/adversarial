@@ -20,8 +20,8 @@ if [ ! -d "$experimentpath" ]; then
     return 1
 fi
 
-if is_running spearmint; then
-    warning "Spearmint program(s) are already running. To restart, please run stop.sh first."
+if is_running spearmint.main; then
+    warning "Main spearmint program is already running. To restart, please run stop.sh first."
     return 1
 fi
 
