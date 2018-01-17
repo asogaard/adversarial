@@ -4,14 +4,13 @@
 # Import general utility methods
 source scripts/utils.sh
 
-# Check whether a MongoDB server is already running
-if [[ ! -z "$(ps -u `whoami` -F | grep mongod | grep -v grep)" ]]; then
+# Check(s)
+if is_running mongod; then
     warning "A MongoDB server is already running. Please stop it first."
     return 1
 fi
 
-# Check whether Spearmint program(s) are already running
-if [[ ! -z "$(ps -u `whoami` -F | grep spearmint | grep -v grep)" ]]; then
+if is_running spearmint; then
     warning "Spearmint progam(s) are already running. Please stop it first."
     return 1
 fi
