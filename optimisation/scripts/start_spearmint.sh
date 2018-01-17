@@ -11,7 +11,7 @@ experimentpath="optimisation/experiments/$experiment/"
 # Check(s)
 if [ -z "$experiment" ]; then
     warning "start_spearmint: Please provide an experiment name, i.e."
-    warning " $ source path/to/start_spearmint.sh <path/to/experiment>"
+    warning " $ source path/to/start_spearmint.sh <experiment>"
     return 1
 fi
 

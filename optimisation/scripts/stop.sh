@@ -13,7 +13,7 @@ if is_running mongod && is_running spearmint; then
         print "OK, proceeding"
     else
         print "OK, exiting"
-        return 1
+        return 0
     fi
 fi
 
@@ -22,3 +22,4 @@ fi
 try_kill keepalive
 try_kill spearmint
 try_kill mongod
+return 0

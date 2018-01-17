@@ -43,7 +43,7 @@ if (( "$response" )); then
     rm -rf $dir/experiments/*/output
     rm -rf $dir/experiments/*/patches
     rm -rf logs/*/*
-    rm -f  logs/*.log
+    rm -f  logs/*.log*
     rm -rf $dir/db/*
 else
     print "OK, exiting."
