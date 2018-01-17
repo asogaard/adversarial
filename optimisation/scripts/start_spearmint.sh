@@ -4,27 +4,31 @@
 # Import utility methods
 source scripts/utils.sh
 
-# Experiment directory
-experiment="optimisation/experiments/classifier/"
+# Define variable(s)
+experiment="$1"
+experimentpath="optimisation/experiments/$experiment/"
 
-if [ -d "$experiment" ]; then
-
-  # Check whether Spearmint program(s) are already running
-  if [[ ! -z "$(ps -u `whoami` | grep spearmint | grep -v grep)" ]]; then
-    print "Spearmint program(s) are already running. To restart, please run stop.sh first."
+# Check(s)
+if [ -z "$experiment" ]; then
+    warning "start_spearmint: Please provide an experiment name, i.e."
+    warning " $ source path/to/start_spearmint.sh <path/to/experiment>"
     return 1
-  fi
-
-  # Make sure that directories exist
-  logpath="logs/"
-  mkdir -p $logpath
-
-  # Start Spearmint
-  # @TODO: Generalise experiment
-  nohup python -m spearmint.main $experiment >> $logpath/spearmint.log 2>&1 &
-  return 0
-
-else
-  warning "Experiment $experiment doesn't exist."
-  return 1
 fi
+
+if [ ! -d "$experimentpath" ]; then
+    warning "Experiment at $experimentpath doesn't exist."
+    return 1
+fi
+
+# Check whether Spearmint program(s) are already running
+if is_running spearmint; then
+    warning "Spearmint program(s) are already running. To restart, please run stop.sh first."
+    return 1
+fi
+
+# Make sure that directories exist
+logpath="logs/"
+mkdir -p $logpath
+
+# Start Spearmint
+nohup python -m spearmint.main $experimentpath >> $logpath/spearmint.log 2>&1 &
