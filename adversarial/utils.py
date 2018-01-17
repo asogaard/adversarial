@@ -365,7 +365,7 @@ def train_in_sequence (model, data_train, data_validation={}, config={}, callbac
         pass
 
     # Perform fit
-    hist = model.fit(X, Y, sample_weight=W, validation_data=validation_data, verbose=1, callbacks=callbacks, **config['fit'])
+    hist = model.fit(X, Y, sample_weight=W, validation_data=validation_data, callbacks=callbacks, **config['fit'])
 
     return {'model': model, 'history': hist.history}
 
@@ -391,17 +391,21 @@ def train_in_parallel (model, data_train, data_validation={}, config={}, callbac
     data_train, data_validation = validate_training_input(data_train, data_validation)
     assert mode in ['gpu', 'cpu'], "Requested mode '{}' not recognised".format(mode)
 
-    # Silently fall back to `train_in_sequence` if only one device is requested.
-    if num_devices == 1:
-        train_in_sequence(model, data_train, data_validation, config=config)
-        pass
-
     # Check backend for compatibility
     import keras.backend as K
     if K.backend() != 'tensorflow':
         log.warning("train_in_parallel only works for Tensorflow. Falling back to train_in_sequence")
         train_in_sequence(model, data_train, data_validation, config=config)
         return
+
+    # Silently fall back to `train_in_sequence` if only one device is requested.
+    if num_devices == 1:
+        train_in_sequence(model, data_train, data_validation, config=config)
+    #else:
+    #    from keras.utils import multi_gpu_model
+    #    train_in_sequence(multi_gpu_model(model, num_devices), data_train, data_validation, config=config)
+    #    pass
+    #return
 
     # Local imports (make sure Keras backend is set before elsewhere)
     import tensorflow as tf
@@ -431,13 +435,13 @@ def train_in_parallel (model, data_train, data_validation={}, config={}, callbac
         # @TODO: Implement CPU information for macOS
         num_cpus = 1
         pass
-    
+
     # -- Put inputs on main CPU (PS)
-    cpu_index = int(np.random.rand() * (num_cpus + 1))
-    log.info("Putting inputs on /cpu:{}".format(cpu_index))
-    with tf.device('/cpu:{}'.format(cpu_index)):
-        inputs = list()
-        for device in range(num_devices):
+    #cpu_index = int(np.random.rand() * (num_cpus + 1))
+    #log.info("Putting inputs on /cpu:{}".format(cpu_index))
+    inputs = list()
+    for device in range(num_devices):
+        with tf.device('/cpu:{}'.format(device)):
             # Loop inputs (possibly one or zero)
             device_inputs = list()
             for matrix in flatten([device_data_train[device]['input']]):
@@ -491,7 +495,7 @@ def train_in_parallel (model, data_train, data_validation={}, config={}, callbac
         pass
 
     # Perform fit
-    hist = parallelised.fit(X, Y, sample_weight=W, validation_data=validation_data, verbose=1, callbacks=callbacks, **config['fit'])
+    hist = parallelised.fit(X, Y, sample_weight=W, validation_data=validation_data, callbacks=callbacks, **config['fit'])
 
     # Divide losses by number of devices, to take average
     history = hist.history
@@ -547,15 +551,15 @@ def initialise_backend (args):
 
         # Switch: CPU/GPU
         if args.gpu:
-
             # Set this environment variable to "0,1,...", to make Tensorflow
             # use the first N available GPUs
             os.environ['CUDA_VISIBLE_DEVICES'] = ','.join(map(str, dict(filter(lambda t: t[1] < 80 and t[0] < args.devices, gpu_utilisation().iteritems())).keys())) #','.join(map(str,range(args.devices)))
 
         else:
-            # Setting this enviorment variable to "" makes all GPUs
-            # invisible to tensorflow, thus forcing it to run on CPU (on as
-            # many cores as possible)
+            # Setting this enviorment variable to "" makes all GPUs invisible to
+            # tensorflow, thus forcing it to run on CPU (on as many cores as
+            # possible), cf. [https://stackoverflow.com/a/42750563]
+            os.environ["CUDA_DEVICE_ORDER"]    = "PCI_BUS_ID"
             os.environ['CUDA_VISIBLE_DEVICES'] = ""
             pass
 
@@ -574,7 +578,9 @@ def initialise_backend (args):
                                 inter_op_parallelism_threads=num_cores * 2,
                                 allow_soft_placement=True,
                                 device_count={'GPU': args.devices if args.gpu else 0},
-                                gpu_options=gpu_options if args.gpu else None)
+                                gpu_options=gpu_options if args.gpu else None,
+                                )
+                                #run_metadata=tf.RunMetadata())  # @TEMP
 
         session = tf.Session(config=config)
 
