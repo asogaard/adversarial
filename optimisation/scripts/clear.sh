@@ -41,7 +41,8 @@ if [ -d "$dir" ]; then
       # Perform actual cleaning
       rm -rf $dir/experiments/*/output
       rm -rf $dir/experiments/*/patches
-      rm -f  $dir/logs/mongo.log*
+      rm -rf logs/*/*
+      rm -f  logs/*.log
       rm -rf $dir/db/*
     else
       print "OK, exiting."

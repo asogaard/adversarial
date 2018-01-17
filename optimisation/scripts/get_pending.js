@@ -7,6 +7,9 @@ db = conn.getDB("spearmint");
 // Loop collections
 for (var i = 0; i < db.getCollectionNames().length; i++) {
 
-    // Remove stalled jobs
-    db[db.getCollectionNames()[i]].remove({status: 'pending'});
+    // Get IDs of pending jobs
+    pending = db[db.getCollectionNames()[i]].find({status: 'pending'});
+    for (var j = 0; j < pending.length(); j++) {
+        print("Pending job with ID: " + pending[j]['id']);
+    }
 }
