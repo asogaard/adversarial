@@ -19,6 +19,7 @@ de-correlated jet tagging.
 - [TensorBoard](#tensorboard)
 - [Benchmarks](#benchmarks)
 - [Known issues](#known-issues)
+- [References](#references)
 
 
 
@@ -253,3 +254,13 @@ utilisation to around 30-40%.
 
 * Running in the CPU environment on macOS with the Theano backend does not
   support OpenMP due to use of clang compiler. See e.g. [here](https://groups.google.com/d/msg/theano-users/-oIdjtN-HmY/7jBixrHC6aAJ).
+
+
+
+-----
+
+## References
+
+- G. Louppe, M. Kagan, and K. Cranmer, "Learning to Pivot with Adversarial Networks". [[arXiv:1611.01046](https://arxiv.org/abs/1611.01046)]
+- C. Shimmin _et al._, "Decorrelated Jet Substructure Tagging using Adversarial Neural Networks". Phys. Rev. D 96, 074034 (2017) [[arXiv:1703.03507](https://arxiv.org/abs/1703.03507)]
+- J. Stevens and M. Williams, "uBoost: A boosting method for producing uniform selection efficiencies from multivariate classifiers". [[arXiv:1305.7248](https://arxiv.org/abs/1305.7248)]
