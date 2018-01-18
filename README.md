@@ -34,7 +34,7 @@ _To be added..._
 Below is a list of items which should ideally be addressed as part of the development and study of de-correlated tagger(s). Developers should feel free to assign themselves to any task they see fit.
 
 - [ ] Validation tests
-- [ ] Setup optimisation framework ([@asogaard](www.github.com/asogaard))
+- [ ] Setup optimisation framework ([@asogaard](http://www.github.com/asogaard))
 - [ ] Get rel. 21 MC ntuples
 - [ ] Get data/MC files from W/top-tagging CONF/paper
 - [ ] Implement re-weighting for flat prior, compare performance
@@ -261,6 +261,6 @@ utilisation to around 30-40%.
 
 ## References
 
-- G. Louppe, M. Kagan, and K. Cranmer, "Learning to Pivot with Adversarial Networks". [[arXiv:1611.01046](https://arxiv.org/abs/1611.01046)]
+- G. Louppe, M. Kagan, and K. Cranmer, "Learning to Pivot with Adversarial Networks" [[arXiv:1611.01046](https://arxiv.org/abs/1611.01046)]
 - C. Shimmin _et al._, "Decorrelated Jet Substructure Tagging using Adversarial Neural Networks". Phys. Rev. D 96, 074034 (2017) [[arXiv:1703.03507](https://arxiv.org/abs/1703.03507)]
-- J. Stevens and M. Williams, "uBoost: A boosting method for producing uniform selection efficiencies from multivariate classifiers". [[arXiv:1305.7248](https://arxiv.org/abs/1305.7248)]
+- J. Stevens and M. Williams, "uBoost: A boosting method for producing uniform selection efficiencies from multivariate classifiers" [[arXiv:1305.7248](https://arxiv.org/abs/1305.7248)]
