@@ -42,7 +42,7 @@ if (( "$response" )); then
     # Perform actual cleaning
     rm -rf $dir/experiments/*/output
     rm -rf $dir/experiments/*/patches
-    rm -rf logs/*/*
+    rm -rf logs/tensorboard/*
     rm -f  logs/*.log*
     rm -rf $dir/db/*
 else

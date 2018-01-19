@@ -50,8 +50,12 @@ fi
 
 # Start Spearmint
 source optimisation/scripts/start_spearmint.sh $experiment
+if [[ ! "$?" ]]; then
+    warning "Exiting."
+    return 1
+fi
 
-# Keep both processes alive
-nohup ./optimisation/scripts/keepalive.sh $experiment >> logs/keepalive.log 2>&1 &
+#### # Keep both processes alive
+#### nohup ./optimisation/scripts/keepalive.sh $experiment >> logs/keepalive.log 2>&1 &
 
 print "Here we go!"

@@ -7,7 +7,7 @@ source scripts/utils.sh
 # Variable definitions
 usertarget="" # Default
 username="" # Default
-target=input
+target=data
 source=/eos/atlas/user/a/asogaard/adversarial/data
 filename=data.h5
 
@@ -127,7 +127,7 @@ else
   	if [ -f "$target/$filename" ] && [ ! -L "$target/$filename" ]; then
 	    warning "Regular file $filename already exists in $target/. Not overwriting. Make sure it is the right one."
   	elif [ ! -f "$target/$filename" ] || [ "$usertarget/$filename" ! -ef "$target/$filename" ]; then
-	    # Create symlink to data file in default input directory
+	    # Create symlink to data file in default data directory
 	    print "Creating symlink in $target/ to downloaded file $filename."
 	    question "Is that OK?" "y"
 	    response="$?"

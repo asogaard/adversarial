@@ -41,10 +41,12 @@ for pending_id in ${pending_ids[@]}; do
         warning "More than one ($numfiles) TensorBoard logfiles associated with stalled Spearmint job with ID $pending_id. Not deleting any."
     else
         print "Deleting TensorBoard logfile $file associated with stalled Spearmint job with ID $pending_id."
-        rm -rf $file
+        echo ">>> rm -rf $file"
     fi
 done
 
 # Run JS repair script on MongoDB server
 mongo --eval "var experiment='$experiment'" $dir/scripts/repair.js
-return "$?"
+ret="$?"
+
+return $ret

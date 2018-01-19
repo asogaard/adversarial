@@ -19,15 +19,18 @@ if is_running mongod; then
 fi
 
 # Make sure that directories exist
-logpath="logs/"
+logpath="logs"
 dbpath="$dir/db"
 
 mkdir -p $logpath
 mkdir -p $dbpath
 
+# Run standard database repair
+mongod --repair --logpath $logpath/mongo.log --logappend --dbpath $dir/db/ --quiet 2>&1
+
 # Start server
-mongod_arguments="--fork --logpath $logpath/mongo.log --dbpath $dbpath/"
-mongod $mongod_arguments
+#### mongod --fork --logpath $logpath/mongo.log --dbpath $dbpath/
+nohup mongod --logpath $logpath/mongo.log --logappend --dbpath $dbpath/ 2>&1 &  # @TODO: Handle nohup.out
 
 # Check return code
 ret="$?"

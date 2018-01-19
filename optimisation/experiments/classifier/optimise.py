@@ -4,8 +4,11 @@ import sys
 import json
 
 # Project import(s)
-sys.path.append(os.path.abspath('../../../'))  # This is pretty bad practice...
-import run
+import adversarial
+from run.adversarial import train
+
+# Global variables
+PROJECTDIR='/'.join(os.path.realpath(adversarial.__file__).split('/')[:-2] + [''])
 
 
 class cd:
@@ -108,17 +111,12 @@ def main(job_id, params):
 
     # Set arguments
     # @TODO: Dynamically decide `--gpu`, `--devices N`?
-    args = run.parse_args(['--optimise-classifier', '--patch', patch, '--jobname', 'classifier-' + jobname ,'--tensorflow', '--gpu', '--devices', '6', '--folds', '5'])
+    args = train.parse_args(['--optimise-classifier', '--patch', patch, '--jobname', 'classifier-' + jobname ,'--tensorflow', '--gpu', '--devices', '6', '--folds', '5'])
     print args
 
-    # Call main script from the correct directory
-    run_dir = os.path.realpath('/'.join(run.__file__.split('/')[:-1]))
-    print "Calling `run.py` in {}.".format(run_dir)
-    with cd(run_dir):
-        result = run.main(args)
-        pass
+    # Call main script
+    result = train.main(args)
 
     # Ensure correct type, otherwise Spearmint does not accept value
     result = float(result)
     return result
-
