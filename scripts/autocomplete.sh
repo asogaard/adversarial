@@ -13,6 +13,7 @@ _submit()
 }
 complete -F _submit -o default ./submit.sh
 
+# @TODO: Conform to restructured code
 _run()
 {
     local cur prev opts

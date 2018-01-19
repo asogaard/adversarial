@@ -33,6 +33,7 @@ _To be added..._
 
 Below is a list of items which should ideally be addressed as part of the development and study of de-correlated tagger(s). Developers should feel free to assign themselves to any task they see fit.
 
+- [ ] Complete code restructuring ([@asogaard])
 - [ ] Validation tests
 - [ ] Setup optimisation framework ([@asogaard])
 - [ ] Get rel. 21 MC ntuples
@@ -59,6 +60,7 @@ $ git clone git@github.com:asogaard/adversarial.git
 $ cd adversarial
 $ source install.sh
 $ source setup.sh
+$ pip install -e .  # To be confirmed; may need to be done in each conda environment.
 ```
 This installs the supported conda [environments](#environment) and activates
 the one for CPU running.
@@ -71,12 +73,14 @@ If run elsewhere than lxplus, this will download a 1.4GB HDF5 data file.
 
 **Test run**
 ```bash
-$ ./run.py --help
-$ ./run.py --train --tensorflow
+$ python -m run.adversarial.train --help
+$ python -m run.adversarial.train --train --tensorflow
 ```
-This shows the supported arguments to the [run.py](run.py) script, and starts
-training using the TensorFlow backend. Tab-completion is enabled for
-[run.py](run.py).
+This shows the supported arguments to the
+[run/adversarial/train.py](run/adversarial/train.py) script, and starts training
+using the TensorFlow backend. Several scripts — for training, testing, and
+optimisation — are available in the [run/](run/) directory and can be run either
+as modules or as scripts. Tab-completion will be enabled for all of them.
 
 
 
@@ -197,7 +201,7 @@ that order. Use `TAB` to auto-complete and see available command-line arguments.
 
 To run the optimisation, simply do
 ```bash
-$ source scripts/optimise.py classifier
+$ source scripts/optimise.sh classifier
 ```
 The argument refers to the named experiment in
 [optimisation/experiments/](optimisation/experiments/). Several utility scripts
@@ -210,7 +214,7 @@ for the optimisation are available in
 
 For convenience, the project natively supports TensorBoard for monitoring the training progress. To use TensorBoard, run using the `--tensorboard` flag, i.e.
 ```bash
-$ run.py --train --tensorflow --tensorboard
+$ python -m run.adversarial.train --train --tensorflow --tensorboard
 ```
 
 The output TensorBoard is published to `http://localhost:6006` on the running server. If the code is run through ssh, it is still possible to access the results locally, by doing
