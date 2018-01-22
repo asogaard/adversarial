@@ -1,5 +1,5 @@
 #!/bin/bash
-# Setup the environment necessary for running the adversarial neural network
+# Activate the environment necessary for running the adversarial neural network
 # training and evaluation, depending on the current host.
 
 # Import utility methods
@@ -44,7 +44,7 @@ fi
 if [[ "$lcg" == true ]]; then
 
     if [[ "$host" != "lxplus" ]]; then
-	warning "Cannot setup LCG environment on $host platform. Exiting."
+	warning "Cannot activate LCG environment on $host platform. Exiting."
 	return 1
     else
 	print "Setting up LCG environment on $host"
@@ -61,7 +61,7 @@ else
 
     # Deactivate conda environment
     if [[ "$(conda info --env | grep \* | sed 's/ .*//g')" != "root" ]]; then
-	source deactivate > /dev/null 2>&1 
+	source deactivate > /dev/null 2>&1
     fi
 
     # Unset complete
@@ -95,13 +95,13 @@ else
     # Set `MKL_THREADING_LAYER` environment variable, necessary for running
     # Theano 1.0.0rc1
     export MKL_THREADING_LAYER=GNU
-    
+
     # Activate appropriate conda environment
     env="adversarial-$mode"
     print "Setting up conda environment '$env' on $host platform"
     env_exists="$(conda info --env | sed 's/ .*//g;s/^#//g' | grep $env)"
     if [[ "$env_exists" ]]; then
-	source activate $env > /dev/null 2>&1 
+	source activate $env > /dev/null 2>&1
     else
 	warning "Conda environment '$env' does not exist. Please run the installation script."
     fi

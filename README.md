@@ -45,7 +45,7 @@ Below is a list of items which should ideally be addressed as part of the develo
 - [ ] Determine convergence condition for adversarial training
 - [ ] Implementation in BoostedJetTaggers
 - [ ] Test on e.g. W/Z-peak in data
-- [ ] uBoost implementation
+- [X] uBoost implementation ([@asogaard])
 - [ ] uBoost comparison
 
 
@@ -59,7 +59,7 @@ To get running on any [supported platform](#supported-platforms), do the followi
 $ git clone git@github.com:asogaard/adversarial.git
 $ cd adversarial
 $ source install.sh
-$ source setup.sh
+$ source activate.sh
 $ pip install -e .  # To be confirmed; may need to be done in each conda environment.
 ```
 This installs the supported conda [environments](#environment) and activates
@@ -128,15 +128,15 @@ enviroment.
 
 Everytime you are starting a new shell, before running the adversarial neural
 network code, you should activate the installed environment by using the
-[setup.sh](setup.sh) script.
+[activate.sh](activate.sh) script.
 
 ```bash
-$ source setup.sh cpu  # For running on CPU
-$ source setup.sh gpu  # -              GPU
+$ source activate.sh cpu  # For running on CPU
+$ source activate.sh gpu  # -              GPU
 ```
 To deactivate the environment, do:
 ```bash
-$ source setup.sh unset  # or
+$ source activate.sh unset  # or
 $ source deactivate
 ```
 
@@ -148,7 +148,7 @@ of the required python packages, although generally older versions of
 these. However, this is **not supported** and version conflicts are very likely
 to occur. Should you wish to try it out anyway, it can be set up using:
 ```bash
-$ source setup.sh lcg
+$ source activate.sh lcg
 ```
 with no installation required.
 
