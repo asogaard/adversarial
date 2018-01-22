@@ -149,7 +149,7 @@ def load_data (path, name='dataset', train_fraction=0.8, seed=21):
     # Select featues
     features_input         = ['Tau21', 'C2', 'D2', 'Angularity', 'Aplanarity', 'FoxWolfram20', 'KtDR', 'PlanarFlow', 'Split12', 'ZCut12']
     features_decorrelation = ['m']
-    features_auxiliary     = ['signal', 'weight']
+    features_auxiliary     = ['signal', 'weight', 'pt']
     data = data[features_input + features_decorrelation + features_auxiliary]
 
     # Re-scale weights
@@ -168,3 +168,23 @@ def load_data (path, name='dataset', train_fraction=0.8, seed=21):
 
     # Return
     return data, features_input, features_decorrelation
+
+
+def mkdir (path):
+    """Script to ensure that the directory at `path` exists.
+
+    Arguments:
+        path: String specifying path to directory to be created.
+    """
+
+    # Check mether  output directory exists
+    if not os.path.exists(path):
+        print "mdkir: Creating output directory:\n  {}".format(path)
+        try:
+            os.makedirs(path)
+        except OSError:
+            # Apparently, `path` already exists.
+            pass
+        pass
+        
+    return
