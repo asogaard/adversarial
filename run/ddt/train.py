@@ -11,8 +11,9 @@ import root_numpy
 from array import array
 
 # Project import(s)
-from adversarial.new_utils import parse_args, initialise, load_data, mkdir
 from adversarial.profile import profile, Profile
+from adversarial.new_utils import parse_args, initialise, load_data, mkdir
+from adversarial.constants import *
 
 # Custom import(s)
 import rootplotting as rp
@@ -30,6 +31,7 @@ def main (args):
     # Loading data
     # --------------------------------------------------------------------------
     data, features, _ = load_data(args.input + 'data.h5')
+    data = data[data['train'] == 1]
 
 
     # Common definition
@@ -65,6 +67,9 @@ def main (args):
             fit = ROOT.TF1('fit', 'pol1', *fit_range)
             profiles['Tau21'].Fit('fit', 'RQ0')
             intercept, slope = fit.GetParameter(0), fit.GetParameter(1)
+            print "Fitted function:"
+            print "  intercept: {:f}".format(intercept)
+            print "  slope:     {:f}".format(slope)
             pass
 
 
@@ -115,20 +120,28 @@ def main (args):
             c = rp.canvas(batch=True)
 
             # Profiles
-            c.graph(graphs['Tau21'],    label="Original, #tau_{21}",          linecolor=rp.colours[0], markercolor=rp.colours[0])
-            c.graph(graphs['Tau21DDT'], label="Transformed, #tau_{21}^{DDT}", linecolor=rp.colours[1], markercolor=rp.colours[1])
+            c.graph(graphs['Tau21'],    label="Original, #tau_{21}",          linecolor=rp.colours[5], markercolor=rp.colours[5])
+            c.graph(graphs['Tau21DDT'], label="Transformed, #tau_{21}^{DDT}", linecolor=rp.colours[1], markercolor=rp.colours[1], markerstyle=21)
 
             # Fit
-            x1, y1 = fit_range[0], intercept + fit_range[0] * slope
-            x2, y2 = fit_range[1], intercept + fit_range[1] * slope
-            c.plot([y1,y2], bins=[x1,x2], color=rp.colours[-1], label='Linear fit', linewidth=2, linestyle=2, option='L')
+            x1, x2 = min(arr_x), max(arr_x)
+            #x1, x2 = fit_range
+            y1 = intercept + x1 * slope
+            y2 = intercept + x2 * slope
+            c.plot([y1,y2], bins=[x1,x2], color=rp.colours[-1], label='Linear fit', linewidth=1, linestyle=1, option='L')
 
             # Decorations
-            c.xlabel("Large-#it{R} jet #rho^{DDT}")
+            c.xlabel("Large-#it{R} jet #rho^{DDT} = log(m_{calo}^{2}/ p_{T} / 1 GeV)")
             c.ylabel("#LT#tau_{21}#GT, #LT#tau_{21}^{DDT}#GT")
-            c.text(["#sqrt{s} = 13 TeV,  W/Top MC"],
-                qualifier="Simulation Work in progress")
+            c.text(["#sqrt{s} = 13 TeV,  QCD jets",
+                    "Training dataset",
+                    "Baseline selection",
+                    ],
+                qualifier=QUALIFIER)
             c.legend()
+            c.ylim(0, 1.4)
+            c.xline(fit_range[0], text='Fit range', ymax=0.82, text_align='BR')
+            c.xline(fit_range[1], text='Fit range', ymax=0.82, text_align='BL')
 
             # Save
             mkdir('figures/')
