@@ -629,7 +629,7 @@ def main (args):
         # Define variables
         name = 'full_classifier'
 
-        if args.train or args.train_classifier:
+        if args.train or args.train_classifier or True:  # @TEMP
             log.info("Training full classifier")
 
             # Get classifier
@@ -640,7 +640,13 @@ def main (args):
 
             # Overwrite number of training epochs with optimal number found from
             # cross-validation
-            cfg['classifier']['fit']['epochs'] = opt_epochs
+            try:
+                if opt_epochs:
+                    cfg['classifier']['fit']['epochs'] = opt_epochs
+                    pass
+            except UnboundLocalError:
+                # ...
+                pass
 
             # Create callbacks
             callbacks = []
@@ -827,7 +833,7 @@ def main (args):
         # Save combiend model diagram
         plot_model(combined, to_file=args.output + 'model_combined.png', show_shapes=True)
 
-        if args.train or args.train_adversarial:
+        if args.train or args.train_adversarial or True:  # @TEMP
             log.info("Training full, combined model")
 
             # Create custom objective function for posterior: - log(p) of the
