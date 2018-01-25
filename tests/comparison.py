@@ -25,7 +25,7 @@ from adversarial.constants import *
 import rootplotting as rp
 
 def filename (name):
-    """Methods to standardise a given filename, and remove special characters."""
+    """Method to standardise a given filename, and remove special characters."""
     return name.lower() \
            .replace('#', '') \
            .replace(',', '__') \
@@ -92,8 +92,11 @@ def main (args):
 
         # Tau21DDT
         with Profile("Tau21DDT"):
+            with open('models/ddt/ddt.pkl', 'r') as f:
+                ddt = pickle.load(f)
+                pass
             data['rhoDDT']   = pd.Series(np.log(np.square(data['m'])/(data['pt'] * 1.)), index=data.index)
-            data['Tau21DDT'] = pd.Series(data['Tau21'] - slope * (data['rhoDDT'] - fit_range[0]), index=data.index)
+            data['Tau21DDT'] = pd.Series(data['Tau21'] - ddt.predict(data['rhoDDT'].as_matrix().reshape((-1,1))), index=data.index)
             pass
 
         # D2-kNN
@@ -143,7 +146,7 @@ def main (args):
         # Adaboost
         with Profile("uBoost"):
             # @TODO: Add uniforming rate, `uboost_uni`
-            with open('models/uboost/uboost_{:d}.pkl'.format(uboost_eff), 'r') as f:
+            with open('models/uboost/uboost_{:d}.pkl'.format(100 - uboost_eff), 'r') as f:
                 uboost = pickle.load(f)
                 pass
             data[uboost_var] = pd.Series(uboost.predict_proba(data)[:,1].flatten().astype(K.floatx()), index=data.index)
@@ -175,23 +178,27 @@ def main (args):
             c = rp.canvas(batch=True)
 
             # Plots
+            ROOT.gStyle.SetHatchesLineWidth(3)
             c.hist(data.loc[data['signal'] == 0, feat].as_matrix().flatten(), bins=bins,
                    weights=data.loc[data['signal'] == 0, 'weight'].as_matrix().flatten(),
-                   alpha=0.5, fillcolor=rp.colours[1], label="QCD jets", normalise=True)
+                   alpha=0.5, fillcolor=rp.colours[1], label="QCD jets", normalise=True,
+                   fillstyle=3445, linewidth=3, linecolor=rp.colours[1])
             c.hist(data.loc[data['signal'] == 1, feat].as_matrix().flatten(), bins=bins,
                    weights=data.loc[data['signal'] == 1, 'weight'].as_matrix().flatten(),
-                   alpha=0.5, fillcolor=rp.colours[5], label="#it{W} jets", normalise=True)
-
+                   alpha=0.5, fillcolor=rp.colours[5], label="#it{W} jets", normalise=True,
+                   fillstyle=3454, linewidth=3, linecolor=rp.colours[5])
 
             # Decorations
-            c.xlabel(latex(feat, ROOT=True))
+            ROOT.gStyle.SetTitleOffset(1.6, 'y')
+            c.xlabel("Large-#it{R} jet " + latex(feat, ROOT=True))
             c.ylabel("1/N dN/d{}".format(latex(feat, ROOT=True)))
             c.text(["#sqrt{s} = 13 TeV",
                     "Testing dataset",
                     "Baseline selection",
                     ],
                 qualifier=QUALIFIER)
-            c.ymin(1E-03)
+            #c.ymin(1E-03)
+            c.ylim(2E-03, 2E+00)
             c.logy()
             c.legend()
 
@@ -343,7 +350,7 @@ def main (args):
 
                 M = np.vstack((data.loc[msk, 'm'].as_matrix().flatten(), msk_pass[msk])).T
                 weights = data.loc[msk, 'weight'].as_matrix().flatten()
-                
+
                 root_numpy.fill_profile(profile, M, weights=weights)
 
                 # Add to list
@@ -352,7 +359,7 @@ def main (args):
 
             # Canvas
             c = rp.canvas(batch=True)
-            
+
             # Plots
             for idx, (profile, cut, eff) in enumerate(zip(profiles, cuts, effs)):
                 colour = rp.colours[1]
@@ -370,8 +377,8 @@ def main (args):
                             textcolor=ROOT.kGray + 2, align=11)
                     pass
                 pass
-            
-            
+
+
             # Decorations
             c.xlabel("Large-#it{R} jet mass [GeV]")
             c.ylabel("Background efficiency #varepsilon_{bkg.}")
@@ -382,7 +389,7 @@ def main (args):
                     ],
                    qualifier=QUALIFIER)
             c.ylim(0, 1.9)
-            
+
             # Save
             mkdir('figures/')
             c.save('figures/eff_{}.pdf'.format(filename(feat)))
