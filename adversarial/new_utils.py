@@ -22,7 +22,7 @@ from adversarial.profile import profile
 PROJECTDIR='/'.join(os.path.realpath(adversarial.__file__).split('/')[:-2] + [''])
 
 
-def parse_args (cmdline_args=sys.argv[1:]):
+def parse_args (cmdline_args=sys.argv[1:], backend=False):
     """General script to query command-line arguments from the user, commen to
     all run scripts.
 
@@ -37,7 +37,7 @@ def parse_args (cmdline_args=sys.argv[1:]):
 
     parser = argparse.ArgumentParser(description="Training uBoost classifierfor de-correlated jet tagging.")
 
-    # -- Inputs
+    # Inputs
     parser.add_argument('-i', '--input',  dest='input',   action='store', type=str,
                         default=PROJECTDIR + 'data/', help='Input directory, from which to read HDF5 data file.')
     parser.add_argument('-o', '--output', dest='output',  action='store', type=str,
@@ -47,9 +47,24 @@ def parse_args (cmdline_args=sys.argv[1:]):
     parser.add_argument('-p', '--patch', dest='patches', action='append', type=str,
                         help='Patch file(s) with which to update configuration file.')
 
-    # -- Flags
+    # Flags
     parser.add_argument('-v', '--verbose', dest='verbose', action='store_const',
                         const=True, default=False, help='Print verbose')
+
+    # Conditional arguments
+    if backend:
+        # Inputs
+        parser.add_argument('--devices',     dest='devices', action='store', type=int,
+                            default=1, help='Number of CPU/GPU devices to use with TensorFlow.')
+        parser.add_argument('--folds',       dest='folds',    action='store', type=int,
+                            default=2, help='Number of folds to use for stratified cross-validation.')
+
+        # Flags
+        parser.add_argument('-g', '--gpu',  dest='gpu',        action='store_const',
+                            const=True, default=False, help='Run on GPU')
+        parser.add_argument('--tensorflow', dest='tensorflow', action='store_const',
+                            const=True, default=False, help='Use TensorFlow backend')
+        pass
 
     return parser.parse_args(cmdline_args)
 
@@ -99,6 +114,14 @@ def initialise (args):
             patch = json.load(f)
             pass
         apply_patch(cfg, patch)
+        pass
+
+    # Set adversary learning rate (LR) ratio from ratio of loss_weights
+    try:
+        cfg['combined']['model']['lr_ratio'] = cfg['combined']['compile']['loss_weights'][0] / \
+                                               cfg['combined']['compile']['loss_weights'][1]
+    except KeyError:
+        # ...
         pass
 
     # Return
@@ -186,5 +209,5 @@ def mkdir (path):
             # Apparently, `path` already exists.
             pass
         pass
-        
+
     return
