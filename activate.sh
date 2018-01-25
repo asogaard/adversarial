@@ -47,7 +47,7 @@ if [[ "$lcg" == true ]]; then
 	warning "Cannot activate LCG environment on $host platform. Exiting."
 	return 1
     else
-	print "Setting up LCG environment on $host"
+	print "Activating LCG environment on $host"
 	source scripts/lxplus/lcg.sh
 	return 0
     fi
@@ -98,7 +98,7 @@ else
 
     # Activate appropriate conda environment
     env="adversarial-$mode"
-    print "Setting up conda environment '$env' on $host platform"
+    print "Activating conda environment '$env' on $host platform"
     env_exists="$(conda info --env | sed 's/ .*//g;s/^#//g' | grep $env)"
     if [[ "$env_exists" ]]; then
 	source activate $env > /dev/null 2>&1
