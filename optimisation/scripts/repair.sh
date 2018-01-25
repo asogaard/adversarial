@@ -40,8 +40,14 @@ for pending_id in ${pending_ids[@]}; do
     elif (( $num_files > 1 )); then
         warning "More than one ($numfiles) TensorBoard logfiles associated with stalled Spearmint job with ID $pending_id. Not deleting any."
     else
-        print "Deleting TensorBoard logfile $file associated with stalled Spearmint job with ID $pending_id."
-        echo ">>> rm -rf $file"
+        question "Delete TensorBoard logfile $file associated with stalled Spearmint job with ID $pending_id." "n"
+	response="$?"
+	if (( "$response" )); then
+	    print "OK, deleting."
+            rm -rf $file
+	else
+	    print "OK, proceeding."
+	fi    
     fi
 done
 
