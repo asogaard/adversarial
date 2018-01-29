@@ -58,6 +58,7 @@ def main ():
         
         paths = [args.input + f for f in files]
 
+        # @TODO: Add |fjet_truthJet_eta| < 2.0?
         selection = {
             'sig': ("(W && "
                     "fjet_truthJet_pt > 200E+03 && "
