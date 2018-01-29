@@ -36,6 +36,11 @@ def filename (name):
            .replace('=', '_')
 
 
+def signal_high (feat):
+    """Method to determine whether the signal distribution is towards higher values."""
+    return ('tau21' in feat.lower() or 'd2' in feat.lower())
+
+
 # Main function definition
 @profile
 def main (args):
@@ -81,7 +86,7 @@ def main (args):
     fit_range = (1.5, 4.0)
     intercept, slope = 0.774633, -0.111879
 
-    # Perform standardisation  @TEMP (?)
+    # Perform standardisation  @TEMP?
     substructure_scaler = StandardScaler().fit(data[features])
     data_std = pd.DataFrame(substructure_scaler.transform(data[features]), index=data.index, columns=features)
 
@@ -197,7 +202,6 @@ def main (args):
                     "Baseline selection",
                     ],
                 qualifier=QUALIFIER)
-            #c.ymin(1E-03)
             c.ylim(2E-03, 2E+00)
             c.logy()
             c.legend()
@@ -207,6 +211,96 @@ def main (args):
             c.save('figures/dist_{}.pdf'.format(filename(feat)))
             pass
         pass
+
+
+    # Perform jet mass distributions study
+    # --------------------------------------------------------------------------
+    with Profile("Study: Jet mass distributions"):
+        for feat in tagger_features:
+
+            # Define masks; fixed signal efficiency cut
+            eff_bkg = 20
+            msk_sig = data['signal'] == 1
+            msk_bkg = ~msk_sig
+            eff_cut = eff_bkg if signal_high(feat) else 100 - eff_bkg
+            cut = wpercentile(data.loc[msk_bkg, feat].as_matrix().flatten(), eff_cut, weights=data.loc[msk_bkg, 'weight'].as_matrix().flatten())
+            msk_pass = data[feat] > cut
+
+            # Ensure correct cut direction
+            if signal_high(feat):
+                msk_pass = ~msk_pass
+                pass
+
+            # Define bins
+            bins = np.linspace(40, 300, (300 - 40) // 10 + 1, endpoint=True)
+
+            # Canvas
+            c = rp.canvas(num_pads=2, size=(int(800 * 600 / 857.), 600), batch=True)
+
+            # Plots
+            ROOT.gStyle.SetHatchesLineWidth(3)
+            h_fail = c.hist(data.loc[msk_bkg & ~msk_pass, 'm'].as_matrix().flatten(), bins=bins,
+                            weights=data.loc[msk_bkg & ~msk_pass, 'weight'].as_matrix().flatten(),
+                            alpha=0.3, fillcolor=rp.colours[1], normalise=True,
+                            fillstyle=3445, linewidth=3, label="Failing cut",
+                            linecolor=rp.colours[1])
+            h_pass = c.hist(data.loc[msk_bkg &  msk_pass, 'm'].as_matrix().flatten(), bins=bins,
+                            weights=data.loc[msk_bkg &  msk_pass, 'weight'].as_matrix().flatten(),
+                            alpha=0.3, fillcolor=rp.colours[5], normalise=True,
+                            fillstyle=3454, linewidth=3, label="Passing cut",
+                            linecolor=rp.colours[5])
+
+            # Ratio plots
+            c.pads()[1].hist([1], bins=[bins[0], bins[-1]], linecolor=ROOT.kGray + 1, linewidth=1, linestyle=1)
+            h_ratio = c.ratio_plot((h_pass, h_fail), option='E2',   fillstyle=1001, fillcolor=rp.colours[0], linecolor=rp.colours[0], alpha=0.3)
+            c.ratio_plot((h_pass, h_fail), option='HIST', fillstyle=0, linewidth=3, linecolor=rp.colours[0])
+
+            # Out-of-bounds indicators
+            ymin, ymax = 1E-01, 1E+01
+            ratio = root_numpy.hist2array(h_ratio)
+            centres = bins[:-1] + 0.5 * np.diff(bins)
+            offset = 0.05  # Relative offset from top- and bottom of ratio pad
+
+            lymin, lymax = map(np.log10, (ymin, ymax))
+            ldiff = lymax - lymin
+
+            oobx = map(lambda t: t[0], filter(lambda t: t[1] > ymax, zip(centres,ratio)))
+            ooby = np.ones_like(oobx) * np.power(10, lymax - offset * ldiff)
+            if len(oobx) > 0:
+                c.pads()[1].graph(ooby, bins=oobx, markercolor=rp.colours[0], markerstyle=22, option='P')
+                pass
+
+            oobx = map(lambda t: t[0], filter(lambda t: t[1] < ymin, zip(centres,ratio)))
+            ooby = np.ones_like(oobx) * np.power(10, lymin + offset * ldiff)
+            if len(oobx) > 0:
+                c.pads()[1].graph(ooby, bins=oobx, markercolor=rp.colours[0], markerstyle=23, option='P')
+                pass
+
+            # Decorations
+            ROOT.gStyle.SetTitleOffset(1.6, 'y')
+            c.xlabel("Large-#it{R} jet mass [GeV]")
+            c.ylabel("1/N dN/d{}".format('m'))
+            c.text(["#sqrt{s} = 13 TeV,  QCD jets",
+                    "Testing dataset",
+                    "Baseline selection",
+                    "Fixed #varepsilon_{bkg.} = %d%% cut on %s" % (eff_bkg, latex(feat, ROOT=True)),
+                    ],
+                qualifier=QUALIFIER)
+            c.ylim(2E-04, 2E+02)
+
+            c.pads()[1].ylabel("Passing / failing")
+            c.pads()[1].logy()
+            c.pads()[1].ylim(ymin, ymax)
+
+            c.logy()
+            c.legend()
+
+            # Save
+            mkdir('figures/')
+            c.save('figures/jetmass_{}__eff_bkg_{:d}.pdf'.format(filename(feat), int(eff_bkg)))
+            pass
+        pass
+
 
 
     # Perform robustness study
@@ -225,6 +319,7 @@ def main (args):
         # Define common variables
         msk = data['signal'] == 0
         effs = np.linspace(0, 100, 10 * 2, endpoint=False)[1:].astype(int)
+        ROOT.gStyle.SetTitleOffset(2.0, 'y')
 
         # Loop tagger features
         jsd = {feat: [] for feat in tagger_features}
@@ -239,7 +334,7 @@ def main (args):
                 pass
 
             # Ensure correct direction of cut
-            if not ('tau21' in feat.lower() or 'd2' in feat.lower()):
+            if not signal_high(feat):
                 cuts = list(reversed(cuts))
                 pass
 
@@ -247,7 +342,6 @@ def main (args):
             bins = np.linspace(40, 300, (300 - 40) // 10 + 1, endpoint=True)
 
             # Compute KL divergence for successive cuts
-            # @TODO: Fix direction?
             for cut, eff in zip(cuts, effs):
                 # Create ROOT histograms
                 msk_pass = data[feat] > cut
@@ -289,7 +383,7 @@ def main (args):
 
         # Decorations
         c.xlabel("Background efficiency #varepsilon_{bkg.}")
-        c.ylabel("JSD(1/N_{pass} dN_{pass}/dm_{calo} #parallel 1/N_{fail} dN_{fail}/dm_{calo})")
+        c.ylabel("JSD(1/N_{pass} dN_{pass}/dm #parallel 1/N_{fail} dN_{fail}/dm)")
         c.text(["#sqrt{s} = 13 TeV,  QCD jets",
                 "Testing dataset",
                 "Baseline selection",
@@ -315,6 +409,7 @@ def main (args):
         # Define common variables
         msk  = data['signal'] == 0
         effs = np.linspace(0, 100, 10, endpoint=False)[1:].astype(int)
+        ROOT.gStyle.SetTitleOffset(1.6, 'y')
 
         # Loop tagger features
         c = rp.canvas(batch=True)
@@ -328,7 +423,7 @@ def main (args):
                 pass
 
             # Ensure correct direction of cut
-            if not ('tau21' in feat.lower() or 'd2' in feat.lower()):
+            if not signal_high(feat):
                 cuts = list(reversed(cuts))
                 pass
 
@@ -340,7 +435,7 @@ def main (args):
             for cut, eff in zip(cuts, effs):
                 # Get correct pass-cut mask
                 msk_pass = data[feat] > cut
-                if 'tau21' in feat.lower() or 'd2' in feat.lower():
+                if signal_high(feat):
                     msk_pass = ~msk_pass
                     pass
 
@@ -416,6 +511,12 @@ def main (args):
                 eff_sig = eff_sig[indices]
                 eff_bkg = eff_bkg[indices]
 
+                # Subsample to 1% steps
+                targets = np.linspace(0, 1, 100 + 1, endpoint=True)
+                indices = np.array([np.argmin(np.abs(eff_sig - t)) for t in targets])
+                eff_sig = eff_sig[indices]
+                eff_bkg = eff_bkg[indices]
+
                 # Store
                 ROCs[feat] = (eff_sig,eff_bkg)
                 pass
@@ -439,12 +540,23 @@ def main (args):
             c = rp.canvas(batch=True)
 
             # Plots
+            # -- Random guessing
+            c.graph(np.power(eff_sig, -1.), bins=eff_sig, linecolor=ROOT.kGray + 2, linewidth=1, option='AL')
+
+            # -- AUCs
+            categories = list()
+            for feat in tagger_features:
+                 line = "#scale[0.6]{#color[13]{AUC: %.3f}}" % AUCs[feat]
+                 categories += [(line, {'linestyle': 0, 'fillstyle': 0, 'markerstyle': 0, 'option': ''})]
+                 pass
+            c.legend(categories=categories, xmin=0.80, width=0.04)
+
+            # -- ROCs
             for ifeat, feat in enumerate(tagger_features):
                 eff_sig, eff_bkg = ROCs[feat]
-                c.graph(np.power(eff_bkg[::500], -1.), bins=eff_sig[::500], linestyle=1 + (ifeat % 2), linecolor=rp.colours[(ifeat // 2) % len(rp.colours)], linewidth=2, label="{} (AUC: {:.2f})".format(latex(feat, ROOT=True), AUCs[feat]), option=('A' if ifeat == 0 else '') + 'L')
+                c.graph(np.power(eff_bkg, -1.), bins=eff_sig, linestyle=1 + (ifeat % 2), linecolor=rp.colours[(ifeat // 2) % len(rp.colours)], linewidth=2, label=latex(feat, ROOT=True), option='L')
                 pass
-            c.graph(np.power(eff_sig[::500], -1.), bins=eff_sig[::500], linecolor=ROOT.kGray + 2, linewidth=1, option='L')
-            # ...
+            c.legend(xmin=0.58, width=0.22)
 
             # Decorations
             c.xlabel("Signal efficiency #varepsilon_{sig.}")
@@ -452,7 +564,7 @@ def main (args):
             c.text(["#sqrt{s} = 13 TeV",
                     "Testing dataset",
                     "Baseline selection",
-                    "m_{calo} #in  [60, 100] GeV",
+                    "m #in  [60, 100] GeV",
                     ],
                 qualifier=QUALIFIER)
             c.latex("Random guessing", 0.3, 1./0.3 * 0.9, align=23, angle=-12, textsize=13, textcolor=ROOT.kGray + 2)
