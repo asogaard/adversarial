@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-"""Script for performing training (and evaluation?) of adversarial neural networks for de-correlated jet tagging."""
+"""Script for performing training adversarial neural network for de-correlated jet tagging."""
 
 # Basic import(s)
 import os
