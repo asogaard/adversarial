@@ -17,7 +17,7 @@ from adversarial.new_utils import parse_args, initialise, load_data, mkdir
 from adversarial.constants import *
 
 # Local import(s)
-from run.knn.common import *
+from .common import *
 
 
 # Main function definition

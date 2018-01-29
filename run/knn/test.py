@@ -14,11 +14,11 @@ import numpy as np
 # Project import(s)
 from adversarial.utils import latex
 from adversarial.profile import profile, Profile
-from adversarial.new_utils import parse_args, initialise, load_data
+from adversarial.new_utils import parse_args, initialise, load_data, mkdir
 from adversarial.constants import *
 
 # Local import(s)
-from run.knn.common import *
+from .common import *
 
 # Custom import(s)
 import rootplotting as rp
@@ -104,6 +104,9 @@ def main (args):
             ymax=0.83,
             xmin=0.18,
             textcolor=ROOT.kWhite)
+
+        # Save
+        mkdir('figures/')
         c.save('figures/knn_profile.pdf')
         pass
 
@@ -180,6 +183,9 @@ def main (args):
             ymax=0.83,
             xmin=0.18,
             textcolor=ROOT.kWhite)
+
+        # Save
+        mkdir('figures/')
         c.save('figures/knn_fit.pdf')
         pass
 
