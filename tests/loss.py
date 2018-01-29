@@ -37,7 +37,7 @@ def main (args):
     num_devices = 6
 
     paths = sorted(glob.glob('trained/history__crossval_{}__*of{}.json'.format(experiment, num_folds)))
-    
+
 
 
     # Perform study
@@ -49,10 +49,10 @@ def main (args):
             with open(path, 'r') as f:
                 d = json.load(f)
                 pass
-            
-            loss = np.array(d['val_loss']) / float(num_devices)
+
+            loss = np.array(d['val_loss'])  # / float(num_devices)
             losses['val'].append(loss)
-            loss = np.array(d['loss']) / float(num_devices)
+            loss = np.array(d['loss'])  # / float(num_devices)
             losses['train'].append(loss)
             pass
 
@@ -60,14 +60,14 @@ def main (args):
         c = rp.canvas(batch=True)
         bins     = np.arange(len(loss)) + 1
         histbins = np.arange(len(loss) + 1) + 0.5
-        
+
         # Plots
         categories = list()
         # -- Validation
         loss_mean = np.mean(losses['val'], axis=0)
         loss_std  = np.std (losses['val'], axis=0)
         hist = ROOT.TH1F('val_loss', "", len(histbins) - 1, histbins)
-        for idx in range(len(loss_mean)):            
+        for idx in range(len(loss_mean)):
             hist.SetBinContent(idx + 1, loss_mean[idx])
             hist.SetBinError  (idx + 1, loss_std [idx])
             pass
@@ -86,7 +86,7 @@ def main (args):
         loss_mean = np.mean(losses['train'], axis=0)
         loss_std  = np.std (losses['train'], axis=0)
         hist = ROOT.TH1F('loss', "", len(histbins) - 1, histbins)
-        for idx in range(len(loss_mean)):            
+        for idx in range(len(loss_mean)):
             hist.SetBinContent(idx + 1, loss_mean[idx])
             hist.SetBinError  (idx + 1, loss_std [idx])
             pass
@@ -98,12 +98,12 @@ def main (args):
                         {'linestyle': 2, 'linewidth': 3,
                          'linecolor': rp.colours[1], 'fillcolor': rp.colours[1],
                          'alpha': 0.3,  'option': 'FL'})]
-        
+
         # Decorations
         c.xlabel("Cross-validation (CV) training epoch")
         c.ylabel("Optimisation metric (L_{clf.}^{val.})")
         c.xlim(0, max(bins))
-        c.ylim(0.012, 0.018)
+        c.ylim(0.075, 0.100)
         c.legend(xmin=0.475, categories=categories)
         c.text(["#sqrt{s} = 13 TeV",
                 "Baseline selection",
