@@ -13,7 +13,7 @@ import pandas as pd
 from adversarial.profile import profile
 
 
-# Common definitions
+# Common definition(s)
 BINS = np.linspace(-1, 6, 7 * 8 + 1, endpoint=True)  # Binning in rhoDDT
 FIT_RANGE = (1.5, 4.0)  # Range in rhoDDT to be fitted
 

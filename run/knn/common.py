@@ -16,7 +16,7 @@ from adversarial.utils import wpercentile
 from adversarial.profile import profile
 
 
-# Common definitions
+# Common definition(s)
 VAR  = 'D2'   # Substructure variable to decorrelate
 EFF  = 20     # Fixed backround efficiency at which to perform decorrelation
 VARX = 'rho'  # X-axis variable from which to decorrelate
