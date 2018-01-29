@@ -125,7 +125,7 @@ def main (args):
         pad.SetTopMargin(0.10)
 
         # Styling
-        profile_meas.GetXaxis().SetTitle("Large-#it{R} jet " + latex(varx, ROOT=True) + " = log(m_{calo}^{2}/p_{T}^{2})")
+        profile_meas.GetXaxis().SetTitle("Large-#it{R} jet " + latex(varx, ROOT=True) + " = log(m^{2}/p_{T}^{2})")
         profile_meas.GetYaxis().SetTitle("Large-#it{R} jet " + latex(vary, ROOT=True) + " [GeV]")
         profile_meas.GetZaxis().SetTitle("Measured, weighted {}-percentile of {}".format(eff, latex(var, ROOT=True)))
         profile_meas.GetYaxis().SetTitleOffset(1.6)
@@ -137,8 +137,8 @@ def main (args):
         profile_meas.Draw('COLZ')
         bounds[0].DrawCopy("SAME")
         bounds[1].DrawCopy("SAME")
-        c.latex("m_{calo} > 40 GeV",  -4.5, bounds[0].Eval(-4.5) + 30, align=21, angle=-20, textsize=13, textcolor=ROOT.kGray + 2)
-        c.latex("m_{calo} < 300 GeV", -3.2, bounds[1].Eval(-3.2) - 30, align=23, angle=-53, textsize=13, textcolor=ROOT.kGray + 2)
+        c.latex("m > 40 GeV",  -4.5, bounds[0].Eval(-4.5) + 30, align=21, angle=-20, textsize=13, textcolor=ROOT.kGray + 2)
+        c.latex("m < 300 GeV", -3.2, bounds[1].Eval(-3.2) - 30, align=23, angle=-53, textsize=13, textcolor=ROOT.kGray + 2)
         
         # Decorations
         c.text(qualifier=QUALIFIER,
@@ -208,7 +208,7 @@ def main (args):
         pad.SetTopMargin(0.10)
 
         # Styling
-        profile_fit.GetXaxis().SetTitle("Large-#it{R} jet " + latex(varx, ROOT=True) + " = log(m_{calo}^{2}/p_{T}^{2})")
+        profile_fit.GetXaxis().SetTitle("Large-#it{R} jet " + latex(varx, ROOT=True) + " = log(m^{2}/p_{T}^{2})")
         profile_fit.GetYaxis().SetTitle("Large-#it{R} jet " + latex(vary, ROOT=True) + " [GeV]")
         profile_fit.GetZaxis().SetTitle("kNN-fitted, weighted {}-percentile of {}".format(eff, latex(var, ROOT=True)))
         profile_fit.GetYaxis().SetTitleOffset(1.6)
@@ -220,8 +220,8 @@ def main (args):
         profile_fit.Draw('COLZ')
         bounds[0].DrawCopy("SAME")
         bounds[1].DrawCopy("SAME")
-        c.latex("m_{calo} > 40 GeV",  -4.5, bounds[0].Eval(-4.5) + 30, align=21, angle=-20, textsize=13, textcolor=ROOT.kGray + 2)
-        c.latex("m_{calo} < 300 GeV", -3.2, bounds[1].Eval(-3.2) - 30, align=23, angle=-53, textsize=13, textcolor=ROOT.kGray + 2)
+        c.latex("m > 40 GeV",  -4.5, bounds[0].Eval(-4.5) + 30, align=21, angle=-20, textsize=13, textcolor=ROOT.kGray + 2)
+        c.latex("m < 300 GeV", -3.2, bounds[1].Eval(-3.2) - 30, align=23, angle=-53, textsize=13, textcolor=ROOT.kGray + 2)
 
         # Decorations
         c.text(qualifier=QUALIFIER,
