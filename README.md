@@ -33,22 +33,25 @@ _To be added..._
 
 Below is a list of items which should ideally be addressed as part of the development and study of de-correlated tagger(s). Developers should feel free to assign themselves to any task they see fit.
 
+**PUBNOTE**
+- [ ] Get rel. 21 MC ntuples
 - [ ] Complete code restructuring ([@asogaard])
 - [ ] Validation tests
 - [X] Setup optimisation framework ([@asogaard])
-- [ ] Get rel. 21 MC ntuples
-- [ ] Get data/MC files from W/top-tagging CONF/paper
 - [X] Implement re-weighting for flat prior ([@asogaard])
 - [ ] Perform adversarial training with flatness re-weighting ([@asogaard])
 - [ ] Determine scheme for feature selection
 - [ ] Optimise classifier
 - [ ] Determine optimisation metric for adversary
 - [ ] Determine convergence condition for adversarial training
-- [ ] Implementation in BoostedJetTaggers
-- [ ] Test on e.g. W/Z-peak in data
 - [X] uBoost implementation ([@asogaard])
 - [X] uBoost comparison study ([@asogaard])
 - [ ] uBoost optimisation
+
+**Data studies**
+- [ ] Implementation in BoostedJetTaggers
+- [ ] Get data/MC files from W/top-tagging CONF/paper
+- [ ] Test on e.g. W/Z-peak in data
 
 
 
