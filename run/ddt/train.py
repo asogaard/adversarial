@@ -38,7 +38,7 @@ def main (args):
     data = data[(data['train'] == 1) & (data['signal'] == 0)]
 
 
-    # Common definition
+    # Common definition(s)
     # --------------------------------------------------------------------------
     bins = np.linspace(-1, 6, 7 * 8 + 1, endpoint=True)  # Binning in rhoDDT
     fit_range = (1.5, 4.0)  # Range in rhoDDT to be fitted
@@ -135,7 +135,7 @@ def main (args):
         c.plot([y1,y2], bins=[x1,x2], color=rp.colours[-1], label='Linear fit', linewidth=1, linestyle=1, option='L')
 
         # Decorations
-        c.xlabel("Large-#it{R} jet #rho^{DDT} = log(m_{calo}^{2}/ p_{T} / 1 GeV)")
+        c.xlabel("Large-#it{R} jet #rho^{DDT} = log(m^{2}/ p_{T} / 1 GeV)")
         c.ylabel("#LT#tau_{21}#GT, #LT#tau_{21}^{DDT}#GT")
         c.text(["#sqrt{s} = 13 TeV,  QCD jets",
                 "Training dataset",
