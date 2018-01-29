@@ -17,6 +17,9 @@ from adversarial.profile import profile, Profile
 from adversarial.new_utils import parse_args, initialise, load_data, mkdir
 from adversarial.constants import *
 
+# Local import(s)
+from .common import *
+
 
 # Main function definition
 @profile
@@ -32,49 +35,21 @@ def main (args):
     # --------------------------------------------------------------------------
     data, features, _ = load_data(args.input + 'data.h5')
     data = data[(data['train'] == 1) & (data['signal'] == 0)]
-    #data = data.head(100000)  # @TEMP
 
 
-    # Common definition(s)
+    # Get input array and -weights
     # --------------------------------------------------------------------------
-    # @NOTE: This is the crucial point: If the target is flat in (m,pt) the
-    # re-weighted background _won't_ be flat in (log m, log pt), and vice
-    # versa. It should go without saying, but draw target samples from a
-    # uniform prior on the coordinates which are used for the decorrelation.
-    decorrelation_variables = ['logm']
+    original, original_weight = get_input(data)
 
-
-    # Adding log(m) variable
-    # --------------------------------------------------------------------------
-    with Profile("Adding log(m) variable"):
-        data['logm'] = pd.Series(np.log(data['m']), index=data.index)
-        pass
-
-
-    # Performing pre-processing of de-correlation coordinates
-    # --------------------------------------------------------------------------
-    with Profile("Performing pre-processing"):
-
-        # Get number of background events and number of target events (arb.)
-        num_targets = data.shape[0]
-
-        # Initialise and fill coordinate original arrays
-        original = data[decorrelation_variables].as_matrix()
-        original_weight = data['weight'].as_matrix().flatten()
-
-        # Scale coordinates to range [0,1]
-        original -= np.min(original, axis=0)
-        original /= np.max(original, axis=0)
-
-        # Targets
-        target = np.random.rand(num_targets, len(decorrelation_variables))
-        pass
+    # Targets
+    num_targets = data.shape[0]  # Number of targets to  use in reweighting (arbitrary)
+    target = np.random.rand(num_targets, len(DECORRELATION_VARIABLES))
 
 
     # Fitting reweighter
     # --------------------------------------------------------------------------
     with Profile("Fitting reweighter"):
-        reweighter = GBReweighter()  # n_estimators=80, max_depth=7)
+        reweighter = GBReweighter()
         reweighter.fit(original, target=target, original_weight=original_weight)
         pass
 
