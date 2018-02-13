@@ -28,9 +28,8 @@ mkdir -p $dbpath
 # Run standard database repair
 mongod --repair --logpath $logpath/mongo.log --logappend --dbpath $dir/db/ --quiet 2>&1
 
-# Start server
-#### mongod --fork --logpath $logpath/mongo.log --dbpath $dbpath/
-nohup mongod --logpath $logpath/mongo.log --logappend --dbpath $dbpath/ 2>&1 &  # @TODO: Handle nohup.out
+# Start server with manual forking
+nohup mongod --logpath $logpath/mongo.log --logappend --dbpath $dbpath/ >> $logpath/mongo.log 2>&1 & 
 
 # Check return code
 ret="$?"
