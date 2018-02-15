@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-"""Commong utility methods for de-correlated jet tagging."""
+"""Common utility methods for de-correlated jet tagging."""
 
 # Basic import(s)
 import os
@@ -9,20 +9,22 @@ import sys
 import json
 import logging as log
 import argparse
+import subprocess
 
 # Scientific import(s)
 import numpy as np
+rng = np.random.RandomState(21)  # For reproducibility
 import pandas as pd
 
 # Project import(s)
 import adversarial
 from adversarial.profile import profile
 
-# Global variables
+# Global variables  # @TODO: Necessary?
 PROJECTDIR='/'.join(os.path.realpath(adversarial.__file__).split('/')[:-2] + [''])
 
 
-def parse_args (cmdline_args=sys.argv[1:], backend=False):
+def parse_args (cmdline_args=sys.argv[1:], backend=False, adversarial=False, plots=False):
     """General script to query command-line arguments from the user, commen to
     all run scripts.
 
@@ -38,32 +40,59 @@ def parse_args (cmdline_args=sys.argv[1:], backend=False):
     parser = argparse.ArgumentParser(description="Training uBoost classifierfor de-correlated jet tagging.")
 
     # Inputs
-    parser.add_argument('-i', '--input',  dest='input',   action='store', type=str,
+    parser.add_argument('--input',  action='store', type=str,
                         default=PROJECTDIR + 'data/', help='Input directory, from which to read HDF5 data file.')
-    parser.add_argument('-o', '--output', dest='output',  action='store', type=str,
+    parser.add_argument('--output', action='store', type=str,
                         default=PROJECTDIR + 'output/', help='Output directory, to which to write results.')
-    parser.add_argument('-c', '--config', dest='config',  action='store', type=str,
+    parser.add_argument('--config', action='store', type=str,
                         default=PROJECTDIR + 'configs/default.json', help='Configuration file.')
-    parser.add_argument('-p', '--patch', dest='patches', action='append', type=str,
+    parser.add_argument('--patch', dest='patches', action='append', type=str,
                         help='Patch file(s) with which to update configuration file.')
 
     # Flags
-    parser.add_argument('-v', '--verbose', dest='verbose', action='store_const',
-                        const=True, default=False, help='Print verbose')
+    parser.add_argument('--verbose', action='store_true', help='Print verbose')
 
     # Conditional arguments
-    if backend:
+    if backend or adversarial:
         # Inputs
-        parser.add_argument('--devices',     dest='devices', action='store', type=int,
+        parser.add_argument('--devices', action='store', type=int,
                             default=1, help='Number of CPU/GPU devices to use with TensorFlow.')
-        parser.add_argument('--folds',       dest='folds',    action='store', type=int,
-                            default=2, help='Number of folds to use for stratified cross-validation.')
+        parser.add_argument('--folds',   action='store', type=int,
+                            default=3, help='Number of folds to use for stratified cross-validation.')
 
         # Flags
-        parser.add_argument('-g', '--gpu',  dest='gpu',        action='store_const',
-                            const=True, default=False, help='Run on GPU')
-        parser.add_argument('--tensorflow', dest='tensorflow', action='store_const',
-                            const=True, default=False, help='Use TensorFlow backend')
+        parser.add_argument('--gpu',    action='store_true', help='Run on GPU')
+        parser.add_argument('--theano', action='store_true', help='Use Theano backend')
+        pass
+
+    if adversarial:
+        # Inputs
+        parser.add_argument('--jobname', action='store', type=str,
+                            default="", help='Name of job, used for TensorBoard output.')
+
+        # Flags
+        parser.add_argument('--tensorboard', action='store_true',
+                            help='Use TensorBoard for monitoring')
+        parser.add_argument('--reweight',    action='store_true',
+                            help='Reweight background to flatness in adversarial training')
+        parser.add_argument('--train',       action='store_true',
+                            help='Perform training')
+        parser.add_argument('--train-classifier', dest='train_classifier', action='store_true',
+                            help='Perform classifier pre-training')
+        parser.add_argument('--train-adversarial', dest='train_adversarial', action='store_true',
+                            help='Perform adversarial training')
+
+        group_optimise = parser.add_mutually_exclusive_group()
+        group_optimise.add_argument('--optimise-classifier',  dest='optimise_classifier',  action='store_true',
+                            help='Optimise stand-alone classifier')
+        group_optimise.add_argument('--optimise-adversarial', dest='optimise_adversarial', action='store_true',
+                            help='Optimise adversarial network')
+        pass
+
+    if plots:
+        # Flags
+        parser.add_argument('--save', action='store_true', help='Save plots to file')
+        parser.add_argument('--show', action='store_true', help='Show plots')
         pass
 
     return parser.parse_args(cmdline_args)
@@ -86,6 +115,13 @@ def initialise (args):
         IOError: If any of the arguments are not valid, or any of the specified
             files don't exist.
     """
+
+    # Try adding `mode` field manually
+    try:
+        args = argparse.Namespace(mode='gpu' if args.gpu else 'cpu', **vars(args))
+    except AttributeError:
+        # No field `gpu`
+        pass
 
     # Set print level
     log.basicConfig(format="%(levelname)s: %(message)s",
@@ -182,11 +218,10 @@ def load_data (path, name='dataset', train_fraction=0.8, seed=21):
     data.loc[~msk,'weight'] *= num_signal / data['weight'][~msk].sum()
 
     # Shuffle and re-index to allow better indexing
-    data = data.sample(frac=1, random_state=seed).reset_index(drop=True)  # For reproducibility
+    data = data.sample(frac=1, random_state=rng).reset_index(drop=True)  # For reproducibility
 
     # Split
-    np.random.seed(seed)  # For reproducibility
-    train = np.random.rand(data.shape[0]) < train_fraction
+    train = rng.rand(data.shape[0]) < train_fraction
     data['train'] = pd.Series(train, index=data.index)
 
     # Return
@@ -209,5 +244,134 @@ def mkdir (path):
             # Apparently, `path` already exists.
             pass
         pass
+    return
 
+
+def kill (pid, name=None):
+    """Query user to kill system process `pid`.
+
+    Arguments:
+        pid: ID of process to be killed assumed to be owned by user.
+        name: Name of process.
+    """
+
+    # Get username
+    username = subprocess.check_output(['whoami']).strip()
+
+    # Get processes belonging to user
+    lines = subprocess.check_output(["ps", "-u", username]).split('\n')[1:-1]
+
+    # Get PIDs of processes belonging to user
+    pids = [int(line.strip().split()[0]) for line in lines]
+
+    # Check PID is suitable for deletion
+    if int(pid) not in pids:
+        print "[WARN]  No process with PID {} belonging to user {} was found running. Exiting.".format(pid, username)
+        return
+
+    # Query user
+    print "[INFO]  {1} process ({0}) is running in background. Enter `q` to close it. Enter anything else to quit the program while leaving {1} running.".format(pid, name)
+    response = raw_input(">> ")
+    if response.strip() == 'q':
+        subprocess.call(["kill", str(pid)])
+    else:
+        print "[INFO]  {} process is left running. To manually kill it later, do:".format(name)
+        print "[INFO]    $ kill {}".format(pid)
+        pass
+    return
+
+
+def save (basedir, name, model, history=None):
+    """Standardised method to save Keras models to file.
+
+    Arguments:
+        basedir: Directory in which models should be saved. Is created if it
+            doesn't already exist.
+        name: Name of model to be saved, used in filenames.
+        model: Keras model to be saved.
+        history: Container with logged training history.
+    """
+
+    # Make sure output directory exists
+    mkdir(basedir)
+
+    # Save full model and model weights
+    model.save        (basedir + '{}.h5'        .format(name))
+    model.save_weights(basedir + '{}_weights.h5'.format(name))
+
+    # Save training history
+    if history is not None:
+        with open(basedir + 'history__{}.json'.format(name), 'wb') as f:
+            json.dump(history, f)
+            pass
+        pass
+    return
+
+
+def load (basedir, name, model=None):
+    """Standardised method to load Keras models from file.
+    If a pre-existing model is specified only weights are loaded into the model.
+
+    Arguments:
+        basedir: Directory from which models should be loaded.
+        name: Name of model to be loaded, used in filenames.
+        model: Pre-existing model.
+
+    Returns:
+        model: Keras model to be saved.
+        history: Container with logged training history.
+
+    Raises:
+        IOError: If any of the attempted files do not exist.
+    """
+
+    # Import(s)
+    from keras.models import load_model
+
+    # Load full pre-trained model or model weights
+    if model is None:
+        model = load_model(basedir + '{}.h5'.format(name))
+    else:
+        model.load_weights(basedir + '{}_weights.h5'.format(name))
+        pass
+
+    # Load associated training histories
+    try:
+        history_file = basedir + 'history__{}.json'.format(name)
+        with open(history_file, 'r') as f:
+            history = json.load(f)
+            pass
+    except:
+        print "[WARN] Could not find history file {}."
+        history = None
+        pass
+
+    return model, history
+
+
+def lwtnn_save(model, name, basedir='models/adversarial/lwtnn/'):
+    """Method for saving classifier in lwtnn-friendly format.
+    See [https://github.com/lwtnn/lwtnn/wiki/Keras-Converter]
+    """
+    # Check(s).
+    if not basedir.endswith('/'):
+        basedir += '/'
+        pass
+
+    # Make sure output directory exists
+    mkdir(basedir)
+
+    # Get the architecture as a json string
+    arch = model.to_json()
+
+    # Save the architecture string to a file
+    with open(basedir + name + '_architecture.json', 'w') as arch_file:
+        arch_file.write(arch)
+        pass
+
+    # Now save the weights as an HDF5 file
+    model.save_weights(basedir + name + '_weights.h5')
+
+    # Save full model to HDF5 file
+    model.save(basedir + name + '.h5')
     return
