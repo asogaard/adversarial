@@ -529,11 +529,11 @@ def initialise_backend (args):
     """
 
     # Check(s)
-    if args.gpu and not args.tensorflow and args.devices > 1:
+    if args.gpu and args.theano and args.devices > 1:
         raise NotImplementedError("Distributed training on GPUs is current not enabled.")
 
     # Specify Keras backend and import module
-    os.environ['KERAS_BACKEND'] = "tensorflow" if args.tensorflow else "theano"
+    os.environ['KERAS_BACKEND'] = "theano" if args.theano else "tensorflow"
 
     # Get number of cores on CPU(s), name of CPU devices, and number of physical
     # cores in each device.
@@ -552,50 +552,8 @@ def initialise_backend (args):
         pass
 
     # Configure backends
-    if args.tensorflow:
+    if args.theano:
 
-        # Set print level to avoid unecessary warnings, e.g.
-        #  $ The TensorFlow library wasn't compiled to use <SSE4.1, ...>
-        #  $ instructions, but these are available on your machine and could
-        #  $ speed up CPU computations.
-        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-
-        # Switch: CPU/GPU
-        if args.gpu:
-            # Set this environment variable to "0,1,...", to make Tensorflow
-            # use the first N available GPUs
-            os.environ['CUDA_VISIBLE_DEVICES'] = ','.join(map(str, dict(filter(lambda t: t[1] < 80 and t[0] < args.devices, gpu_utilisation().iteritems())).keys())) #','.join(map(str,range(args.devices)))
-
-        else:
-            # Setting this enviorment variable to "" makes all GPUs invisible to
-            # tensorflow, thus forcing it to run on CPU (on as many cores as
-            # possible), cf. [https://stackoverflow.com/a/42750563]
-            os.environ["CUDA_DEVICE_ORDER"]    = "PCI_BUS_ID"
-            os.environ['CUDA_VISIBLE_DEVICES'] = ""
-            pass
-
-        # Load the tensorflow module here to make sure only the correct
-        # GPU devices are set up
-        import tensorflow as tf
-
-        # @TODO:
-        # - Some way to avoid starving GPU of data?
-
-        # Manually configure Tensorflow session
-        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.1,
-                                    allow_growth=True)
-
-        config = tf.ConfigProto(intra_op_parallelism_threads=num_cores * 2,
-                                inter_op_parallelism_threads=num_cores * 2,
-                                allow_soft_placement=True,
-                                device_count={'GPU': args.devices if args.gpu else 0},
-                                gpu_options=gpu_options if args.gpu else None,
-                                )
-                                #run_metadata=tf.RunMetadata())  # @TEMP
-
-        session = tf.Session(config=config)
-
-    else:
 
         if args.devices > 1:
             log.warning("Currently it is not possible to specify more than one devices for Theano backend.")
@@ -621,13 +579,59 @@ def initialise_backend (args):
             'dnn.library_path=/exports/applications/apps/SL7/cuda/{}/lib64/'  .format(cuda_version),
             ]
         os.environ["THEANO_FLAGS"] = ','.join(standard_flags + (dnn_flags if args.gpu else []))
+
+    else:
+
+        # Set print level to avoid unecessary warnings, e.g.
+        #  $ The TensorFlow library wasn't compiled to use <SSE4.1, ...>
+        #  $ instructions, but these are available on your machine and could
+        #  $ speed up CPU computations.
+        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
+        # Switch: CPU/GPU
+        """ Cf. [https://www.wiki.ed.ac.uk/display/ResearchServices/TensorFlow#TensorFlow-CUDA_VISIBLE_DEVICES]
+        if args.gpu:
+            # Set this environment variable to "0,1,...", to make Tensorflow
+            # use the first N available GPUs
+            os.environ['CUDA_VISIBLE_DEVICES'] = ','.join(map(str, dict(filter(lambda t: t[1] < 80 and t[0] < args.devices, gpu_utilisation().iteritems())).keys())) #','.join(map(str,range(args.devices)))
+
+        else:
+            # Setting this enviorment variable to "" makes all GPUs invisible to
+            # tensorflow, thus forcing it to run on CPU (on as many cores as
+            # possible), cf. [https://stackoverflow.com/a/42750563]
+            os.environ["CUDA_DEVICE_ORDER"]    = "PCI_BUS_ID"
+            os.environ['CUDA_VISIBLE_DEVICES'] = ""
+            pass
+        #"""
+
+        # Load the tensorflow module here to make sure only the correct
+        # GPU devices are set up
+        import tensorflow as tf
+
+        # @TODO:
+        # - Some way to avoid starving GPU of data?
+        # - Remove bloat by using `multi_gpu_model`?
+
+        # Manually configure Tensorflow session
+        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.1,
+                                    allow_growth=True)
+
+        config = tf.ConfigProto(intra_op_parallelism_threads=num_cores * 2,
+                                inter_op_parallelism_threads=num_cores * 2,
+                                allow_soft_placement=True,
+                                device_count={'GPU': args.devices if args.gpu else 0},
+                                gpu_options=gpu_options if args.gpu else None,
+                                )
+                                #run_metadata=tf.RunMetadata())  # @TEMP
+
+        session = tf.Session(config=config)
         pass
 
     # Import Keras backend
     import keras.backend as K
     K.set_floatx('float32')
 
-    if args.tensorflow:
+    if not args.theano:
         # Set global Tensorflow session
         K.set_session(session)
         pass

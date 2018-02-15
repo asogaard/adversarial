@@ -33,10 +33,10 @@ def main (args):
     # Common definitions
     # --------------------------------------------------------------------------
     experiment  = 'classifier'
-    num_folds   = 5
-    num_devices = 6
+    num_folds   = 3
 
-    paths = sorted(glob.glob('trained/history__crossval_{}__*of{}.json'.format(experiment, num_folds)))
+    #paths = sorted(glob.glob('trained/history__crossval_{}__*of{}.json'.format(experiment, num_folds)))
+    paths = sorted(glob.glob('models/adversarial/classifier/crossval/history__crossval_{}__*of{}.json'.format(experiment, num_folds)))
 
 
 
@@ -50,9 +50,9 @@ def main (args):
                 d = json.load(f)
                 pass
 
-            loss = np.array(d['val_loss'])  # / float(num_devices)
+            loss = np.array(d['val_loss'])
             losses['val'].append(loss)
-            loss = np.array(d['loss'])  # / float(num_devices)
+            loss = np.array(d['loss'])
             losses['train'].append(loss)
             pass
 

@@ -3,6 +3,9 @@
 
 """Script for performing comparison studies."""
 
+# Basic import(s)
+import gzip
+
 # Scientific import(s)
 import ROOT
 import numpy as np
@@ -13,7 +16,6 @@ from array import array
 from scipy.stats import entropy
 from sklearn.metrics import roc_curve, roc_auc_score
 from sklearn.preprocessing import StandardScaler
-
 
 # Project import(s)
 from adversarial.utils import initialise_backend, roc_efficiencies, roc_auc, wpercentile, latex
@@ -87,8 +89,8 @@ def main (args):
     intercept, slope = 0.774633, -0.111879
 
     # Perform standardisation  @TEMP?
-    substructure_scaler = StandardScaler().fit(data[features])
-    data_std = pd.DataFrame(substructure_scaler.transform(data[features]), index=data.index, columns=features)
+    #substructure_scaler = StandardScaler().fit(data[features])
+    #data_std = pd.DataFrame(substructure_scaler.transform(data[features]), index=data.index, columns=features)
 
 
     # Adding variables
@@ -97,7 +99,7 @@ def main (args):
 
         # Tau21DDT
         with Profile("Tau21DDT"):
-            with open('models/ddt/ddt.pkl', 'r') as f:
+            with gzip.open('models/ddt/ddt.pkl.gz', 'r') as f:
                 ddt = pickle.load(f)
                 pass
             data['rhoDDT']   = pd.Series(np.log(np.square(data['m'])/(data['pt'] * 1.)), index=data.index)
@@ -114,7 +116,7 @@ def main (args):
             X[:,1] -= 200.
             X[:,1] /= 2000. - 200.
 
-            with open('models/knn/knn_D2_{}.pkl'.format(kNN_eff), 'r') as f:
+            with gzip.open('models/knn/knn_D2_{}.pkl.gz'.format(kNN_eff), 'r') as f:
                 knn = pickle.load(f)
                 pass
             kNN_percentile = knn.predict(X).flatten()
@@ -123,8 +125,9 @@ def main (args):
 
         # NN
         with Profile("NN"):
-            classifier = load_model('models/adversarial/classifier/full/model.h5')
-            data['NN'] = pd.Series(classifier.predict(data_std[features].as_matrix().astype(K.floatx()), batch_size=2048 * 8).flatten().astype(K.floatx()), index=data.index)
+            classifier = load_model('models/adversarial/classifier/full/full_classifier.h5')
+            #data['NN'] = pd.Series(classifier.predict(data_std[features].as_matrix().astype(K.floatx()), batch_size=2048 * 8).flatten().astype(K.floatx()), index=data.index)
+            data['NN'] = pd.Series(classifier.predict(data[features].as_matrix().astype(K.floatx()), batch_size=2048 * 8).flatten().astype(K.floatx()), index=data.index)
             pass
 
         # ANN
@@ -135,13 +138,15 @@ def main (args):
             combined = combined_model(classifier, adversary,
                                       **cfg['combined']['model'])
 
-            combined.load_weights('models/adversarial/combined/full/weights.h5')
+            combined.load_weights('models/adversarial/combined/full/full_combined.h5')
 
-            data[ann_var] = pd.Series(classifier.predict(data_std[features].as_matrix().astype(K.floatx()), batch_size=2048 * 8).flatten().astype(K.floatx()), index=data.index)
+            #data[ann_var] = pd.Series(classifier.predict(data_std[features].as_matrix().astype(K.floatx()), batch_size=2048 * 8).flatten().astype(K.floatx()), index=data.index)
+            data[ann_var] = pd.Series(classifier.predict(data[features].as_matrix().astype(K.floatx()), batch_size=2048 * 8).flatten().astype(K.floatx()), index=data.index)
             pass
 
         # Adaboost
         with Profile("Adaboost"):
+            # @TODO: gzip
             with open('models/uboost/adaboost.pkl', 'r') as f:
                 adaboost = pickle.load(f)
                 pass
@@ -151,6 +156,7 @@ def main (args):
         # Adaboost
         with Profile("uBoost"):
             # @TODO: Add uniforming rate, `uboost_uni`
+            # @TODO: gzip
             with open('models/uboost/uboost_{:d}.pkl'.format(100 - uboost_eff), 'r') as f:
                 uboost = pickle.load(f)
                 pass
@@ -180,7 +186,7 @@ def main (args):
             bins = np.linspace(xmin, xmax, 50 + 1, endpoint=True)
 
             # Canvas
-            c = rp.canvas(batch=True)
+            c = rp.canvas(batch=not args.show)
 
             # Plots
             ROOT.gStyle.SetHatchesLineWidth(3)
@@ -207,8 +213,15 @@ def main (args):
             c.legend()
 
             # Save
-            mkdir('figures/')
-            c.save('figures/dist_{}.pdf'.format(filename(feat)))
+            if args.save:
+                mkdir('figures/')
+                c.save('figures/dist_{}.pdf'.format(filename(feat)))
+                pass
+
+            # Show
+            if args.show:
+                c.show()
+                pass
             pass
         pass
 
@@ -235,7 +248,7 @@ def main (args):
             bins = np.linspace(40, 300, (300 - 40) // 10 + 1, endpoint=True)
 
             # Canvas
-            c = rp.canvas(num_pads=2, size=(int(800 * 600 / 857.), 600), batch=True)
+            c = rp.canvas(num_pads=2, size=(int(800 * 600 / 857.), 600), batch=not args.show)
 
             # Plots
             ROOT.gStyle.SetHatchesLineWidth(3)
@@ -296,8 +309,15 @@ def main (args):
             c.legend()
 
             # Save
-            mkdir('figures/')
-            c.save('figures/jetmass_{}__eff_bkg_{:d}.pdf'.format(filename(feat), int(eff_bkg)))
+            if args.save:
+                mkdir('figures/')
+                c.save('figures/jetmass_{}__eff_bkg_{:d}.pdf'.format(filename(feat), int(eff_bkg)))
+                pass
+
+            # Show
+            if args.show:
+                c.show()
+                pass
             pass
         pass
 
@@ -323,7 +343,7 @@ def main (args):
 
         # Loop tagger features
         jsd = {feat: [] for feat in tagger_features}
-        c = rp.canvas(batch=True)
+        c = rp.canvas(batch=not args.show)
         for feat in tagger_features:
 
             # Define cuts
@@ -358,7 +378,7 @@ def main (args):
             pass
 
         # Canvas
-        c = rp.canvas(batch=True)
+        c = rp.canvas(batch=not args.show)
 
         # Plots
         ref = ROOT.TH1F('ref', "", 10, 0., 1.)
@@ -395,10 +415,16 @@ def main (args):
         c.padding(0.45)
         c.logy()
 
-
         # Save
-        mkdir('figures/')
-        c.save('figures/jsd.pdf')
+        if args.save:
+            mkdir('figures/')
+            c.save('figures/jsd.pdf')
+            pass
+
+        # Show
+        if args.show:
+            c.show()
+            pass
         pass
 
 
@@ -412,7 +438,7 @@ def main (args):
         ROOT.gStyle.SetTitleOffset(1.6, 'y')
 
         # Loop tagger features
-        c = rp.canvas(batch=True)
+        c = rp.canvas(batch=not args.show)
         for feat in tagger_features:
 
             # Define cuts
@@ -453,7 +479,7 @@ def main (args):
                 pass
 
             # Canvas
-            c = rp.canvas(batch=True)
+            c = rp.canvas(batch=not args.show)
 
             # Plots
             for idx, (profile, cut, eff) in enumerate(zip(profiles, cuts, effs)):
@@ -486,8 +512,15 @@ def main (args):
             c.ylim(0, 1.9)
 
             # Save
-            mkdir('figures/')
-            c.save('figures/eff_{}.pdf'.format(filename(feat)))
+            if args.save:
+                mkdir('figures/')
+                c.save('figures/eff_{}.pdf'.format(filename(feat)))
+                pass
+
+            # Show
+            if args.show:
+                c.show()
+                pass
             pass
         pass
 
@@ -537,7 +570,7 @@ def main (args):
         with Profile("Creating figure"):
 
             # Canvas
-            c = rp.canvas(batch=True)
+            c = rp.canvas(batch=not args.show)
 
             # Plots
             # -- Random guessing
@@ -574,8 +607,15 @@ def main (args):
             c.legend()
 
             # Save
-            mkdir('figures/')
-            c.save('figures/roc.pdf')
+            if args.save:
+                mkdir('figures/')
+                c.save('figures/roc.pdf')
+                pass
+
+            # Show
+            if args.show:
+                c.show()
+                pass
             pass
 
         pass
@@ -587,7 +627,7 @@ def main (args):
 if __name__ == '__main__':
 
     # Parse command-line arguments
-    args = parse_args(backend=True)
+    args = parse_args(backend=True, plots=True)
 
     # Call main function
     main(args)
