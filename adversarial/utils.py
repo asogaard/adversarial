@@ -86,7 +86,7 @@ def latex (_name, ROOT=True):
     name = re.sub('-knn(.*)$', '^{kNN\\1}', name)
 
     # ML taggers
-    if 'boost' in name or re.search('nn$', name) or 'ann' in name:
+    if 'boost' in name or re.search('nn$', name) or re.search('^nn', name) or 'ann' in name:
         name = '\\textit{z}_{%s}' % _name
         pass
 
