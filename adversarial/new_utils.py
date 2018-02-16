@@ -73,8 +73,6 @@ def parse_args (cmdline_args=sys.argv[1:], backend=False, adversarial=False, plo
         # Flags
         parser.add_argument('--tensorboard', action='store_true',
                             help='Use TensorBoard for monitoring')
-        parser.add_argument('--reweight',    action='store_true',
-                            help='Reweight background to flatness in adversarial training')
         parser.add_argument('--train',       action='store_true',
                             help='Perform training')
         parser.add_argument('--train-classifier', dest='train_classifier', action='store_true',

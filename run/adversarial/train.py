@@ -50,7 +50,7 @@ def main (args):
     with Profile("Initialisation"):
 
         # Initialising
-        # --------------------------------------------------------------------------
+        # ----------------------------------------------------------------------
         args, cfg = initialise(args)
 
         # Validate train/optimise flags
@@ -71,6 +71,10 @@ def main (args):
             cfg['combined']['fit']['verbose'] = 2
 
             pass
+
+
+        cfg['classifier']['fit']['verbose'] = 2  # @TEMP
+        cfg['combined']  ['fit']['verbose'] = 2  # @TEMP
 
         # Initialise Keras backend
         initialise_backend(args)
@@ -160,30 +164,55 @@ def main (args):
     data = data[data['train'] == 1]
     num_features = len(features)
 
+    # Regulsarisation parameter
+    lambda_reg = cfg['combined']['model']['lambda_reg']  # Use same `lambda` as the adversary
+
     # Get standard-formatted inputs for reweighting regressor
     from run.reweight.common import get_input as reweighter_input
-    decorrelation, decorrelation_weight = reweighter_input(data)
+    from run.reweight.common import Scenario as ReweightedScenario
+    decorrelation, decorrelation_weight = reweighter_input(data, ReweightedScenario.FLATNESS)
 
 
-
-    # Re-weighting to flatness
+    # Re-weighting to flatness at similar jet mass distributions
     # --------------------------------------------------------------------------
-    if args.reweight:
-        with Profile("Re-weighting"):
+    with Profile("Re-weighting"):
 
-            # Load reweighting regressor
-            with gzip.open('models/reweight/gbreweighter.pkl.gz', 'r') as f:
-                reweighter = pickle.load(f)
-                pass
+        from run.reweight.common import Scenario, get_input
 
-
-            # Compute flatness-boosted weights
-            uniform  = reweighter.predict_weights(decorrelation, original_weight=decorrelation_weight)
-            uniform *= np.sum(data['weight']) / np.sum(uniform)
-
-            # Store flatness-boosted weights
-            data['uniform'] = pd.Series(uniform, index=data.index)
+        # Flatness
+        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        # Load reweighting regressor
+        with gzip.open('models/reweight/reweighter_flatness.pkl.gz', 'r') as f:
+            reweighter = pickle.load(f)
             pass
+
+        # Compute flatness-boosted weights for background
+        msk = (data['signal'] == 0)
+        weight_flatness  = reweighter.predict_weights(decorrelation[msk], original_weight=decorrelation_weight[msk])
+        weight_flatness *= np.sum(data.loc[msk, 'weight']) / np.sum(weight_flatness)
+
+        # Store flatness-boosted weights
+        weight_flatness_      = data['weight'].copy().as_matrix()
+        weight_flatness_[msk] = weight_flatness
+        data['weight_flatness'] = pd.Series(weight_flatness_, index=data.index)
+
+        # Jet mass
+        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        # Load reweighting regressor
+        with gzip.open('models/reweight/reweighter_mass.pkl.gz', 'r') as f:
+            reweighter = pickle.load(f)
+            pass
+
+        # Compute jet-mass-reweighted weights for signal
+        msk = (data['signal'] == 1)
+        sig_, _, sig_weight_, _ = reweighter_input(data[msk], ReweightedScenario.MASS)
+        weight_mass  = reweighter.predict_weights(sig_, original_weight=sig_weight_)
+        weight_mass *= np.sum(data.loc[msk, 'weight']) / np.sum(weight_mass)
+
+        # Store jet-mass-reweighted weights
+        weight_mass_      = data['weight'].copy().as_matrix()
+        weight_mass_[msk] = weight_mass
+        data['weight_mass'] = pd.Series(weight_mass_, index=data.index)
         pass
 
 
@@ -197,6 +226,7 @@ def main (args):
 
         # Define variable(s)
         basename = 'crossval_classifier'
+        basedir  = 'models/adversarial/classifier/crossval/'
 
         # Get indices for each fold in stratified k-fold training
         # @NOTE: No shuffling is performed -- assuming that's already done above.
@@ -204,7 +234,7 @@ def main (args):
                                                          data['signal'].values)
 
         # Import module creator methods and optimiser options
-        from adversarial.models import classifier_model, adversary_model, combined_model
+        from adversarial.models import classifier_model, adversary_model, combined_model, decorrelation_model
 
         # Import custom callbacks
         from adversarial.callbacks import LossCallback
@@ -214,7 +244,7 @@ def main (args):
         histories   = list()
 
         # Train or load classifiers
-        if args.train or args.train_classifier:
+        if (args.train or args.train_classifier) and False:  # @TEMP
             log.info("Training cross-validation classifiers")
 
             # Loop `k` folds
@@ -277,7 +307,7 @@ def main (args):
                     # Save classifier model and training history to file, both
                     # in unique output directory and in the directory for pre-
                     # trained classifiers
-                    for destination in [args.output, 'models/adversarial/classifier/crossval/']:
+                    for destination in [args.output, basedir]:
                         save(destination, name, classifier, ret.history)
                         pass
 
@@ -289,7 +319,6 @@ def main (args):
             # Load pre-trained classifiers
             log.info("Loading cross-validation classifiers from file")
             try:
-                basedir = 'models/adversarial/classifier/crossval/'
                 for fold in range(args.folds):
                     name = '{}__{}of{}'.format(basename, fold + 1, args.folds)
                     classifier, history = load(basedir, name)
@@ -323,7 +352,8 @@ def main (args):
     with Profile("Classifier-only fit, full"):
 
         # Define variable(s)
-        name = 'full_classifier'
+        name    = 'classifier'
+        basedir = 'models/adversarial/{}/full/'.format(name)
 
         if args.train or args.train_classifier:
             log.info("Training full classifier")
@@ -332,7 +362,7 @@ def main (args):
             classifier = classifier_model(num_features, **cfg['classifier']['model'])
 
             # Save classifier model diagram to file
-            plot_model(classifier, to_file=args.output + 'model_classifier.png', show_shapes=True)
+            plot_model(classifier, to_file=args.output + 'model_{}.png'.format(name), show_shapes=True)
 
             # Parallelise on GPUs
             if (not args.theano) and args.gpu and args.devices > 1:
@@ -342,6 +372,7 @@ def main (args):
                 pass
 
             # Compile model (necessary to save properly)
+            # @TODO: Reset optimiser?
             parallelised.compile(**cfg['classifier']['compile'])
 
             # Create callbacks
@@ -349,7 +380,7 @@ def main (args):
 
             # -- TensorBoard
             if not args.theano:
-                callbacks += [TensorBoard(log_dir=tensorboard_dir + 'classifier/')]
+                callbacks += [TensorBoard(log_dir=tensorboard_dir + name + '/')]
                 pass
 
             # Prepare arrays
@@ -362,7 +393,7 @@ def main (args):
 
             # Save classifier model and training history to file, both in unique
             # output directory and in the directory for pre-trained classifiers.
-            for destination in [args.output, 'models/adversarial/classifier/full/']:
+            for destination in [args.output, basedir]:
                 save(destination, name, classifier, ret.history)
                 pass
 
@@ -370,9 +401,7 @@ def main (args):
 
             # Load pre-trained classifier
             log.info("Loading full classifier from file")
-            basedir = 'models/adversarial/classifier/full/'
             classifier, history = load(basedir, name)
-
             pass # end: train/load
         pass
 
@@ -382,14 +411,144 @@ def main (args):
     lwtnn_save(classifier, 'nn')
 
 
-    # Combined fit, full (@TODO: Cross-val?)
+    # Mass-reweighted classifier fit, full
     # --------------------------------------------------------------------------
-    with Profile("Combined fit, full"):
+    with Profile("Mass-reweighted classifier fit, full"):
+
+        # Define variable(s)
+        name    = 'classifier_massreweighted'
+        basedir = 'models/adversarial/{}/full/'.format(name)
+
+        if args.train or args.train_classifier:
+            log.info("Training full classifier")
+
+            # Get classifier
+            classifier = classifier_model(num_features, **cfg['classifier']['model'])
+
+            # Parallelise on GPUs
+            if (not args.theano) and args.gpu and args.devices > 1:
+                parallelised = multi_gpu_model(classifier, args.devices)
+            else:
+                parallelised = classifier
+                pass
+
+            # Compile model (necessary to save properly)
+            # @TODO: Reset optimiser?
+            parallelised.compile(**cfg['classifier']['compile'])
+
+            # Create callbacks
+            callbacks = []
+
+            # -- TensorBoard
+            if not args.theano:
+                callbacks += [TensorBoard(log_dir=tensorboard_dir + name + '/')]
+                pass
+
+            # Prepare arrays
+            X = data[features].values
+            Y = data['signal'].values
+            W = data['weight_mass'].values  # @TODO
+
+            # Fit classifier model
+            ret = parallelised.fit(X, Y, sample_weight=W, callbacks=callbacks, **cfg['classifier']['fit'])
+
+            # Save classifier model and training history to file, both in unique
+            # output directory and in the directory for pre-trained classifiers.
+            for destination in [args.output, basedir]:
+                save(destination, name, classifier, ret.history)
+                pass
+
+        else:
+
+            # Load pre-trained classifier
+            log.info("Loading full classifier from file")
+            classifier, history = load(basedir, name)
+            pass # end: train/load
+        pass
+
+
+    # Linearly decorrelated classifier fit, full
+    # --------------------------------------------------------------------------
+    with Profile("Linearly decorrelated classifier fit, full"):
+
+        # Define variable(s)
+        name    = 'classifier_decorrelator_lambda{:.0f}'.format(lambda_reg)
+        basedir = 'models/adversarial/{}/full/'.format(name)
+
+        # Load pre-trained classifier
+        classifier, _ = load('models/adversarial/classifier/full/', 'classifier')
+
+        # Create decorrelation model
+        decorrelator = decorrelation_model(classifier, decorrelation.shape[1], **cfg['combined']['model'])
+
+        if args.train or args.train_classifier:
+            log.info("Training full classifier")
+
+            # Save classifier model diagram to file
+            plot_model(decorrelator, to_file=args.output + 'model_{}.png'.format(name), show_shapes=True)
+
+            # Parallelise on GPUs
+            # @TODO: Make compatible with `multi_gpu_model`.
+            """
+            if (not args.theano) and args.gpu and args.devices > 1:
+                parallelised = multi_gpu_model(decorrelator, args.devices)
+            else:
+                parallelised = decorrelator
+                pass
+            #"""
+            parallelised = decorrelator
+
+            # Update compilation config
+            # -- Add linear correlation loss
+            cfg['classifier']['compile']['loss'] = [cfg['classifier']['compile']['loss'], 'MSE']
+            # -- Scale learning rate down by 1000
+            cfg['classifier']['compile']['optimizer'].lr *= 1.0E-03
+
+            # Compile model (necessary to save properly)
+            # @TODO: Reset optimiser?
+            parallelised.compile(loss_weights=[1., lambda_reg], **cfg['classifier']['compile'])
+
+            # Create callbacks
+            callbacks = []
+
+            # -- TensorBoard
+            if not args.theano:
+                callbacks += [TensorBoard(log_dir=tensorboard_dir + name + '/')]
+                pass
+
+            # Prepare arrays
+            X = data[features].values
+            Y = data['signal'].values
+            W = data['weight'].values
+            zeros = np.zeros((X.shape[0],))
+
+            # Fit classifier model
+            ret = parallelised.fit([X, decorrelation], [Y, zeros], sample_weight=[W, W], callbacks=callbacks, **cfg['classifier']['fit'])
+
+            # Save classifier model and training history to file, both in unique
+            # output directory and in the directory for pre-trained classifiers.
+            for destination in [args.output, basedir]:
+                save(destination, name, decorrelator, ret.history)
+                pass
+
+        else:
+
+            # Load pre-trained classifier
+            log.info("Loading full classifier from file")
+            decorrelator, history = load(basedir, name, model=decorrelator)
+            pass # end: train/load
+        pass
+
+
+    # Combined adversarial fit, full (@TODO: Cross-val?)
+    # --------------------------------------------------------------------------
+    with Profile("Combined adversarial fit, full"):
         # @TODO:
         # - Checkpointing
 
         # Define variables
-        name = 'full_combined'
+        name    = 'combined_lambda{:.0f}'.format(lambda_reg)
+        basedir = 'models/adversarial/{}/full/'.format(name)
 
         # Set up adversary
         adversary = adversary_model(gmm_dimensions=decorrelation.shape[1],
@@ -421,7 +580,7 @@ def main (args):
         combined = combined_model(classifier, adversary, **cfg['combined']['model'])
 
         # Save combined model diagram
-        plot_model(combined, to_file=args.output + 'model_combined.png', show_shapes=True)
+        plot_model(combined, to_file=args.output + 'model_{}.png'.format(name), show_shapes=True)
 
         if args.train or args.train_adversarial:
             log.info("Training full, combined model")
@@ -448,7 +607,7 @@ def main (args):
             # - Properly handle non-reweighted case
             X = [data[features].values, decorrelation]
             Y = [data['signal'].values.astype(K.floatx()), np.ones_like(data['signal'].values).astype(K.floatx())]
-            #W = [data['weight'].values, np.multiply(data['uniform'].values, 1. - data['signal'].values)]
+            #W = [data['weight'].values, np.multiply(data['weight_flatness'].values, 1. - data['signal'].values)]
             W = [data['weight'].values, np.multiply(data['weight'].values, 1. - data['signal'].values)]
 
             # Fit classifier model
@@ -456,15 +615,8 @@ def main (args):
 
             # Save combined model and training history to file, both in unique
             # output directory and in the directory for pre-trained classifiers.
-            for destination in [args.output, 'models/adversarial/combined/full/']:
+            for destination in [args.output, basedir]:
                 save(destination, name, combined, ret.history)
-                """
-                combined.save        (destination + '{}.h5'        .format(name))
-                combined.save_weights(destination + '{}_weights.h5'.format(name))
-                with open(destination + 'history__{}.json'.format(name), 'wb') as f:
-                    json.dump(ret.history, f)
-                    pass
-                    """
                 pass
 
         else:
@@ -473,20 +625,7 @@ def main (args):
             # simultaneously load the embedded classifier so as to not have to
             # extract it manually afterwards.
             log.info("Loading full, combined model from file")
-            basedir = 'models/adversarial/combined/full/'
-            model, history = load(basedir, name, model=combined)
-            """
-            mkdir('models/adversarial/full/combined/')
-            combined_weights_file = 'models/adversarial/combined/full/{}_weights.h5'.format(name)
-            combined.load_weights(combined_weights_file)
-
-            # Load associated training histories
-            history_file = 'models/adversarial/combined/full/history__{}.json'.format(name)
-            with open(history_file, 'r') as f:
-                history = json.load(f)
-                pass
-            """
-
+            combined, history = load(basedir, name, model=combined)
             pass # end: train/load
 
         pass
