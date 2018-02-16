@@ -12,7 +12,7 @@ import re
 # Keras import(s)
 import keras
 from keras.models import Model
-from keras.layers import Dense, Input, Dropout
+from keras.layers import Dense, Input, Dropout, Concatenate
 from keras.engine.topology import InputLayer
 from keras.layers.normalization import BatchNormalization
 
@@ -70,7 +70,7 @@ def stack_layers (input_layer, architecture, default, scope=None):
 
     # Loop layer specifications
     for spec in architecture:
-        
+
         # Update the specifications of the current layer to include any defaults
         opts = dict(**default)
         opts.update(spec)
@@ -78,22 +78,21 @@ def stack_layers (input_layer, architecture, default, scope=None):
         # Extract non-standard keyword arguments
         batchnorm = opts.pop('batchnorm', False)
         dropout   = opts.pop('dropout',   None)
-        
+
         # 1: (Opt.) Add batch normalisation layer before dense layer
         if batchnorm:
             l = BatchNormalization(name=keras_layer_name('BatchNormalization'))(l)
             pass
-        
+
         # 2: Add dense layer according to specifications
         l = Dense(name=keras_layer_name('Dense'), **opts)(l)
-        
         # 3: (Opt.) Add dropout regularisation layer after dense layer
         if dropout:
             l = Dropout(dropout, name=keras_layer_name('Dropout'))(l)
             pass
-        
+
         pass
-    
+
     return l
 
 
@@ -107,10 +106,10 @@ def classifier_model (num_params, architecture=[], default=dict(), scope='classi
         default: Default configuration of each layer in the deep, sequential
             section of the adversary's network. See `stack_layers`.
         scope: Name of scope in which the layers should be created.
-        
+
     Returns:
         Keras model of the classifier network.
-    """    
+    """
 
     # Method(s) to get name of layers
     keras_layer_name = keras_layer_name_factory(scope)
@@ -161,23 +160,27 @@ def adversary_model (gmm_dimensions, gmm_components=None, architecture=[], defau
     layer_name       = layer_name_factory(scope)
 
     # Input(s)
-    adversary_input_clf = Input(shape=(1,),              name=layer_name('input_clf'))    
-    adversary_input_par = Input(shape=(gmm_dimensions,), name=layer_name('input_par'))    
+    adversary_input_clf = Input(shape=(1,),              name=layer_name('input_clf'))
+    adversary_input_par = Input(shape=(gmm_dimensions,), name=layer_name('input_par'))
 
     # Intermediate layer(s)
-    adversary_stack = stack_layers(adversary_input_clf, architecture, default, scope=scope)
+    features = stack_layers(adversary_input_clf, architecture, default, scope=scope)
+
+    # Minibatch discrimination
+    #minibatch = MinibatchDiscrimination(20, 10, name=layer_name('minibatch_discrimination'))(features)
+    #features = Concatenate(name=layer_name('concatenate'))([features, minibatch])
 
     # Posterior p.d.f. parameters
-    r_coeffs = Dense(gmm_components, name=layer_name('coeffs'), activation='softmax')(adversary_stack)
+    r_coeffs = Dense(gmm_components, name=layer_name('coeffs'), activation='softmax')(features)
     r_means  = list()
     r_widths = list()
     for i in xrange(1, gmm_dimensions + 1):
         # Activation: Require all means to be in [0,1]
-        r_means .append( Dense(gmm_components, activation='sigmoid',  name=layer_name('means_{}'.format(i)))(adversary_stack) )
+        r_means .append( Dense(gmm_components, activation='sigmoid',  name=layer_name('means_{}'.format(i)))(features) )
         pass
     for i in xrange(1, gmm_dimensions + 1):
         # Require all widths to be positive
-        r_widths.append( Dense(gmm_components, activation='softplus', name=layer_name('widths_{}'.format(i)))(adversary_stack) )
+        r_widths.append( Dense(gmm_components, activation='softplus', name=layer_name('widths_{}'.format(i)))(features) )
         pass
 
     # Posterior probability layer
@@ -187,7 +190,6 @@ def adversary_model (gmm_dimensions, gmm_components=None, architecture=[], defau
     model = Model(inputs=[adversary_input_clf, adversary_input_par],
                   outputs=adversary_output,
                   name=scope)
-
     # Return
     return model
 
@@ -196,7 +198,7 @@ def combined_model (classifier, adversary, lambda_reg=None, lr_ratio=None, scope
     """...
 
     Args:
-        classifier: Keras model to be pitted `adversary`. Aassumed to be
+        classifier: Keras model to be pitted against `adversary`. Assumed to be
             sequential N -> 1.
         adversary: Keras model to be pitted against `classifier`. Assumed to
             have two inputs, the first being the output from `classifier` and
@@ -222,16 +224,16 @@ def combined_model (classifier, adversary, lambda_reg=None, lr_ratio=None, scope
     # Toggling sub-models
     classifier.trainable = True
     adversary .trainable = True
-    
+
     # Reconstruct classifier
     classifier_input = classifier.layers[0]
-    
+
     combined_input_clf  = Input(shape=classifier_input.input_shape[1:], name=layer_name(classifier_input.name.replace('/', '_')))
     combined_output_clf = classifier(combined_input_clf)
-    
+
     # Add gradient reversal layer
     gradient_reversal = GradientReversalLayer(lambda_reg * lr_ratio, name=keras_layer_name('GradientReversalLayer'))(combined_output_clf)
-    
+
     # Reconstruct adversary
     input_layers   = filter(lambda l: type(l) == InputLayer, adversary.layers)
     _, adversary_input_par = input_layers # Assuming classifier output is first input
@@ -242,6 +244,46 @@ def combined_model (classifier, adversary, lambda_reg=None, lr_ratio=None, scope
     # Build model
     model = Model(inputs =[combined_input_clf,  combined_input_adv],
                   outputs=[combined_output_clf, combined_output_adv],
+                  name=scope)
+
+    # Return
+    return model
+
+
+
+def decorrelation_model (classifier, num_decorrelation_features, scope='decorrelation', **kwargs):
+    """...
+
+    Args:
+        classifier: Keras model to be linearly decorrelated. Assumed to be
+            sequential N -> 1.
+        num_decorrelation_features: Number of fixed features from which the
+            classifier should be decorrelated.
+
+    Returns:
+        Keras model of the combined decorrelation network.
+    """
+
+    # Method(s) to get name of layers
+    keras_layer_name = keras_layer_name_factory(scope)
+    layer_name       = layer_name_factory(scope)
+
+    # Toggling sub-models
+    classifier.trainable = True
+
+    # Decorrelation inputs
+    decorrelation_input = Input(shape=(num_decorrelation_features,))
+
+    # Reconstruct classifier
+    classifier_input  = Input(shape=classifier.layers[0].input_shape[1:])
+    classifier_output = classifier(classifier_input)
+
+    # Add decorrelation layer
+    decorrelation_output = DecorrelationLayer()([classifier_output, decorrelation_input])
+
+    # Build model
+    model = Model(inputs =[classifier_input,  decorrelation_input],
+                  outputs=[classifier_output, decorrelation_output],
                   name=scope)
 
     # Return
