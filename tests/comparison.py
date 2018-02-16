@@ -62,7 +62,7 @@ def main (args):
     from keras.models import load_model
 
     # Project import(s)
-    from adversarial.models import classifier_model, adversary_model, combined_model
+    from adversarial.models import classifier_model, adversary_model, combined_model, decorrelation_model
 
 
     # Loading data
@@ -82,7 +82,12 @@ def main (args):
     D2_kNN_var = 'D2-kNN({:d}%)'.format(kNN_eff)
     uboost_var = 'uBoost(#varepsilon={:d}%,#alpha={:.1f})'.format(uboost_eff, uboost_uni)
     ann_var = "ANN(#lambda=100)"  # @TODO: Make dynamical!
-    tagger_features = ['Tau21','Tau21DDT', 'D2', D2_kNN_var, 'NN', ann_var, 'Adaboost', uboost_var]  # D2CSS, N2KNN
+
+    nn_mass_var = "NN(m-weight)"
+    nn_linear_var = "NN(rho,#lambda=100)"  # @TODO: Make dynamical
+
+    tagger_features = ['Tau21','Tau21DDT', 'D2', D2_kNN_var, 'NN', ann_var, 'Adaboost', uboost_var, nn_mass_var, nn_linear_var]  # D2CSS, N2KNN
+
 
     # DDT variables
     fit_range = (1.5, 4.0)
@@ -98,6 +103,7 @@ def main (args):
     with Profile("Adding variables"):
 
         # Tau21DDT
+        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         with Profile("Tau21DDT"):
             with gzip.open('models/ddt/ddt.pkl.gz', 'r') as f:
                 ddt = pickle.load(f)
@@ -107,6 +113,7 @@ def main (args):
             pass
 
         # D2-kNN
+        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         with Profile("D2-kNN"):
             data['rho'] = pd.Series(np.log(np.square(data['m']) / np.square(data['pt'])), index=data.index)
 
@@ -124,13 +131,15 @@ def main (args):
             pass
 
         # NN
+        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         with Profile("NN"):
-            classifier = load_model('models/adversarial/classifier/full/full_classifier.h5')
+            classifier = load_model('models/adversarial/classifier/full/classifier.h5')
             #data['NN'] = pd.Series(classifier.predict(data_std[features].as_matrix().astype(K.floatx()), batch_size=2048 * 8).flatten().astype(K.floatx()), index=data.index)
             data['NN'] = pd.Series(classifier.predict(data[features].as_matrix().astype(K.floatx()), batch_size=2048 * 8).flatten().astype(K.floatx()), index=data.index)
             pass
 
         # ANN
+        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         with Profile("ANN"):
             adversary = adversary_model(gmm_dimensions=1,
                                         **cfg['adversary']['model'])
@@ -138,13 +147,33 @@ def main (args):
             combined = combined_model(classifier, adversary,
                                       **cfg['combined']['model'])
 
-            combined.load_weights('models/adversarial/combined/full/full_combined.h5')
+            combined.load_weights('models/adversarial/combined_lambda100/full/combined_lambda100.h5')
 
             #data[ann_var] = pd.Series(classifier.predict(data_std[features].as_matrix().astype(K.floatx()), batch_size=2048 * 8).flatten().astype(K.floatx()), index=data.index)
             data[ann_var] = pd.Series(classifier.predict(data[features].as_matrix().astype(K.floatx()), batch_size=2048 * 8).flatten().astype(K.floatx()), index=data.index)
             pass
 
+        # NN: mass-reweighted
+        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        with Profile("NN (mass-reweighted)"):
+            classifier = load_model('models/adversarial/classifier_massreweighted/full/classifier_massreweighted.h5')
+
+            #data[ann_var] = pd.Series(classifier.predict(data_std[features].as_matrix().astype(K.floatx()), batch_size=2048 * 8).flatten().astype(K.floatx()), index=data.index)
+            data[nn_mass_var] = pd.Series(classifier.predict(data[features].as_matrix().astype(K.floatx()), batch_size=2048 * 8).flatten().astype(K.floatx()), index=data.index)
+            pass
+
+        # NN: linearly decorrelated
+        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        with Profile("NN (linearly decorrelated)"):
+            decorrelator = decorrelation_model(classifier, 1, **cfg['combined']['model'])
+            decorrelator.load_weights('models/adversarial/classifier_decorrelator_lambda100/full/classifier_decorrelator_lambda100.h5')
+
+            #data[ann_var] = pd.Series(classifier.predict(data_std[features].as_matrix().astype(K.floatx()), batch_size=2048 * 8).flatten().astype(K.floatx()), index=data.index)
+            data[nn_linear_var] = pd.Series(classifier.predict(data[features].as_matrix().astype(K.floatx()), batch_size=2048 * 8).flatten().astype(K.floatx()), index=data.index)
+            pass
+
         # Adaboost
+        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         with Profile("Adaboost"):
             # @TODO: gzip
             with open('models/uboost/adaboost.pkl', 'r') as f:
@@ -153,7 +182,8 @@ def main (args):
             data['Adaboost'] = pd.Series(adaboost.predict_proba(data)[:,1].flatten().astype(K.floatx()), index=data.index)
             pass
 
-        # Adaboost
+        # uBoost
+        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         with Profile("uBoost"):
             # @TODO: Add uniforming rate, `uboost_uni`
             # @TODO: gzip
@@ -395,7 +425,7 @@ def main (args):
             # Split legend
             if   ifeat == 3:
                 c.legend(xmin=0.56, width=0.18)
-            elif ifeat == 7:
+            elif ifeat == len(tagger_features) - 1:
                 c.legend(xmin=0.73, width=0.18)
                 pass
             pass
