@@ -16,16 +16,6 @@ from scipy.stats import norm
 from keras import backend as K
 from keras.engine.topology import Layer
 
-#### # Temporary fix for error:
-#### # >> AttributeError: 'module' object has no attribute 'control_flow_ops'
-#### # occurring when using older TensorFlow backend (__version__ < 1.2.1, at least).
-#### # From [https://github.com/fchollet/keras/issues/3857#issuecomment-251385542]
-#### if K.backend() == 'tensorflow':
-####     import tensorflow
-####     if int(tensorflow.__version__.split('.')[1]) < 2:
-####         tensorflow.python.control_flow_ops = tensorflow
-####         pass
-####     pass
 
 if K.backend() == 'tensorflow':
     import tensorflow as tf
@@ -72,6 +62,119 @@ def gaussian (x, coeff, mean, width):
         Function value of unit gaussian(s) evaluated at `x`.
     """
     return coeff * K.exp( - K.square(x - mean) / 2. / K.square(width)) / K.sqrt( 2. * K.square(width) * np.pi)
+
+
+def correlation_coefficient (x, y):
+    """
+    Compute the linear correlation coefficient for input arrays `x` and `y`
+    using Keras backend methods.
+
+    Assuming `num_features == 1`.
+    """
+
+    # Check(s)
+    assert K.backend() == 'tensorflow', "The method `correlation_coefficient` is only defined for TensorFlow backend."
+
+    mx = K.mean(x)
+    my = K.mean(y)
+    xm, ym = x-mx, y-my
+    r_num = K.sum(tf.multiply(xm,ym))
+    r_den = K.sqrt(tf.multiply(K.sum(K.square(xm)), K.sum(K.square(ym))))
+    r = r_num / r_den
+    r = K.maximum(K.minimum(r, 1.0), -1.0)
+    return r
+
+
+
+class DecorrelationLayer (Layer):
+    """
+    Custom Keras layer, outputting the linear correlation coefficient for the
+    outputs from the previous layers.
+    """
+    def __init__ (self, **kwargs):
+        super(DecorrelationLayer, self).__init__(**kwargs)
+        pass
+
+    def build (self, input_shape):
+        return
+
+    def call (self, x, mask=None):
+        assert isinstance(x, list)
+        assert len(x) == 2
+        #### c = correlation_coefficient(*x)
+        #### c = K.repeat(c, K.size(c))
+        #### return tf.reshape(c, (-1,1))
+        return K.reshape(correlation_coefficient(*x), (1,1))
+
+    def compute_output_shape (self, input_shape):
+        return input_shape[:1]
+
+    pass
+
+class MinibatchDiscrimination (Layer):
+    """Custom layer to implement minibatch discrimination.
+    Cf. [https://arxiv.org/pdf/1606.03498.pdf]
+
+    Learnable tensor has dimensions [A x B x C] with
+        A: `input_dim`. Number of (intput)features in layer on which minibatch
+            discrimination is performed.
+        B: `output_dim`. Number of (output) minibatch discrimination features.
+        C: `latent_dim`. Size of "latent space".
+
+    Use as:
+        # ...
+        layer = ... # Preceeding dense Keras layer
+        minibatch = MinibatchDiscrimination(20, 10)(layer)
+        layer = keras.layers.Concatenate()([layer, minibatch])
+        # ...
+    """
+
+    def __init__ (self, output_dim, latent_dim, **kwargs):
+        """Constructor"""
+
+        # Member variable(s)
+        self.input_dim  = None
+        self.output_dim = output_dim
+        self.latent_dim = latent_dim
+
+        # Base class call
+        super(MinibatchDiscrimination, self).__init__(**kwargs)
+        return
+
+
+    def build (self, input_shape):
+        """Construct learnable tensor"""
+
+        # Check(s)
+        assert len(input_shape) == 2
+        self.input_dim = input_shape[1]
+
+        # Create a trainable tensor for minibatch discrimination
+        self.kernel = self.add_weight(name='kernel',
+                                      shape=(self.output_dim, self.input_dim, self.latent_dim),
+                                      initializer='glorot_uniform',
+                                      trainable=True)
+
+        # Base class call
+        super(MinibatchDiscrimination, self).build(input_shape)  # Be sure to call this somewhere!
+        return
+
+
+    def call (self, x):
+        """Compute minibatch discrimination features.
+        Cf. [https://github.com/hep-lbdl/adversarial-jets/blob/master/models/networks/ops.py#L14-L19]
+        """
+        M = K.reshape(K.dot(x, self.kernel), (-1, self.output_dim, self.latent_dim))
+        diffs = K.expand_dims(M, 3) - \
+            K.expand_dims(K.permute_dimensions(M, [1, 2, 0]), 0)
+        L1_norm = K.sum(K.abs(diffs), axis=2)
+        return K.sum(K.exp(-L1_norm), axis=2)
+
+
+    def compute_output_shape (self, input_shape):
+        return (input_shape[0], self.output_dim)
+
+    pass
 
 
 
@@ -122,7 +225,7 @@ class PosteriorLayer (Layer):
             pdf += this_pdf
             pass
 
-        return K.reshape(pdf, (K.shape(pdf)[0],))   # pdf # K.reshape(pdf, (K.shape(pdf)[0], 1))
+        return K.reshape(pdf, (K.shape(pdf)[0],))
 
     def compute_output_shape (self, input_shape):
         return (input_shape[0][0], self.output_dim)
