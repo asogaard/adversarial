@@ -3,6 +3,9 @@
 
 """Common methods for training and testing flatness reweighting."""
 
+# Basic import(s)
+from enum import Enum
+
 # Scientific import(s)
 import numpy as np
 import pandas as  pd
@@ -18,22 +21,53 @@ from adversarial.profile import profile
 # coordinates which are used for the decorrelation.
 DECORRELATION_VARIABLES = ['logm']
 
+# Reweighting scenario
+class Scenario (Enum):
+    FLATNESS = 1
+    MASS     = 2
+    pass
+
 
 @profile
-def get_input (data):
-    """Get input array and -weights for flatness reweighting.
+def get_input (data, scenario):
+    """Get input array and -weights for flatness- or jet mass reweighting.
     Modify data container in-place"""
 
-    # Add necessary variable(s)
-    data['logm'] = pd.Series(np.log(data['m']), index=data.index)
+    # Check(s)
+    assert isinstance(scenario, Scenario), \
+        "Please specify a reweighting scenario. Received {}.".format(scenario)
 
-    # Initialise and fill coordinate original arrays
-    original = data[DECORRELATION_VARIABLES].as_matrix()
-    original_weight = data['weight'].as_matrix().flatten()
+    if scenario == Scenario.FLATNESS:
 
-    # Scale coordinates to range [0,1]
-    original -= np.min(original, axis=0)
-    original /= np.max(original, axis=0)
+        # Add necessary variable(s)
+        data['logm'] = pd.Series(np.log(data['m']), index=data.index)
 
-    # Return
-    return original, original_weight
+        # Initialise and fill coordinate original arrays
+        original        = data[DECORRELATION_VARIABLES].as_matrix()
+        original_weight = data['weight'].as_matrix().flatten()
+
+        # Scale coordinates to range [0,1]
+        original -= np.min(original, axis=0)
+        original /= np.max(original, axis=0)
+
+        # Return
+        return original, original_weight
+
+    elif scenario == Scenario.MASS:
+
+        # Initialise and fill coordinate original arrays
+        original        = data[['pt', 'm']].as_matrix()
+        original_weight = data['weight'].as_matrix().flatten()
+
+        # Mask out signal and background
+        msk = (data['signal'] == 1)
+        sig = original[ msk,:]
+        bkg = original[~msk,:]
+        sig_weight = original_weight[ msk]
+        bkg_weight = original_weight[~msk]
+
+        # Return
+        return sig, bkg, sig_weight, bkg_weight
+
+    else:
+        raise "Shouldn't be here."

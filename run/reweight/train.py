@@ -34,33 +34,70 @@ def main (args):
     # Loading data
     # --------------------------------------------------------------------------
     data, features, _ = load_data(args.input + 'data.h5')
-    data = data[(data['train'] == 1) & (data['signal'] == 0)]
+    data       = data[data['train']  == 1]
+    signal     = data[data['signal'] == 1]
+    background = data[data['signal'] == 0]
 
 
-    # Get input array and -weights
+    # Flatness reweighting
     # --------------------------------------------------------------------------
-    original, original_weight = get_input(data)
+    with Profile("flatness"):
 
-    # Targets
-    num_targets = data.shape[0]  # Number of targets to  use in reweighting (arbitrary)
-    target = np.random.rand(num_targets, len(DECORRELATION_VARIABLES))
+        # Get input array and -weights
+        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        original, original_weight = get_input(background, Scenario.FLATNESS)
+
+        # Targets
+        target = np.random.rand(*original.shape)
 
 
-    # Fitting reweighter
-    # --------------------------------------------------------------------------
-    with Profile("Fitting reweighter"):
-        reweighter = GBReweighter()
-        reweighter.fit(original, target=target, original_weight=original_weight)
+        # Fitting reweighter
+        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        with Profile("Fitting reweighter"):
+            #reweighter = GBReweighter()
+            reweighter = BinsReweighter(n_bins=200)
+            reweighter.fit(original, target=target, original_weight=original_weight)
+            pass
+
+
+        # Saving reweighter to file
+        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        with Profile("Saving reweighter to file"):
+            mkdir('models/reweight/')
+            with gzip.open('models/reweight/reweighter_flatness.pkl.gz', 'w') as f:
+                pickle.dump(reweighter, f)
+                pass
+            pass
         pass
 
 
-    # Saving reweighter to file
+    # Jet mass reweighting
     # --------------------------------------------------------------------------
-    with Profile("Saving reweighter to file"):
-        mkdir('models/reweight/')
-        with gzip.open('models/reweight/gbreweighter.pkl.gz', 'w') as f:
-            pickle.dump(reweighter, f)
+    with Profile("Mass"):
+
+        # Get input array and -weights
+        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        sig, bkg, sig_weight, bkg_weight = get_input(data, Scenario.MASS)
+
+
+        # Fitting reweighter
+        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        with Profile("Fitting reweighter"):
+            #reweighter = GBReweighter(n_estimators=80, max_depth=4)
+            reweighter = BinsReweighter(n_bins=200)
+            reweighter.fit(sig, target=bkg, original_weight=sig_weight, target_weight=bkg_weight)
             pass
+
+
+        # Saving reweighter to file
+        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        with Profile("Saving reweighter to file"):
+            mkdir('models/reweight/')
+            with gzip.open('models/reweight/reweighter_mass.pkl.gz', 'w') as f:
+                pickle.dump(reweighter, f)
+                pass
+            pass
+
         pass
 
     return 0
