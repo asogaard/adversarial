@@ -3,7 +3,7 @@
       	"model": {
       	    "default": {
             	"units":      256,
-            	"activation": "tanh",
+            	"activation": "relu",
             	"batchnorm":  true,
             	"dropout":    0.2
       	    },
@@ -11,28 +11,26 @@
       	},
       	"fit": {
       	    "epochs":     100,
-      	    "batch_size": 2048,
+      	    "batch_size": 1024,
       	    "shuffle":    true
       	},
       	"compile" : {
       	    "loss":      "binary_crossentropy",
       	    "lr":        1.0E-03,
-      	    "decay":     1.0E-04,
+      	    "decay":     1.0E-05,
       	    "optimizer": "Adam"
       	}
     },
     "adversary": {
       	"model": {
       	    "default": {
-            	"units":      64,
-            	"activation": "tanh",
-            	"batchnorm":  true,
-            	"dropout":    null
+            	"units":      16,
+            	"activation": "relu"
       	    },
       	    "architecture": [
             	{},
-            	{},
-            	{}
+		{},
+                {}
       	    ],
       	    "gmm_components": 10
       	},
@@ -41,12 +39,12 @@
     },
     "combined": {
       	"model": {
-      	    "lambda_reg": 100,
+      	    "lambda_reg": 100.0,
       	    "lr_ratio" : null
       	},
       	"fit": {
-      	    "epochs": 400,
-      	    "batch_size" : 8192,
+      	    "epochs": 100,
+      	    "batch_size" : 1024,
       	    "shuffle": true,
       	    "validation_split": 0.2
       	},
@@ -54,7 +52,7 @@
             "loss":         ["binary_crossentropy", null],
       	    "loss_weights": [1.0E-06, 1.0E+00],
             "lr":           1.0E-03,
-            "decay":        1.0E-03,
+            "decay":        1.0E-05,
             "optimizer":    "Adam"
       	}
     }
