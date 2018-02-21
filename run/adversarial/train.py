@@ -488,15 +488,11 @@ def main (args):
             plot_model(decorrelator, to_file=args.output + 'model_{}.png'.format(name), show_shapes=True)
 
             # Parallelise on GPUs
-            # @TODO: Make compatible with `multi_gpu_model`.
-            """
             if (not args.theano) and args.gpu and args.devices > 1:
                 parallelised = multi_gpu_model(decorrelator, args.devices)
             else:
                 parallelised = decorrelator
                 pass
-            #"""
-            parallelised = decorrelator
 
             # Update compilation config
             # -- Add linear correlation loss
@@ -523,7 +519,7 @@ def main (args):
             zeros = np.zeros((X.shape[0],))
 
             # Fit classifier model
-            ret = parallelised.fit([X, decorrelation], [Y, zeros], sample_weight=[W, W], callbacks=callbacks, **cfg['classifier']['fit'])
+            ret = parallelised.fit([X, decorrelation, W], [Y, zeros], sample_weight=[W, W], callbacks=callbacks, **cfg['classifier']['fit'])
 
             # Save classifier model and training history to file, both in unique
             # output directory and in the directory for pre-trained classifiers.
@@ -549,6 +545,9 @@ def main (args):
         # Define variables
         name    = 'combined_lambda{:.0f}'.format(lambda_reg)
         basedir = 'models/adversarial/{}/full/'.format(name)
+
+        # Load pre-trained classifier
+        classifier, _ = load('models/adversarial/classifier/full/', 'classifier')
 
         # Set up adversary
         adversary = adversary_model(gmm_dimensions=decorrelation.shape[1],
