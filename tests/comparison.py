@@ -134,7 +134,7 @@ def main (args):
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         with Profile("NN"):
             classifier = load_model('models/adversarial/classifier/full/classifier.h5')
-            #data['NN'] = pd.Series(classifier.predict(data_std[features].as_matrix().astype(K.floatx()), batch_size=2048 * 8).flatten().astype(K.floatx()), index=data.index)
+
             data['NN'] = pd.Series(classifier.predict(data[features].as_matrix().astype(K.floatx()), batch_size=2048 * 8).flatten().astype(K.floatx()), index=data.index)
             pass
 
@@ -149,7 +149,6 @@ def main (args):
 
             combined.load_weights('models/adversarial/combined_lambda100/full/combined_lambda100.h5')
 
-            #data[ann_var] = pd.Series(classifier.predict(data_std[features].as_matrix().astype(K.floatx()), batch_size=2048 * 8).flatten().astype(K.floatx()), index=data.index)
             data[ann_var] = pd.Series(classifier.predict(data[features].as_matrix().astype(K.floatx()), batch_size=2048 * 8).flatten().astype(K.floatx()), index=data.index)
             pass
 
@@ -158,7 +157,6 @@ def main (args):
         with Profile("NN (mass-reweighted)"):
             classifier = load_model('models/adversarial/classifier_massreweighted/full/classifier_massreweighted.h5')
 
-            #data[ann_var] = pd.Series(classifier.predict(data_std[features].as_matrix().astype(K.floatx()), batch_size=2048 * 8).flatten().astype(K.floatx()), index=data.index)
             data[nn_mass_var] = pd.Series(classifier.predict(data[features].as_matrix().astype(K.floatx()), batch_size=2048 * 8).flatten().astype(K.floatx()), index=data.index)
             pass
 
@@ -168,7 +166,6 @@ def main (args):
             decorrelator = decorrelation_model(classifier, 1, **cfg['combined']['model'])
             decorrelator.load_weights('models/adversarial/classifier_decorrelator_lambda100/full/classifier_decorrelator_lambda100.h5')
 
-            #data[ann_var] = pd.Series(classifier.predict(data_std[features].as_matrix().astype(K.floatx()), batch_size=2048 * 8).flatten().astype(K.floatx()), index=data.index)
             data[nn_linear_var] = pd.Series(classifier.predict(data[features].as_matrix().astype(K.floatx()), batch_size=2048 * 8).flatten().astype(K.floatx()), index=data.index)
             pass
 
