@@ -272,17 +272,18 @@ def decorrelation_model (classifier, num_decorrelation_features, scope='decorrel
     classifier.trainable = True
 
     # Decorrelation inputs
-    decorrelation_input = Input(shape=(num_decorrelation_features,))
+    decorrelation_input   = Input(shape=(num_decorrelation_features,))
+    decorrelation_weights = Input(shape=(1,))
 
     # Reconstruct classifier
     classifier_input  = Input(shape=classifier.layers[0].input_shape[1:])
     classifier_output = classifier(classifier_input)
 
     # Add decorrelation layer
-    decorrelation_output = DecorrelationLayer()([classifier_output, decorrelation_input])
+    decorrelation_output = DecorrelationLayer()([classifier_output, decorrelation_input, decorrelation_weights])
 
     # Build model
-    model = Model(inputs =[classifier_input,  decorrelation_input],
+    model = Model(inputs =[classifier_input,  decorrelation_input, decorrelation_weights],
                   outputs=[classifier_output, decorrelation_output],
                   name=scope)
 

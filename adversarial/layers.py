@@ -17,6 +17,11 @@ from keras import backend as K
 from keras.engine.topology import Layer
 
 
+# -----------------------------------------------------------------------------
+# @TODO:
+#  - Move all of these to `adversarial/ops.py`
+#  - Merge with `adversarial/new_utils.py`
+
 if K.backend() == 'tensorflow':
     import tensorflow as tf
     def erf (x):
@@ -64,27 +69,29 @@ def gaussian (x, coeff, mean, width):
     return coeff * K.exp( - K.square(x - mean) / 2. / K.square(width)) / K.sqrt( 2. * K.square(width) * np.pi)
 
 
-def correlation_coefficient (x, y):
+def _wmean (x, w):
+    """Weighted mean, computed using Keras backend methods.
+    From [https://stackoverflow.com/a/38647581]
     """
-    Compute the linear correlation coefficient for input arrays `x` and `y`
-    using Keras backend methods.
+    assert K.backend() == 'tensorflow', \
+        "The method `correlation_coefficient` is only defined for TensorFlow backend."
+    return K.sum(tf.multiply(x, w)) / K.sum(w)
 
-    Assuming `num_features == 1`.
+def _wcov (x, y, w):
+    """Weighted covariance, computed using Keras backend methods.
+    From [https://stackoverflow.com/a/38647581]
     """
+    xm = x - _wmean(x, w)
+    ym = y - _wmean(y, w)
+    return K.sum(tf.multiply(tf.multiply(w, xm), ym)) / K.sum(w)
 
-    # Check(s)
-    assert K.backend() == 'tensorflow', "The method `correlation_coefficient` is only defined for TensorFlow backend."
+def _wcorr (x, y, w):
+    """Weighted correlation , computed using Keras backend methods.
+    From [https://stackoverflow.com/a/38647581]
+    """
+    return _wcov(x, y, w) / K.sqrt(_wcov(x, x, w) * _wcov(y, y, w))
 
-    mx = K.mean(x)
-    my = K.mean(y)
-    xm, ym = x-mx, y-my
-    r_num = K.sum(tf.multiply(xm,ym))
-    r_den = K.sqrt(tf.multiply(K.sum(K.square(xm)), K.sum(K.square(ym))))
-    r = r_num / r_den
-    r = K.maximum(K.minimum(r, 1.0), -1.0)
-    return r
-
-
+# -----------------------------------------------------------------------------
 
 class DecorrelationLayer (Layer):
     """
@@ -100,14 +107,11 @@ class DecorrelationLayer (Layer):
 
     def call (self, x, mask=None):
         assert isinstance(x, list)
-        assert len(x) == 2
-        #### c = correlation_coefficient(*x)
-        #### c = K.repeat(c, K.size(c))
-        #### return tf.reshape(c, (-1,1))
-        return K.reshape(correlation_coefficient(*x), (1,1))
+        assert len(x) == 3
+        return K.tile(K.expand_dims(K.flatten(_wcorr(*x)), axis=1), K.shape(x[1]))
 
     def compute_output_shape (self, input_shape):
-        return input_shape[:1]
+        return (None, 1)
 
     pass
 
