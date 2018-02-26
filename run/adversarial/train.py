@@ -166,7 +166,9 @@ def main (args):
 
     # Regulsarisation parameter
     lambda_reg = cfg['combined']['model']['lambda_reg']  # Use same `lambda` as the adversary
-
+    digits = int(np.ceil(max(-np.log10(lambda_reg), 0)))
+    lambda_str = '{l:.{d:d}f}'.format(d=digits,l=lambda_reg).replace('.', 'p')
+    
     # Get standard-formatted inputs for reweighting regressor
     from run.reweight.common import get_input as reweighter_input
     from run.reweight.common import Scenario as ReweightedScenario
@@ -353,7 +355,7 @@ def main (args):
 
         # Define variable(s)
         name    = 'classifier'
-        basedir = 'models/adversarial/{}/full/'.format(name)
+        basedir = 'models/adversarial/classifier/full/'
 
         if args.train or args.train_classifier:
             log.info("Training full classifier")
@@ -417,7 +419,7 @@ def main (args):
 
         # Define variable(s)
         name    = 'classifier_massreweighted'
-        basedir = 'models/adversarial/{}/full/'.format(name)
+        basedir = 'models/adversarial/classifier/full/'
 
         if args.train or args.train_classifier:
             log.info("Training full classifier")
@@ -472,8 +474,8 @@ def main (args):
     with Profile("Linearly decorrelated classifier fit, full"):
 
         # Define variable(s)
-        name    = 'classifier_decorrelator_lambda{:.0f}'.format(lambda_reg)
-        basedir = 'models/adversarial/{}/full/'.format(name)
+        name    = 'classifier_decorrelator_lambda{}'.format(lambda_str)
+        basedir = 'models/adversarial/combined/full/'
 
         # Load pre-trained classifier
         classifier, _ = load('models/adversarial/classifier/full/', 'classifier')
@@ -481,7 +483,7 @@ def main (args):
         # Create decorrelation model
         decorrelator = decorrelation_model(classifier, decorrelation.shape[1], **cfg['combined']['model'])
 
-        if args.train or args.train_classifier:
+        if args.train or args.train_adversarial:
             log.info("Training full classifier")
 
             # Save classifier model diagram to file
@@ -543,8 +545,8 @@ def main (args):
         # - Checkpointing
 
         # Define variables
-        name    = 'combined_lambda{:.0f}'.format(lambda_reg)
-        basedir = 'models/adversarial/{}/full/'.format(name)
+        name    = 'combined_lambda{}'.format(lambda_str)
+        basedir = 'models/adversarial/combined/full/'
 
         # Load pre-trained classifier
         classifier, _ = load('models/adversarial/classifier/full/', 'classifier')
