@@ -42,6 +42,18 @@ def signal_high (feat):
     """Method to determine whether the signal distribution is towards higher values."""
     return ('tau21' in feat.lower() or 'd2' in feat.lower())
 
+# Define mass bins
+MASSBINS = np.linspace(40, 300, (300 - 40) // 10 + 1, endpoint=True)
+
+def JSD(P, Q, base=2):
+    """Compute Jensen-Shannon divergence of two distribtions.
+    From: [https://stackoverflow.com/a/27432724]
+    """
+    _P = P / np.sum(P)
+    _Q = Q / np.sum(Q)
+    _M = 0.5 * (_P + _Q)
+    return 0.5 * (entropy(_P, _M, base=base) + entropy(_Q, _M, base=base))
+
 
 # Main function definition
 @profile
@@ -69,10 +81,54 @@ def main (args):
     # --------------------------------------------------------------------------
     data, features, _ = load_data(args.input + 'data.h5')
     data = data[data['train'] == 0]
+    #data = data.sample(frac=0.2)  # @TEMP!
 
 
     # Common definitions
     # --------------------------------------------------------------------------
+    """
+    configs = [
+        {'type', 'DDT',
+         'name': '#tau_{21}',
+         'params': {
+             'transformed:' False,
+            },
+        },
+
+        {'type', 'DDT',
+         'name': '#tau_{21}^{DDT}',
+         'params': {
+             'transformed:' True,
+            },
+        },
+
+        {'type', 'kNN',
+         'name': 'D_{2}',
+         'params': {
+             'transformed': False,
+             'efficiency':  None
+            },
+        },
+
+        {'type', 'kNN',
+         'name': 'D_{2}^{kNN(%d%%)}' % kNN_eff,
+         'params': {
+             'transformed:' True,
+             'efficiency':  kNN_eff,
+            },
+        },
+
+        {'type': 'ANN',
+         'name': "ANN(#lambda={:.0f})".format(lambda_reg) ,
+         'params': {
+             'lambda': lambda_reg,
+            }
+
+        },
+        # ...
+    ]
+    #"""
+
     eps = np.finfo(float).eps
     msk_mass = (data['m'] > 60.) & (data['m'] < 100.)  # W mass window
     msk_sig  = data['signal'] == 1
@@ -81,21 +137,35 @@ def main (args):
     uboost_uni = 1.0
     D2_kNN_var = 'D2-kNN({:d}%)'.format(kNN_eff)
     uboost_var = 'uBoost(#varepsilon={:d}%,#alpha={:.1f})'.format(uboost_eff, uboost_uni)
-    ann_var = "ANN(#lambda=100)"  # @TODO: Make dynamical!
+
+    lambda_reg  = 1
+    lambda_regs = sorted([0.1, 10, 1, 100])
+    ann_vars    = list()
+    lambda_strs = list()
+    for lambda_reg_ in lambda_regs:
+        digits = int(np.ceil(max(-np.log10(lambda_reg_), 0)))
+        lambda_str = '{l:.{d:d}f}'.format(d=digits,l=lambda_reg_).replace('.', 'p')
+        lambda_strs.append(lambda_str)
+
+        ann_var_ = "ANN(#lambda={:s})".format(lambda_str.replace('p', '.'))
+        ann_vars.append(ann_var_)
+        pass
+
+    ann_var = ann_vars[lambda_regs.index(lambda_reg)]
 
     nn_mass_var = "NN(m-weight)"
-    nn_linear_var = "NN(rho,#lambda=100)"  # @TODO: Make dynamical
+    nn_linear_vars = list()
+    for lambda_reg_ in lambda_regs:
+        nn_linear_var_ = "NN(rho,#lambda={:.0f})".format(lambda_reg_)
+        nn_linear_vars.append(nn_linear_var_)
+        pass
+    nn_linear_var = nn_linear_vars[lambda_regs.index(lambda_reg)]
 
-    tagger_features = ['Tau21','Tau21DDT', 'D2', D2_kNN_var, 'NN', ann_var, 'Adaboost', uboost_var, nn_mass_var, nn_linear_var]  # D2CSS, N2KNN
-
+    tagger_features = ['Tau21','Tau21DDT', 'D2', D2_kNN_var, 'NN', ann_var, 'Adaboost', uboost_var] #, nn_mass_var, nn_linear_var]  # D2CSS, N2KNN
 
     # DDT variables
     fit_range = (1.5, 4.0)
     intercept, slope = 0.774633, -0.111879
-
-    # Perform standardisation  @TEMP?
-    #substructure_scaler = StandardScaler().fit(data[features])
-    #data_std = pd.DataFrame(substructure_scaler.transform(data[features]), index=data.index, columns=features)
 
 
     # Adding variables
@@ -147,11 +217,14 @@ def main (args):
             combined = combined_model(classifier, adversary,
                                       **cfg['combined']['model'])
 
-            combined.load_weights('models/adversarial/combined_lambda100/full/combined_lambda100.h5')
-
-            data[ann_var] = pd.Series(classifier.predict(data[features].as_matrix().astype(K.floatx()), batch_size=2048 * 8).flatten().astype(K.floatx()), index=data.index)
+            for ann_var_, lambda_str_ in zip(ann_vars, lambda_strs):
+                combined.load_weights('models/adversarial/combined/full/combined_lambda{}.h5'.format(lambda_str_))
+                data[ann_var_] = pd.Series(classifier.predict(data[features].as_matrix().astype(K.floatx()), batch_size=2048 * 8).flatten().astype(K.floatx()), index=data.index)
+                pass
             pass
 
+
+        """ @TEMP
         # NN: mass-reweighted
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         with Profile("NN (mass-reweighted)"):
@@ -164,15 +237,19 @@ def main (args):
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         with Profile("NN (linearly decorrelated)"):
             decorrelator = decorrelation_model(classifier, 1, **cfg['combined']['model'])
-            decorrelator.load_weights('models/adversarial/classifier_decorrelator_lambda100/full/classifier_decorrelator_lambda100.h5')
-
-            data[nn_linear_var] = pd.Series(classifier.predict(data[features].as_matrix().astype(K.floatx()), batch_size=2048 * 8).flatten().astype(K.floatx()), index=data.index)
+            for nn_linear_var_, lambda_str_ in zip(nn_linear_vars, lambda_strs):
+                decorrelator.load_weights('models/adversarial/combined/full/classifier_decorrelator_lambda{}.h5'.format(lambda_str_))
+                data[nn_linear_var_] = pd.Series(classifier.predict(data[features].as_matrix().astype(K.floatx()), batch_size=2048 * 8).flatten().astype(K.floatx()), index=data.index)
+                pass
             pass
+        #"""
+
 
         # Adaboost
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         with Profile("Adaboost"):
-            # @TODO: gzip
+            # @TODO:
+            #  - gzip
             with open('models/uboost/adaboost.pkl', 'r') as f:
                 adaboost = pickle.load(f)
                 pass
@@ -191,6 +268,153 @@ def main (args):
             pass
 
         pass
+
+
+    # Perform generalised ROC study
+    # --------------------------------------------------------------------------
+    target_tpr = 0.5
+    axisrange = (0.5, 500.)
+    with Profile("Study: Generalised ROC"):
+
+        points = list()
+        for feat in tagger_features + ann_vars:  # + nn_linear_vars:
+            print  "-- {}".format(feat)
+
+            # Check for duplicates
+            if feat in map(lambda t: t[2], points):
+                print "    Skipping (already encounted)"
+                continue
+
+            # scikit-learn assumes signal towards 1, background towards 0
+            pred = data[feat].values.copy()
+            if 'Tau' in feat or 'D2' in feat:
+                print "   Reversing cut direction for {}".format(feat)
+                pred *= -1.
+                pass
+            fpr, tpr, thresholds = roc_curve(data['signal'], pred, sample_weight=data['weight'])
+
+            # Get background rejection factor @ eff_sig. = 50%
+            idx = np.argmin(np.abs(tpr - target_tpr))
+            rej = 1. / fpr[idx]
+            cut = thresholds[idx]
+
+            # Get JSD(pass || fail) @ eff_sig. = 50%
+            msk      = data['signal'] == False
+            msk_pass = pred > cut
+
+            p, _ = np.histogram(data.loc[ msk_pass & msk, 'm'].values, bins=MASSBINS, weights=data.loc[ msk_pass & msk, 'weight'].values, density=True)
+            f, _ = np.histogram(data.loc[~msk_pass & msk, 'm'].values, bins=MASSBINS, weights=data.loc[~msk_pass & msk, 'weight'].values, density=True)
+
+            jsd = JSD(p, f)
+
+            # Add point to array
+            points.append((rej, 1. / jsd, feat))
+            pass
+
+        # Canvas
+        c = rp.canvas(batch=not args.show, size=(600,600))
+
+        # Reference lines
+        c.plot([.1, .1, 9999, 9999], bins=[axisrange[0] + 0.05, 9999, 9999, axisrange[0] + 0.048], linecolor=0,              linewidth=0, markerstyle=0, markersize=0, option='AP')
+        c.plot([1, 9999],            bins=[1, 1],                                                  linecolor=ROOT.kGray + 2, linewidth=1, option='L')
+        c.plot([1, 1],               bins=[1, 9999],                                               linecolor=ROOT.kGray + 2, linewidth=1, option='L')
+
+        # Markers
+        for ipoint, feat in enumerate(tagger_features):
+            # Coordinates, label
+            idx = map(lambda t: t[2], points).index(feat)
+            x, y, label = points[idx]
+
+            if label.startswith('ANN'):
+                label = 'ANN'
+                pass
+
+            # Style
+            colour      = rp.colours[(ipoint // 2) % len(rp.colours)]
+            markerstyle = 20 + (ipoint % 2) * 4
+
+            # Draw
+            c.graph([y], bins=[x], markercolor=colour, markerstyle=markerstyle, label=latex(label, ROOT=True), option='P')
+            pass
+
+        # Markers, paramerised decorrelation
+        for feat in ann_vars:
+            #if feat in tagger_features:
+            #    continue
+            idx = map(lambda t: t[2], points).index(feat)
+            x, y, label = points[idx]
+
+            # Style
+            ipoint = 5
+            colour      = rp.colours[(ipoint // 2) % len(rp.colours)]
+            markerstyle = 20 + (ipoint % 2) * 4
+
+            # Draw
+            c.graph([y], bins=[x], markercolor=colour, markerstyle=markerstyle, option='P')
+            c.latex("   " + label[4:-1], x, y, textsize=11, align=12, textcolor=ROOT.kGray + 2)
+            pass
+
+        # Connecting lines
+        for i in [0,1,3]:
+            x1, y1, _ = points[2 * i + 0]
+            x2, y2, _ = points[2 * i + 1]
+            colour = rp.colours[i]
+            c.graph([y1, y2], bins=[x1, x2], linecolor=colour, linestyle=2, option='L')
+            pass
+
+        # Connecting lines
+        feats = [tagger_features[4]] + ann_vars
+        for feat1, feat2 in zip(feats[:-1], feats[1:]):
+            idx1 = map(lambda t: t[2], points).index(feat1)
+            idx2 = map(lambda t: t[2], points).index(feat2)
+
+            x1, y1, _ = points[idx1]
+            x2, y2, _ = points[idx2]
+            colour = rp.colours[2]
+            c.graph([y1, y2], bins=[x1, x2], linecolor=colour, linestyle=2, option='L')
+            pass
+
+        # Decorations
+        c.legend(xmin=0.65, xmax=0.90)
+        c.xlabel("Background rejection, 1 / #varepsilon_{bkg.} @ #varepsilon_{sig.} = 50%")
+        c.ylabel("1 / JSD(P_{pass}(m) #parallel P_{fail}(m) ) @ #varepsilon_{sig.} = 50%")
+        c.xlim(*axisrange)
+        c.ylim(axisrange[0], axisrange[1] * 10)
+        c.logx()
+        c.logy()
+        c.latex("No separation",                   0.95, 420.,   angle=90, align=31, textsize=11, textcolor=ROOT.kGray + 2)
+        c.latex("Maximal dissimilarity",         400.,     0.95, angle= 0, align=33, textsize=11, textcolor=ROOT.kGray + 2)
+        c.latex("Less sculpting #rightarrow",      1.1,   25.,   angle=90, align=23, textsize=11, textcolor=ROOT.kGray + 2)
+        c.latex("Greater separtion #rightarrow",  25.,     1.1,  angle= 0, align=21, textsize=11, textcolor=ROOT.kGray + 2)
+        ROOT.gStyle.SetTitleOffset(3.0, 'x')
+        ROOT.gStyle.SetTitleOffset(1.6, 'y')
+
+        c.text(["#sqrt{s} = 13 TeV,  QCD jets",
+                "Testing dataset",
+                "Baseline selection",
+                ],
+            xmin=0.27,
+            qualifier=QUALIFIER)
+
+        # Save
+        if args.save:
+            mkdir('figures/')
+            c.save('figures/genroc.pdf')
+            pass
+
+        # Show
+        if args.show:
+            c.show()
+            pass
+
+        # ...
+
+        pass
+
+
+    exit()  # @TEMP
+
+    # ...
 
 
     # Perform distributions study
@@ -272,7 +496,7 @@ def main (args):
                 pass
 
             # Define bins
-            bins = np.linspace(40, 300, (300 - 40) // 10 + 1, endpoint=True)
+            bins = MASSBINS
 
             # Canvas
             c = rp.canvas(num_pads=2, size=(int(800 * 600 / 857.), 600), batch=not args.show)
@@ -354,15 +578,6 @@ def main (args):
     # --------------------------------------------------------------------------
     with Profile("Study: Robustness"):
 
-        def JSD(P, Q, base=None):
-            """Compute Jensen-Shannon divergence of two distribtions.
-            From: [https://stackoverflow.com/a/27432724]
-            """
-            _P = P / np.sum(P)
-            _Q = Q / np.sum(Q)
-            _M = 0.5 * (_P + _Q)
-            return 0.5 * (entropy(_P, _M, base=base) + entropy(_Q, _M, base=base))
-
         # Define common variables
         msk = data['signal'] == 0
         effs = np.linspace(0, 100, 10 * 2, endpoint=False)[1:].astype(int)
@@ -384,9 +599,6 @@ def main (args):
             if not signal_high(feat):
                 cuts = list(reversed(cuts))
                 pass
-
-            # Define mass bins
-            bins = np.linspace(40, 300, (300 - 40) // 10 + 1, endpoint=True)
 
             # Compute KL divergence for successive cuts
             for cut, eff in zip(cuts, effs):
@@ -481,7 +693,7 @@ def main (args):
                 pass
 
             # Define mass bins
-            bins = np.linspace(40, 300, (300 - 40) // 10 + 1, endpoint=True)
+            bins = MASSBINS
 
             # Compute cut efficiency vs. mass
             profiles = list()
@@ -519,7 +731,7 @@ def main (args):
             # Text
             for idx, (profile, cut, eff) in enumerate(zip(profiles, cuts, effs)):
                 if int(eff) in [10, 50, 90]:
-                    c.latex('#varepsilon_{bkg.} = %d%%' % eff,
+                    c.latex('#bar{#varepsilon}_{bkg.} = %d%%' % eff,
                             260., profile.GetBinContent(np.argmin(np.abs(bins - 270.)) + 1) + 0.025,
                             textsize=13,
                             textcolor=ROOT.kGray + 2, align=11)
