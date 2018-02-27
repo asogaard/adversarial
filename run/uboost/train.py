@@ -4,6 +4,7 @@
 """Script for training uBoost classifier for de-correlated jet tagging."""
 
 # Basic import(s)
+import gzip
 import pickle
 
 # Scientific import(s)
@@ -32,30 +33,29 @@ def main (args):
     # Loading data
     # --------------------------------------------------------------------------
     data, features, _ = load_data(args.input + 'data.h5')
+    data = data.sample(frac=0.001, random_state=32)  # @TEMP
     data = data[data['train'] == 1]
 
-    # Subset
-    #data = data.head(1000000)  # @TEMP
 
     # Config, to be relegated to configuration file
     cfg = {
         'DecisionTreeClassifier': {
-            'criterion': 'entropy',
-            'max_depth': 10,  #4,
-            'min_samples_split': 2,
-            'min_samples_leaf': 1
+            'criterion': 'gini',
+            'max_depth': 10,             # Optimise
+            'min_samples_split': 2,      # Optimise (?)
+            'min_samples_leaf': 1        # Optimise (?)
         },
 
         'uBoost': {                      # @NOTE: or uBoostClassifier?
-            'n_estimators': 500,
-            'n_neighbors': 50,
+            'n_estimators': 500,         # Optimise
+            'n_neighbors': 50,           # Optimise
 
-            'target_efficiency': 0.80,
+            'target_efficiency': 0.80,   # @NOTE: Make ~50% sig. eff.
             #'efficiency_steps': 3,      # For uBoostClassifier only
 
-            'smoothing': 0.0,
-            'uniforming_rate': 1.,
-            'learning_rate': .2,
+            'smoothing': 0.0,            # Optimise (?)
+            'uniforming_rate': 1.,       # Parametrisation of decorrelation
+            'learning_rate': .2,         # Optimise (?)
         }
     }
 
@@ -70,7 +70,6 @@ def main (args):
             'train_features': features,
             'random_state': SEED,        # For reproducibility
             #'n_threads': 16,            # For uBoostClassifier only
-            'subsample': 1E-03,          # Fraction of data used for each estimator/iteration
         }
     }
     opts = apply_patch(opts, cfg)
@@ -101,10 +100,8 @@ def main (args):
         #        If this is indeed the case, it would be possible to simply
         #        sample MC events by their weight, and use `sample_weight = 1`
         #        for all samples passed to uBoost.
-
-        # Get number of estimators, subsample fraction, for manual "epochs"
-        n_estimators = opts['uBoost'].pop('n_estimators', 50)
-        subsample    = opts['uBoost'].pop('subsample',    1.)
+        #
+        # @NOTE: I have gotten less sure of the above, so probably no panic.
 
         # Create base classifier
         base_tree = DecisionTreeClassifier(**opts['DecisionTreeClassifier'])
@@ -114,18 +111,7 @@ def main (args):
                            **opts['uBoost'])
 
         # Fit uBoost classifier
-        #uboost.fit(X, y, sample_weight=w)
-        N_total  = X.shape[0]
-        N_sample = int(N_total * subsample)
-        p = w / np.sum(w)
-        for epoch in range(n_estimators):
-            print "Epoch {}/{}".format(epoch + 1, n_estimators)
-            indices = np.random.choice(N_total, N_sample, replace=True, p=p)
-            X_sample = X.iloc[indices]
-            y_sample = y[indices]
-            #w_sample = w[indices]
-            uboost.fit(X_sample, y_sample)  #, sample_weight=w_sample)
-            pass
+        uboost.fit(X, y, sample_weight=w)
         pass
 
 
@@ -142,15 +128,7 @@ def main (args):
                              **opts['uBoost'])
 
         # Fit Adaboost classifier
-        #adaboost.fit(X, y, sample_weight=w)
-        for epoch in range(n_estimators):
-            print "Epoch {}/{}".format(epoch + 1, n_estimators)
-            indices = np.random.choice(N_total, N_sample, replace=True, p=p)
-            X_sample = X.iloc[indices]
-            y_sample = y[indices]
-            #w_sample = w[indices]
-            adaboost.fit(X_sample, y_sample)  #, sample_weight=w_sample)
-            pass
+        adaboost.fit(X, y, sample_weight=w)
         pass
 
 
@@ -162,12 +140,12 @@ def main (args):
         mkdir('models/uboost/')
 
         # Save uBoost classifier
-        with open('models/uboost/uboost_{:d}.pkl'.format(int(opts['uBoost']['target_efficiency'] * 100)), 'w') as f:
+        with gzip.open('models/uboost/uboost_{:d}.pkl.gz'.format(int(opts['uBoost']['target_efficiency'] * 100)), 'w') as f:
             pickle.dump(uboost, f)
             pass
 
         # Save Adaboost classifier
-        with open('models/uboost/adaboost.pkl', 'w') as f:
+        with gzip.open('models/uboost/adaboost.pkl.gz', 'w') as f:
             pickle.dump(adaboost, f)
             pass
         pass

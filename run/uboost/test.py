@@ -4,6 +4,7 @@
 """Script for testing uBoost classifier for de-correlated jet tagging."""
 
 # Basic import(s)
+import gzip
 import pickle
 
 # Scientific import(s)
@@ -30,9 +31,8 @@ def main (args):
     # Loading data
     # --------------------------------------------------------------------------
     data, features, _ = load_data(args.input + 'data.h5')
+    data = data.sample(frac=0.001, random_state=32)   # @TEMP
 
-    # Subset @TEMP
-    data = data.head(1000000)
 
 
     # Looping classifiers
@@ -48,7 +48,7 @@ def main (args):
             # Loading classifier
             # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             with Profile("Loading {} classifier".format(title)):
-                with open('models/uboost/{}.pkl'.format(name), 'r') as f:
+                with gzip.open('models/uboost/{}.pkl.gz'.format(name), 'r') as f:
                     clf = pickle.load(f)
                     pass
                 pass
@@ -95,8 +95,10 @@ def main (args):
                 staged_pred_train = list(clf.staged_predict_proba(data[data['train'] == 1]))
                 staged_pred_test  = list(clf.staged_predict_proba(data[data['train'] == 0]))
 
-                y_train = data.loc[data['train'] == 1, 'signal'].as_matrix().flatten()
-                y_test  = data.loc[data['train'] == 0, 'signal'].as_matrix().flatten()
+                y_train = data.loc[data['train'] == 1, 'signal'].values
+                y_test  = data.loc[data['train'] == 0, 'signal'].values
+                w_train = data.loc[data['train'] == 1, 'weight'].values
+                w_test  = data.loc[data['train'] == 0, 'weight'].values
 
                 ll_train, ll_test = list(), list()
                 auc_train, auc_test = list(), list()
@@ -104,11 +106,11 @@ def main (args):
                     p_train = pred_train[:,1]
                     p_test  = pred_test [:,1]
 
-                    ll_train.append( log_loss(y_train, p_train) )
-                    ll_test .append( log_loss(y_test,  p_test) )
+                    ll_train.append( log_loss(y_train, p_train, sample_weight=w_train) )
+                    ll_test .append( log_loss(y_test,  p_test,  sample_weight=w_test) )
 
-                    auc_train.append( roc_auc_score(y_train, p_train) )
-                    auc_test .append( roc_auc_score(y_test,  p_test) )
+                    auc_train.append( roc_auc_score(y_train, p_train, sample_weight=w_train) )
+                    auc_test .append( roc_auc_score(y_test,  p_test,  sample_weight=w_test) )
                     pass
 
                 x = np.arange(len(ll_train))
