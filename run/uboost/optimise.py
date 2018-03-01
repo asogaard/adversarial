@@ -57,7 +57,7 @@ def main (args):
 
             'smoothing': 0.0,            # Optimise (?)
             'uniforming_rate': 1.,       # Parametrisation of decorrelation
-            'learning_rate': .2,         # Optimise (?)
+            'learning_rate': .3,         # Optimise (?)
         }
     }
 
