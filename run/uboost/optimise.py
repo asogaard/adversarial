@@ -13,6 +13,7 @@ from hep_ml.uboost import uBoostBDT, uBoostClassifier
 from sklearn.tree import DecisionTreeClassifier
 
 from sklearn.model_selection import GridSearchCV
+from sklearn.pipeline import Pipeline
 
 # Project import(s)
 from adversarial.utils import apply_patch
@@ -82,14 +83,15 @@ def main (args):
     y = np.array(data['signal']).flatten()
 
     #AdaBoost optimization parameters
-    learning_rate = [0.001,0.01,0.1,0.2,0.3]
-    n_estimators = [100, 200, 300, 400, 500]
+    #learning_rate = [0.001,0.01,0.1,0.2,0.3]
+    #n_estimators = [200, 300, 400, 500, 600]
 
-    max_depth = [1, 2, 3, 5, 7, 10, 20, 50, 100]           #range used in W/Top tagger analysis
+    #max_depth = [1, 2, 3, 5, 7, 10, 20, 50, 100]           #range used in W/Top tagger analysis
     #min_samples_split = ?
-    min_samples_leaf = [0.5, 1.0, 2.5, 5.0, 10.0, 20.0]    #range used in W/Top tagger analysis
+    #min_samples_leaf = [0.5, 1.0, 2.5, 5.0, 10.0, 20.0]    #range used in W/Top tagger analysis
 
-    param_grid = dict(learning_rate=learning_rate, n_estimators=n_estimators)
+    #param_grid = dict(learning_rate=learning_rate, n_estimators=n_estimators, max_depth=max_depth, min_samples_leaf=min_samples_leaf)
+    #param_grid = dict(learning_rate=learning_rate, n_estimators=n_estimators)
 
     # Fit uBoost classifier
     # --------------------------------------------------------------------------
@@ -138,8 +140,16 @@ def main (args):
         adaboost = uBoostBDT(base_estimator=base_tree,
                              **opts['uBoost'])
 
-        clf = GridSearchCV(adaboost, param_grid,scoring='roc_auc',cv=2,verbose=1, refit=True, n_jobs=4)
-        clf.fit(X, y,sample_weight=w)
+	estimators = [('ada', adaboost)]
+	pipe = Pipeline(estimators)
+	param_grid = dict(ada__base_estimator__max_depth = [10], ada__learning_rate = [0.001,0.01,0.1,0.2,0.3], ada__n_estimators = [100, 200, 300, 400, 500])
+	#param_grid = dict(ada__learning_rate = [0.001,0.01,0.1,0.2,0.3], ada__n_estimators = [200, 300, 400, 500, 600])
+
+        #clf = GridSearchCV(adaboost, param_grid,scoring='roc_auc',cv=2,verbose=1, refit=True, n_jobs=4)
+        clf = GridSearchCV(pipe, param_grid,scoring='roc_auc',cv=2,verbose=1, refit=True, n_jobs=4)
+        #clf.fit(X, y,sample_weight=w)
+        clf.fit(X, y,**{'ada__sample_weight': w})
+        #clf.fit(X, y)
 
         print("Best parameters set found on development set: ")
         print(clf.best_params_)
