@@ -11,7 +11,7 @@ import pickle
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.metrics import log_loss, roc_auc_score
+from sklearn.metrics import log_loss, roc_auc_score, roc_curve
 
 # Project import(s)
 from adversarial.utils import wpercentile
@@ -31,14 +31,15 @@ def main (args):
     # Loading data
     # --------------------------------------------------------------------------
     data, features, _ = load_data(args.input + 'data.h5')
-    data = data.sample(frac=0.001, random_state=32)   # @TEMP
+    #data = data.sample(frac=0.001, random_state=32)   # @TEMP
+    data = data.sample(frac=0.01, random_state=32)   # @TEMP
 
 
 
     # Looping classifiers
     # --------------------------------------------------------------------------
     classifiers = [
-        ('uBoost',   'uboost_80'),
+     #   ('uBoost',   'uboost_80'),
         ('Adaboost', 'adaboost')
     ]
 
@@ -102,6 +103,7 @@ def main (args):
 
                 ll_train, ll_test = list(), list()
                 auc_train, auc_test = list(), list()
+
                 for idx, (pred_train, pred_test) in enumerate(zip(staged_pred_train, staged_pred_test)):
                     p_train = pred_train[:,1]
                     p_test  = pred_test [:,1]
@@ -111,7 +113,8 @@ def main (args):
 
                     auc_train.append( roc_auc_score(y_train, p_train, sample_weight=w_train) )
                     auc_test .append( roc_auc_score(y_test,  p_test,  sample_weight=w_test) )
-                    pass
+                    
+		    pass
 
                 x = np.arange(len(ll_train))
 
@@ -139,6 +142,31 @@ def main (args):
                 mkdir('figures/')
                 plt.savefig('figures/temp_auc_{}.pdf'.format(name))
                 pass
+
+
+
+	    # Plotting ROC curves
+	    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	    with Profile("Plotting ROCs"):
+                # Get predictions
+                pred_test  = clf.predict_proba(data[data['train'] == 0]) [:,1]
+                pred_train = clf.predict_proba(data[data['train'] == 1])[:,1]
+
+		fpr_test, tpr_test, thresholds_test = roc_curve(y_test,  p_test,  sample_weight=w_test)
+		fpr_train, tpr_train, thresholds_train  = roc_curve(y_train,  p_train,  sample_weight=w_train)
+
+		# TPR vs FPR
+                fig, ax = plt.subplots()
+                plt.plot(fpr_train, tpr_train, label='Train')
+                plt.plot(fpr_test, tpr_test,  label='Test')
+                plt.legend()
+                plt.xlabel("Fake positive rate")
+                plt.ylabel("True positive rate")
+
+                # Save
+                mkdir('figures/')
+                plt.savefig('figures/temp_roc_{}.pdf'.format(name))
+		pass 
 
 
             # Plotting distributions
