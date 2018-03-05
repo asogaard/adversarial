@@ -19,7 +19,7 @@ from adversarial.profile import profile
 MAX_D2 = 5.
 BINS = np.linspace(0., MAX_D2, 501, endpoint=True)  # Binning in rhoCSS
 SHAPEVAL_RANGE = np.linspace(1., 3., 2)
-OMEGA_RANGE = np.linspace(0.01, 0.8, 20)
+OMEGA_RANGE = np.linspace(0.01, 0.8, 30)
 MASS_BINS = np.linspace(40., 300., 12)
 RHO_BINS = np.linspace(-7, -0.5, 7 * 8 + 1, endpoint=True)
 
@@ -62,34 +62,29 @@ def fill_mass_profile (data, var):
 
     return profile
 
-def getGinv():
+def getGinv(var):
   css_ginv_all = []
   for m in range(len(MASS_BINS)-1):
-    with gzip.open('models/css/css_Ginv_%i.pkl.gz'%m, 'r') as ginv:
+    with gzip.open('models/css/css_%s_Ginv_%i.pkl.gz'%(var,m), 'r') as ginv:
       css_ginv = pickle.load(ginv)
       css_ginv_all.append(css_ginv)
   return css_ginv_all
 
-def getF():
+def getF(var):
   css_f_all = []
   for m in range(len(MASS_BINS)-1):
-    with gzip.open('models/css/css_F_%i.pkl.gz'%m, 'r') as f:
+    with gzip.open('models/css/css_%s_F_%i.pkl.gz'%(var,m), 'r') as f:
       css_f = pickle.load(f)
       css_f_all.append(css_f)
   return css_f_all
 
 def ApplyCSSAgain(d2, massbins, Ginv, F):
-  
   newD2s = []
-  short = range(0, 3)
-  #for cD2,cGinv,cF in zip(d2, Ginv, F):
-  #for cD2, massbin, tmp in zip(d2[0:3], massbins[0:3], short):
   for i in range(len(d2)):
     if massbins[i]> 11:
       massbins[i]= 11
     newD2 = Ginv[massbins[i]].Eval(F[massbins[i]].Eval(d2[i]))
     newD2s.append(newD2)
-    #print d2, newD2
   
   return newD2s
 
@@ -97,13 +92,13 @@ def GetCSSSeries(jssVar, data):
   massData = data['m'].as_matrix().flatten()
   jssData = data[jssVar].as_matrix().flatten()
   massbins = np.digitize(massData, MASS_BINS)-1
-  F_massbins = getF()
-  Ginv_massbins = getGinv()
+  F_massbins = getF(jssVar)
+  Ginv_massbins = getGinv(jssVar)
 
   newJSSVars = []
   for i in range(len(jssData)):
-    if massbins[i]> 11:
-      massbins[i]= 11
+    if massbins[i]>= len(MASS_BINS):
+      massbins[i] = len(MASS_BINS)
     newJSSVar = Ginv_massbins[massbins[i]].Eval(F_massbins[massbins[i]].Eval(jssData[i]))
     newJSSVars.append(newJSSVar)
 

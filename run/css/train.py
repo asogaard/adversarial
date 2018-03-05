@@ -183,6 +183,7 @@ def main (args):
     # --------------------------------------------------------------------------
 
     var = 'D2'
+    #var = 'Tau21'
     profile0 = fill_profile(data, var, 0)
     # Do the optimization
     bestShapeVal = 0
@@ -218,9 +219,9 @@ def main (args):
             F,Ginv = getCSSFns(bestShapeVal, bestOmega, profile, "")
 
             # Save classifier
-            with gzip.open('models/css/css_F_%i.pkl.gz'%mass, 'w') as f:
+            with gzip.open('models/css/css_%s_F_%i.pkl.gz'%(var,mass), 'w') as f:
                 pickle.dump(F, f)
-            with gzip.open('models/css/css_Ginv_%i.pkl.gz'%mass, 'w') as f2:
+            with gzip.open('models/css/css_%s_Ginv_%i.pkl.gz'%(var,mass), 'w') as f2:
                 pickle.dump(Ginv, f2)
                 pass
             pass
