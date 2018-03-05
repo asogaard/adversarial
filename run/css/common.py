@@ -17,10 +17,10 @@ from adversarial.profile import profile
 
 # Common definition(s)
 MAX_D2 = 5.
-BINS = np.linspace(0., MAX_D2, 1001, endpoint=True)  # Binning in rhoCSS
-SHAPEVAL_RANGE = np.linspace(1., 4., 5)
+BINS = np.linspace(0., MAX_D2, 501, endpoint=True)  # Binning in rhoCSS
+SHAPEVAL_RANGE = np.linspace(1., 3., 2)
 OMEGA_RANGE = np.linspace(0.01, 0.8, 20)
-MASS_BINS = np.linspace(40., 300., 20)
+MASS_BINS = np.linspace(40., 300., 12)
 RHO_BINS = np.linspace(-7, -0.5, 7 * 8 + 1, endpoint=True)
 
 @profile
@@ -85,8 +85,8 @@ def ApplyCSSAgain(d2, massbins, Ginv, F):
   #for cD2,cGinv,cF in zip(d2, Ginv, F):
   #for cD2, massbin, tmp in zip(d2[0:3], massbins[0:3], short):
   for i in range(len(d2)):
-    if massbins[i]> 8:
-      massbins[i]= 8
+    if massbins[i]> 11:
+      massbins[i]= 11
     newD2 = Ginv[massbins[i]].Eval(F[massbins[i]].Eval(d2[i]))
     newD2s.append(newD2)
     #print d2, newD2
@@ -102,8 +102,8 @@ def GetCSSSeries(jssVar, data):
 
   newJSSVars = []
   for i in range(len(jssData)):
-    if massbins[i]> 18:
-      massbins[i]= 18
+    if massbins[i]> 11:
+      massbins[i]= 11
     newJSSVar = Ginv_massbins[massbins[i]].Eval(F_massbins[massbins[i]].Eval(jssData[i]))
     newJSSVars.append(newJSSVar)
 

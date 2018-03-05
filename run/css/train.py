@@ -11,6 +11,8 @@ from array import array
 # Scientific import(s)
 import ROOT
 import numpy as np
+import rootplotting as rp
+
 from sklearn.linear_model import LinearRegression
 
 # Project import(s)
@@ -50,23 +52,37 @@ def fit(profile, shapeVal, lowMassProfile, name):
   #These are free parameters - need to tune these.
   bestOmega = 0.01
   bestChi2 = 1e30
+  rebinLowMass = lowMassProfile.Clone("%s_clone"%name)
+  rebinLowMass.Rebin(5)
+  rebinLowMass.Scale(1. / rebinLowMass.Integral())
+  
 
   # Find optimal value for omega for this mass bin
   for omega in OMEGA_RANGE:
     D2histo_css = getCSS(shapeVal, omega, profile, "_%.2f"%(omega))
+    #lowMassProfile.Scale(1. / lowMassProfile.Integral())
+    D2histo_css.Rebin(5)
+    D2histo_css.Scale(1. / D2histo_css.Integral(1, 300))
+    c1 = rp.canvas(batch=True)
+    c1.hist(rebinLowMass, label="Low Mass", linecolor=rp.colours[1], markercolor=rp.colours[1])
+    c1.hist(D2histo_css, label="D2", linecolor=rp.colours[2], markercolor=rp.colours[2])
+    c1.legend()
+
+    c1.save('figures/css/cssProfile_{}_{}_{}.pdf'.format(name, omega, shapeVal))
+
 
     chi2 = 0
     for i in range(1, D2histo_css.GetNbinsX()+1):
       #Want to compare to the low-mass region. Obviously this isn't quite how chi2 works, but it works for a basic optimization
-      if(lowMassProfile.GetBinContent(i) > 0):
-        chi2 += (lowMassProfile.GetBinContent(i) - D2histo_css.GetBinContent(i))*(lowMassProfile.GetBinContent(i) - D2histo_css.GetBinContent(i))
-        #print i, lowMassProfile.GetBinCenter(i), lowMassProfile.GetBinContent(i), D2histo_css.GetBinContent(i), profile.GetBinContent(i), omega, shapeVal
-        
+      #if(lowMassProfile.GetBinContent(i) > 0):
+      if(rebinLowMass.GetBinContent(i) > 0):
+        chi2 += (rebinLowMass.GetBinContent(i) - D2histo_css.GetBinContent(i))*(rebinLowMass.GetBinContent(i) - D2histo_css.GetBinContent(i))
 
     if chi2 < bestChi2 :
       bestChi2 = chi2
       bestOmega = omega
 
+  print "Best omega for shapeVal of ",shapeVal, " = ",bestOmega
   return bestChi2, bestOmega
 
 def getCSS(shapeval, omega, originalHist, name):
