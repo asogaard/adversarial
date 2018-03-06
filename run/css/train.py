@@ -43,7 +43,7 @@ def fill_css (data, var, mass, css_f, css_ginv):
 
 
 def fit(profile, shapeVal, lowMassProfile, name):
-  if(profile.Integral() > 0):
+  if(profile.Integral() != 0):
     profile.Scale(1. / profile.Integral("width"))
 
   if(lowMassProfile.Integral() > 0):
@@ -62,7 +62,8 @@ def fit(profile, shapeVal, lowMassProfile, name):
     D2histo_css = getCSS(shapeVal, omega, profile, "_%.2f"%(omega))
     #lowMassProfile.Scale(1. / lowMassProfile.Integral())
     D2histo_css.Rebin(5)
-    D2histo_css.Scale(1. / D2histo_css.Integral(1, 300))
+    if(D2histo_css.Integral() != 0):
+      D2histo_css.Scale(1. / D2histo_css.Integral())
     c1 = rp.canvas(batch=True)
     c1.hist(rebinLowMass, label="Low Mass", linecolor=rp.colours[1], markercolor=rp.colours[1])
     c1.hist(D2histo_css, label="D2", linecolor=rp.colours[2], markercolor=rp.colours[2])
