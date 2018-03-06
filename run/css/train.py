@@ -182,8 +182,8 @@ def main (args):
     # Filling Tau21 profile
     # --------------------------------------------------------------------------
 
-    var = 'D2'
-    #var = 'Tau21'
+    #var = 'D2'
+    var = 'Tau21'
     profile0 = fill_profile(data, var, 0)
     # Do the optimization
     bestShapeVal = 0

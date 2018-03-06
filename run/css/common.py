@@ -16,11 +16,11 @@ from adversarial.profile import profile
 
 
 # Common definition(s)
-MAX_D2 = 5.
+MAX_D2 = 2.
 BINS = np.linspace(0., MAX_D2, 501, endpoint=True)  # Binning in rhoCSS
-SHAPEVAL_RANGE = np.linspace(1., 3., 2)
-OMEGA_RANGE = np.linspace(0.01, 0.8, 30)
-MASS_BINS = np.linspace(40., 300., 12)
+SHAPEVAL_RANGE = np.linspace(2., 3., 3)
+OMEGA_RANGE = np.linspace(0.01, 0.8, 40)
+MASS_BINS = np.linspace(40., 300., 15)
 RHO_BINS = np.linspace(-7, -0.5, 7 * 8 + 1, endpoint=True)
 
 @profile
