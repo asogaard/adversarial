@@ -26,21 +26,6 @@ from adversarial.constants import *
 # Local import(s)
 from .common import *
 
-def fill_css (data, var, mass, css_f, css_ginv):
-    profile = ROOT.TH1F('profile_{}_{}'.format(var,mass), "", len(BINS) - 1, BINS)
-    tau21Data = data[var].as_matrix().flatten()
-    massData = data['m'].as_matrix().flatten()
-    weightData = data['weight'].as_matrix().flatten()
-
-    for cdata,ctau,cweight in zip(massData, tau21Data, weightData):
-      if cdata > MASS_BINS[mass] and cdata < MASS_BINS[mass+1]:
-        ctauOld = ctau
-        ctau = ApplyCSS(ctau, css_ginv, css_f)
-        #print ctauOld, ctau, cdata, mass
-        profile.Fill(ctau,cweight)
-
-    return profile
-
 
 def fit(profile, shapeVal, lowMassProfile, name):
   if(profile.Integral() != 0):
@@ -60,7 +45,6 @@ def fit(profile, shapeVal, lowMassProfile, name):
   # Find optimal value for omega for this mass bin
   for omega in OMEGA_RANGE:
     D2histo_css = getCSS(shapeVal, omega, profile, "_%.2f"%(omega))
-    #lowMassProfile.Scale(1. / lowMassProfile.Integral())
     D2histo_css.Rebin(5)
     if(D2histo_css.Integral() != 0):
       D2histo_css.Scale(1. / D2histo_css.Integral())
@@ -75,7 +59,6 @@ def fit(profile, shapeVal, lowMassProfile, name):
     chi2 = 0
     for i in range(1, D2histo_css.GetNbinsX()+1):
       #Want to compare to the low-mass region. Obviously this isn't quite how chi2 works, but it works for a basic optimization
-      #if(lowMassProfile.GetBinContent(i) > 0):
       if(rebinLowMass.GetBinContent(i) > 0):
         chi2 += (rebinLowMass.GetBinContent(i) - D2histo_css.GetBinContent(i))*(rebinLowMass.GetBinContent(i) - D2histo_css.GetBinContent(i))
 
@@ -93,7 +76,6 @@ def getCSS(shapeval, omega, originalHist, name):
   # Apply the convolutions to get the new distributions
   for i in range(1, originalHist.GetNbinsX()+1):
     lowMValBkg = ApplyCSS(originalHist.GetBinCenter(i), Ginv, F)
-    #print omega, shapeval
     D2histo_css.Fill(lowMValBkg, originalHist.GetBinContent(i))
 
   return D2histo_css
@@ -130,7 +112,6 @@ def getCSSFns(shapeval, omega, originalHist, name):
 
   #Now, let's do some convolving!
   D2histo_conv = getConvolution(originalHist, shapefunc)
-  #D2histo_conv.Scale(1. / D2histo_conv.Integral("width"))
   if D2histo_conv.Integral() > 0:
     D2histo_conv.Scale(1. / D2histo_conv.Integral())
 
@@ -167,18 +148,12 @@ def main (args):
     # --------------------------------------------------------------------------
     args, cfg = initialise(args)
 
-
     # Loading data
     # --------------------------------------------------------------------------
-    #data, features, _ = load_data(args.input + 'data.h5')
-    data, features, _ = load_data('data/data.h5')
+    data, features, _ = load_data(args.input + 'data.h5')
+    #data, features, _ = load_data('data/data.h5')
+    
     data = data[(data['train'] == 1) & (data['signal'] == 0)]
-
-
-    # Adding variable(s)
-    # --------------------------------------------------------------------------
-    add_variables(data)
-
 
     # Filling Tau21 profile
     # --------------------------------------------------------------------------
@@ -186,6 +161,7 @@ def main (args):
     var = 'D2'
     #var = 'Tau21'
     profile0 = fill_profile(data, var, 0)
+
     # Do the optimization
     bestShapeVal = 0
     bestSumChi2 = 1e20
@@ -203,10 +179,9 @@ def main (args):
         bestSumChi2 = sumChi2
         bestShapeVal = shapeVal
 
-
-
-    # Saving DDT transform
+    # Saving CSS transforms
     # --------------------------------------------------------------------------
+    # Currently need to do everythin in mass bins
     with Profile("Saving CSS transform"):
 
         # Ensure model directory exists
@@ -216,7 +191,6 @@ def main (args):
             profile = fill_profile(data, var, mass)
             name = "%.2f"%mass
             sumChi2, bestOmega = fit(profile, bestShapeVal, profile0, name)
-            print MASS_BINS[mass], MASS_BINS[mass+1], mass, bestOmega, bestShapeVal
             F,Ginv = getCSSFns(bestShapeVal, bestOmega, profile, "")
 
             # Save classifier
@@ -224,9 +198,6 @@ def main (args):
                 pickle.dump(F, f)
             with gzip.open('models/css/css_%s_Ginv_%i.pkl.gz'%(var,mass), 'w') as f2:
                 pickle.dump(Ginv, f2)
-                pass
-            pass
-        pass
 
     return 0
 

@@ -26,27 +26,18 @@ import rootplotting as rp
 
 # Main function definition
 
-def getCSSWithMass(var, mass):
-  massBins = np.digitize(mass, MASS_BINS)-1
-  F_massbins = getF()
-  Ginv_massbins = getGinv()
-  ctau = ApplyCSSAgain(var, massBins, Ginv_massbins, F_massbins)
-  return ctau
 
-
-def fill_css (data, var, mass, doApply):
-    profile = ROOT.TH1F('profile_{}_{}_{}'.format(var,mass,doApply), "", len(BINS) - 1, BINS)
-    tau21Data = data[var].as_matrix().flatten()
+def fill_css (data, jssVar, mass, doApply):
+    profile = ROOT.TH1F('profile_{}_{}_{}'.format(jssVar,mass,doApply), "", len(BINS) - 1, BINS)
+    jssData = data[jssVar].as_matrix().flatten()
     massData = data['m'].as_matrix().flatten()
-    rhoData = data['rho'].as_matrix().flatten()
     weightData = data['weight'].as_matrix().flatten()
     if doApply:
-      ctauOld = tau21Data
-      tau21Data = getCSSWithMass(tau21Data, massData)
+      AddCSS(jssVar, data)
+      jssData = data["%sCSS"%jssVar]
 
-    for cdata,ctau,crho,cweight in zip(massData, tau21Data, rhoData, weightData):
-        #ctau = getCSSWithMass(ctau, cdata)
-      if crho > RHO_BINS[mass] and crho < RHO_BINS[mass+1]:
+    for cmass,ctau,cweight in zip(massData, tau21Data, weightData):
+      if cmass > MASS_BINS[mass] and cmass < MASS_BINS[mass+1]:
         profile.Fill(ctau,cweight)
 
     return profile
@@ -85,7 +76,6 @@ def main (args):
     # Loading data
     # --------------------------------------------------------------------------
     #data, features, _ = load_data(args.input + 'data.h5')
-    #data, features, _ = load_data("/afs/cern.ch/work/j/jroloff/adversarial/data/data.h5")
     data, features, _ = load_data("/afs/cern.ch/work/j/jroloff/adversarial/data.h5")
     data = data[(data['train'] == 0) & (data['signal'] == 0)]
 
@@ -94,14 +84,11 @@ def main (args):
     # --------------------------------------------------------------------------
     profiles, graphs = dict(), dict()
 
-    add_variables(data)
-
     # Filling profiles
     # --------------------------------------------------------------------------
     myvar = 'Tau21'
     profiles['{}CSS'.format(myvar)] = fill_mass_profile(data, myvar, True)
     profiles[myvar] = fill_mass_profile(data, myvar, False)
-
 
     # Convert to graphs
     # --------------------------------------------------------------------------
@@ -109,19 +96,15 @@ def main (args):
 
         # Loop profiles
         for key, profile in profiles.iteritems():
-
             # Create arrays from profile
             arr_x, arr_y, arr_ex, arr_ey = array('d'), array('d'), array('d'), array('d')
 
             for ibin in range(1, profile.GetYaxis().GetNbins() + 1):
                 projection = profile.ProjectionX("%s_py"%profile.GetName(),ibin, ibin+1)
-                #for ybin in range(1, projection.GetNbinsX()+1):
-                #  print ibin, ybin, projection.GetBinContent(ybin), projection.GetMean()
                 arr_x .append(profile.GetXaxis().GetBinCenter(ibin))
                 arr_y .append(projection.GetMean())
                 arr_ex.append(projection.GetBinWidth(ibin) / 2.)
                 arr_ey.append(projection.GetBinError  (ibin))
-                print "Average ", key, profile.GetYaxis().GetBinCenter(ibin), projection.GetMean()
 
             # Create graph
             graphs[key] = ROOT.TGraphErrors(len(arr_x), arr_x, arr_y, arr_ex, arr_ey)
@@ -140,13 +123,6 @@ def main (args):
         c.graph(graphs[myvar],    label="Original, #tau_{21}",          linecolor=rp.colours[5], markercolor=rp.colours[5])
         c.graph(graphs['{}CSS'.format(myvar)], label="Transformed, #tau_{21}^{CSS}", linecolor=rp.colours[1], markercolor=rp.colours[1], markerstyle=21)
 
-        # Fit
-        #x1, x2 = min(arr_x), max(arr_x)
-        #intercept, coef = css.intercept_ + css.offset_, css.coef_
-        #y1 = intercept + x1 * coef
-        #y2 = intercept + x2 * coef
-        #c.plot([y1,y2], bins=[x1,x2], color=rp.colours[-1], label='Linear fit', linewidth=1, linestyle=1, option='L')
-
         # Decorations
         c.xlabel("Large-#it{R} jet #rho^{CSS} = log(m^{2}/ p_{T} / 1 GeV)")
         c.ylabel("#LT#tau_{21}#GT, #LT#tau_{21}^{CSS}#GT")
@@ -155,10 +131,6 @@ def main (args):
                 "Baseline selection",
                 ],
                qualifier=QUALIFIER)
-        #c.legend()
-        #c.ylim(0, 5)
-        #c.xline(FIT_RANGE[0], text='Fit range', ymax=0.82, text_align='BR')
-        #c.xline(FIT_RANGE[1], text='Fit range', ymax=0.82, text_align='BL')
 
         # Save
         mkdir('figures/')

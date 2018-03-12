@@ -30,7 +30,6 @@ def add_variables (data):
 
     # rhoCSS
     data['rho'] = pd.Series(np.log(np.square(data['m'])/np.square(data['pt'])), index=data.index)
-    #data['rhoCSS'] = pd.Series(data['m'], index=data.index)
     return
 
 
@@ -48,45 +47,26 @@ def fill_profile (data, var, mass):
         profile.Fill(ctau,cweight)
         i+=1
 
-    print "Number of entries: ", i
-    return profile
-
-def fill_mass_profile (data, var):
-    """Fill ROOT.TProfile with the average `var` as a function of rhoCSS."""
-    profile = ROOT.TH1F('profile_{}_{}'.format(var,mass), "", len(BINS) - 1, BINS)
-
-    for mass in range(len(BINS)-1):
-      massProf = fill_profile(data, var, mass)
-      profile.SetBinContent(mass,massProf.GetMean())
-
-
     return profile
 
 def getGinv(var):
   css_ginv_all = []
   for m in range(len(MASS_BINS)-1):
     with gzip.open('models/css/css_%s_Ginv_%i.pkl.gz'%(var,m), 'r') as ginv:
-      css_ginv = pickle.load(ginv)
-      css_ginv_all.append(css_ginv)
+      css_ginv_all.append(pickle.load(ginv))
+
   return css_ginv_all
 
 def getF(var):
   css_f_all = []
   for m in range(len(MASS_BINS)-1):
     with gzip.open('models/css/css_%s_F_%i.pkl.gz'%(var,m), 'r') as f:
-      css_f = pickle.load(f)
-      css_f_all.append(css_f)
+      css_f_all.append(pickle.load(f))
+
   return css_f_all
 
-def ApplyCSSAgain(d2, massbins, Ginv, F):
-  newD2s = []
-  for i in range(len(d2)):
-    if massbins[i]> 11:
-      massbins[i]= 11
-    newD2 = Ginv[massbins[i]].Eval(F[massbins[i]].Eval(d2[i]))
-    newD2s.append(newD2)
-  
-  return newD2s
+def AddCSS(jssVar, data):
+  data['%sCSS'%jssVar] = GetCSSSeries(jssVar, data)
 
 def GetCSSSeries(jssVar, data):
   massData = data['m'].as_matrix().flatten()
@@ -105,9 +85,8 @@ def GetCSSSeries(jssVar, data):
   jssSeries = pd.Series(newJSSVars, index=data.index)
   return jssSeries
 
-
-
-def ApplyCSS(d2, Ginv, F):
-  newD2 = Ginv.Eval(F.Eval(d2))
+# Applies CSS, given a value, and the convolution functions
+def ApplyCSS(jssVar, Ginv, F):
+  newD2 = Ginv.Eval(F.Eval(jssVar))
   return newD2
 
