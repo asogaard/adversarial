@@ -44,12 +44,11 @@ def fill_css (data, jssVar, mass, doApply):
 
 def fill_mass_profile (data, var, doApply):
     """Fill ROOT.TProfile with the average `var` as a function of rhoCSS."""
-    profile = ROOT.TH2F('profile_{}'.format(var), "", len(BINS) - 1, BINS, len(RHO_BINS)-1, RHO_BINS)
+    profile = ROOT.TH2F('profile_{}'.format(var), "", len(BINS) - 1, BINS, len(MASS_BINS)-1, MASS_BINS)
 
     c = rp.canvas(batch=True)
 
-    #for mass in range(len(MASS_BINS)-1):
-    for mass in range(len(RHO_BINS)-1):
+    for mass in range(len(MASS_BINS)-1):
       print "Starting mass bin ", mass
       massProf = fill_css(data, var, mass, doApply)
       if massProf.Integral() > 0:

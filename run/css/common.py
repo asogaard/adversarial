@@ -16,77 +16,78 @@ from adversarial.profile import profile
 
 
 # Common definition(s)
-MAX_D2 = 5.
-BINS = np.linspace(0., MAX_D2, 501, endpoint=True)  # Binning in rhoCSS
+
 SHAPEVAL_RANGE = np.linspace(1., 3., 3)
-OMEGA_RANGE = np.linspace(0.01, 1.2, 30)
-MASS_BINS = np.linspace(40., 310., 30)
-RHO_BINS = np.linspace(-7, -0.5, 7 * 8 + 1, endpoint=True)
+OMEGA_RANGE = np.linspace(0.01, 1.4, 40)
+MASS_BINS = np.linspace(40., 310., 20)
 
-@profile
-def add_variables (data):
-    """Add necessary variable(s).
-    Modify data container in-place."""
-
-    # rhoCSS
-    data['rho'] = pd.Series(np.log(np.square(data['m'])/np.square(data['pt'])), index=data.index)
-    return
-
-
-@profile
-def fill_profile (data, var, mass):
-    """Fill ROOT.TProfile with the average `var` as a function of rhoCSS."""
-    profile = ROOT.TH1F('profile_{}_{}'.format(var,mass), "", len(BINS) - 1, BINS)
-
-    tau21Data = data[var].as_matrix().flatten()
-    massData = data['m'].as_matrix().flatten()
-    weightData = data['weight'].as_matrix().flatten()
-    i=0
-    for cmass,ctau,cweight in zip(massData, tau21Data, weightData):
-      if cmass > MASS_BINS[mass] and cmass < MASS_BINS[mass+1]:
-        profile.Fill(ctau,cweight)
-        i+=1
-
-    return profile
-
-def getGinv(var):
-  css_ginv_all = []
-  for m in range(len(MASS_BINS)-1):
-    with gzip.open('models/css/css_%s_Ginv_%i.pkl.gz'%(var,m), 'r') as ginv:
-      css_ginv_all.append(pickle.load(ginv))
-
-  return css_ginv_all
-
-def getF(var):
-  css_f_all = []
-  for m in range(len(MASS_BINS)-1):
-    with gzip.open('models/css/css_%s_F_%i.pkl.gz'%(var,m), 'r') as f:
-      css_f_all.append(pickle.load(f))
-
-  return css_f_all
-
+# Adds the CSS variable to the data (assuming Ginv, F files exist)
 def AddCSS(jssVar, data):
   data['%sCSS'%jssVar] = GetCSSSeries(jssVar, data)
+
+# Applies CSS, given a value, and the convolution functions
+def ApplyCSS(jssVar, Ginv, F):
+  newJSSVar = Ginv.Eval(F.Eval(jssVar))
+  return newJSSVar
+
+
+@profile
+def fill_2d_profile (data, jssVar, jssBins, massVar, massBins):
+    """Fill ROOT.TProfile with the average `jssVar` as a function of rhoCSS."""
+    profile2d = ROOT.TH2F('profile2d_{}'.format(jssVar), "", len(massBins)-1, massBins, len(jssBins) - 1, jssBins)
+
+    jssVarData = data[jssVar].as_matrix().flatten()
+    massData = data[massVar].as_matrix().flatten()
+    weightData = data['weight'].as_matrix().flatten()
+
+    for cmass,ctau,cweight in zip(massData, jssVarData, weightData):
+      profile2d.Fill(cmass, ctau, cweight)
+
+    return profile2d
 
 def GetCSSSeries(jssVar, data):
   massData = data['m'].as_matrix().flatten()
   jssData = data[jssVar].as_matrix().flatten()
   massbins = np.digitize(massData, MASS_BINS)-1
-  F_massbins = getF(jssVar)
-  Ginv_massbins = getGinv(jssVar)
+
+  F_massbins = getFunction(jssVar, "F")
+  Ginv_massbins = getFunction(jssVar, "Ginv")
 
   newJSSVars = []
-  for i in range(len(jssData)):
-    if massbins[i]>= len(MASS_BINS):
-      massbins[i] = len(MASS_BINS)
-    newJSSVar = Ginv_massbins[massbins[i]].Eval(F_massbins[massbins[i]].Eval(jssData[i]))
-    newJSSVars.append(newJSSVar)
+  for jssVal, massBin in zip(jssData, massbins):
+    if massBin>= len(MASS_BINS):
+      massBin = len(MASS_BINS)
+
+    newJSSVal = ApplyCSS(jssVal, Ginv_massbins[massBin], F_massbins[massBin])
+    newJSSVars.append(newJSSVal)
 
   jssSeries = pd.Series(newJSSVars, index=data.index)
   return jssSeries
 
-# Applies CSS, given a value, and the convolution functions
-def ApplyCSS(jssVar, Ginv, F):
-  newD2 = Ginv.Eval(F.Eval(jssVar))
-  return newD2
 
+#Returns the convolution of hist and shapefunc
+def getConvolution(hist, shapefunc):
+  hist_conv = hist.Clone("%s_conv"%hist.GetName())
+  for i in range(0,shapefunc.GetNbinsX()+1):
+    mysum = 0.
+    for j in range(0,shapefunc.GetNbinsX()+1):
+      if (i-j >= 0):
+        mysum+=hist.GetXaxis().GetXmax() / shapefunc.GetNbinsX() * hist.GetBinContent(i-j+1)*shapefunc.GetBinContent(j+1)
+    hist_conv.SetBinContent(i+1,mysum)
+  return hist_conv
+
+# Gets the cumulative distribution of hist
+def getCDF(hist):
+  hist_CDF = hist.Clone("%s_CDF"%hist.GetName())
+
+  for i in range(1,hist.GetNbinsX()+1):
+    hist_CDF.SetBinContent(i, hist.Integral(1,i))
+  return hist_CDF
+
+def getFunction(jssVar, funcName):
+  css_func_all = []
+  for m in range(len(MASS_BINS)-1):
+    with gzip.open('models/css/css_%s_%s_%i.pkl.gz'%(jssVar,funcName,m), 'r') as func:
+      css_func_all.append(pickle.load(func))
+
+  return css_func_all
