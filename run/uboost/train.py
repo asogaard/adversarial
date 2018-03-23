@@ -7,15 +7,18 @@
 import gzip
 import pickle
 
+# Parallelisation import(s)
+from joblib import Parallel, delayed
+
 # Scientific import(s)
 import numpy as np
-from hep_ml.uboost import uBoostBDT, uBoostClassifier
 from sklearn.tree import DecisionTreeClassifier
+from hep_ml.uboost import uBoostBDT, uBoostClassifier
 
 # Project import(s)
 from adversarial.utils import apply_patch
-from adversarial.new_utils import parse_args, initialise, load_data, mkdir
 from adversarial.profile import profile, Profile
+from adversarial.new_utils import parse_args, initialise, load_data, mkdir
 
 # Global variable(s)
 SEED=21
@@ -33,29 +36,32 @@ def main (args):
     # Loading data
     # --------------------------------------------------------------------------
     data, features, _ = load_data(args.input + 'data.h5')
-    data = data.sample(frac=0.001, random_state=32)  # @TEMP
+    #data = data.sample(frac=0.1, random_state=32)  # @TEMP
     data = data[data['train'] == 1]
 
+    # Reduce size of data
+    drop_features = [feat for feat in list(data) if feat not in features + ['m', 'signal', 'weight']]
+    data.drop(drop_features, axis=1)
+    
 
     # Config, to be relegated to configuration file
     cfg = {
         'DecisionTreeClassifier': {
             'criterion': 'gini',
-            'max_depth': 10,             # Optimise
-            'min_samples_split': 2,      # Optimise (?)
-            'min_samples_leaf': 1        # Optimise (?)
+            'max_depth': 5,             # Optimise
+            'min_samples_split': 2,     # Optimise (?)
+            'min_samples_leaf': 1       # Optimise (?)
         },
 
         'uBoost': {                      # @NOTE: or uBoostClassifier?
-            'n_estimators': 500,         # Optimise
+            'n_estimators': 50,          # Optimise
             'n_neighbors': 50,           # Optimise
 
-            'target_efficiency': 0.80,   # @NOTE: Make ~50% sig. eff.
-            #'efficiency_steps': 3,      # For uBoostClassifier only
+            'target_efficiency': 0.92,   # @NOTE: Make ~50% sig. eff.
 
             'smoothing': 0.0,            # Optimise (?)
-            'uniforming_rate': 1.,       # Parametrisation of decorrelation
-            'learning_rate': .2,         # Optimise (?)
+            'uniforming_rate': 1.0,      # Parametrisation of decorrelation
+            'learning_rate': 1.0,        # Optimise (?)  # Default: 1.
         }
     }
 
@@ -69,7 +75,6 @@ def main (args):
             'uniform_features': ['m'],
             'train_features': features,
             'random_state': SEED,        # For reproducibility
-            #'n_threads': 16,            # For uBoostClassifier only
         }
     }
     opts = apply_patch(opts, cfg)
@@ -103,50 +108,50 @@ def main (args):
         #
         # @NOTE: I have gotten less sure of the above, so probably no panic.
 
-        # Create base classifier
-        base_tree = DecisionTreeClassifier(**opts['DecisionTreeClassifier'])
+        def train_uBoost (X, y, w, opts, uniforming_rate):
+            """
+            ...
+            """
 
-        # Create uBoost classifier
-        uboost = uBoostBDT(base_estimator=base_tree,
-                           **opts['uBoost'])
+            # Create base classifier
+            base_tree = DecisionTreeClassifier(**opts['DecisionTreeClassifier'])
 
-        # Fit uBoost classifier
-        uboost.fit(X, y, sample_weight=w)
-        pass
+            # Update training configuration
+            these_opts = dict(**opts['uBoost'])
+            these_opts['uniforming_rate'] = uniforming_rate
+            
+            # Create uBoost classifier
+            uboost = uBoostBDT(base_estimator=base_tree, **these_opts)
+            
+            # Fit uBoost classifier
+            uboost.fit(X, y, sample_weight=w)
+            
+            return uboost
+        
+        uniforming_rates = [0.0, 0.01, 0.1, 0.3, 1.0, 3.0, 5.0, 10.0]
+        n_jobs = min(2, len(uniforming_rates))  # ...(10, ...
 
+        jobs = [delayed(train_uBoost, check_pickle=False)(X, y, w, opts, uniforming_rate) for uniforming_rate in uniforming_rates]
 
-    # Fit Adaboost classifier
-    # --------------------------------------------------------------------------
-    with Profile("Fitting Adaboost classifier"):
-
-        # Create base classifier
-        base_tree = DecisionTreeClassifier(**opts['DecisionTreeClassifier'])
-
-        # Create Adaboost classifier
-        opts['uBoost']['uniforming_rate'] = 0.  # Disable uniformity boosting
-        adaboost = uBoostBDT(base_estimator=base_tree,
-                             **opts['uBoost'])
-
-        # Fit Adaboost classifier
-        adaboost.fit(X, y, sample_weight=w)
+        result = Parallel(n_jobs=n_jobs, backend="threading")(jobs)                          
         pass
 
 
     # Saving classifiers
     # --------------------------------------------------------------------------
-    with Profile("Saving classifiers"):
+    for uboost, uniforming_rate in zip(result, uniforming_rates):
+        with Profile("Saving classifiers"):
 
-        # Ensure model directory exists
-        mkdir('models/uboost/')
+            # Ensure model directory exists
+            mkdir('models/uboost/')
 
-        # Save uBoost classifier
-        with gzip.open('models/uboost/uboost_{:d}.pkl.gz'.format(int(opts['uBoost']['target_efficiency'] * 100)), 'w') as f:
-            pickle.dump(uboost, f)
-            pass
+            suffix_ur = "ur_{:s}".format(("%.1f" % uniforming_rate).replace('.', 'p'))
+            suffix_te = "te_{:d}".format(int(opts['uBoost']['target_efficiency'] * 100))
 
-        # Save Adaboost classifier
-        with gzip.open('models/uboost/adaboost.pkl.gz', 'w') as f:
-            pickle.dump(adaboost, f)
+            # Save uBoost classifier
+            with gzip.open('models/uboost/uboost_{}_{}.pkl.gz'.format(suffix_ur, suffix_te), 'w') as f:
+                pickle.dump(uboost, f)
+                pass
             pass
         pass
 
