@@ -187,11 +187,11 @@ def main (args):
     # Filling Tau21 profile
     # --------------------------------------------------------------------------
 
-    D2BINS = np.linspace(0., 5., 501, endpoint=True)
-    doOptimization("D2", D2BINS, data)
+    #D2BINS = np.linspace(0., 5., 501, endpoint=True)
+    #doOptimization("D2", D2BINS, data)
 
-    #TAU21BINS = np.linspace(0., 2., 501, endpoint=True)
-    #doOptimization("Tau21", TAU21BINS, data)
+    TAU21BINS = np.linspace(0., 2., 501, endpoint=True)
+    doOptimization("Tau21", TAU21BINS, data)
 
 
 # Main function call
