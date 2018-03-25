@@ -115,6 +115,7 @@ class DecorrelationLayer (Layer):
 
     pass
 
+
 class MinibatchDiscrimination (Layer):
     """Custom layer to implement minibatch discrimination.
     Cf. [https://arxiv.org/pdf/1606.03498.pdf]
@@ -172,14 +173,13 @@ class MinibatchDiscrimination (Layer):
         diffs = K.expand_dims(M, 3) - \
             K.expand_dims(K.permute_dimensions(M, [1, 2, 0]), 0)
         L1_norm = K.sum(K.abs(diffs), axis=2)
-        return K.sum(K.exp(-L1_norm), axis=2)
+        return K.mean(K.exp(-L1_norm), axis=2)
 
 
     def compute_output_shape (self, input_shape):
         return (input_shape[0], self.output_dim)
 
     pass
-
 
 
 class PosteriorLayer (Layer):
@@ -204,7 +204,7 @@ class PosteriorLayer (Layer):
 
         # Check(s)
         #mask = (x < 0) | (x > 1)
-        #assert K.sum(mask) == 0, "Recieved input to PosteriorLayer outside of [0,1]: " + str(K.eval(x[mask]))
+        #assert K.sum(mask) == 0, "Received input to PosteriorLayer outside of [0,1]: " + str(K.eval(x[mask]))
 
         # Unpack list of inputs
         coeffs = x[0]
@@ -246,7 +246,7 @@ class PosteriorLayer (Layer):
 
 # ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 # Implementing gradient reversal layer
-
+NUM_GRADIENT_REVERSALS = 0
 if K.backend() == 'tensorflow':
     # Tensorflow implementation based on
     # [https://stackoverflow.com/questions/45099737/implement-theano-operation-in-tensorflow]
@@ -258,13 +258,10 @@ if K.backend() == 'tensorflow':
 
         def reverse_gradient_function (X, hp_lambda=hp_lambda):
             """Flips the sign of the incoming gradient during training."""
-            try:
-                reverse_gradient_function.num_calls += 1
-            except AttributeError:
-                reverse_gradient_function.num_calls = 1
-                pass
+            global NUM_GRADIENT_REVERSALS
+            NUM_GRADIENT_REVERSALS += 1
 
-            grad_name = "GradientReversal%d" % reverse_gradient_function.num_calls
+            grad_name = "GradientReversal%d" % NUM_GRADIENT_REVERSALS
 
             @tf.RegisterGradient(grad_name)
             def _flip_gradients(op, grad):
