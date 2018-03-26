@@ -12,7 +12,7 @@ import re
 # Keras import(s)
 import keras
 from keras.models import Model
-from keras.layers import Dense, Input, Dropout, Concatenate
+from keras.layers import Dense, Input, Dropout, Concatenate, Lambda
 from keras.engine.topology import InputLayer
 from keras.layers.normalization import BatchNormalization
 
@@ -86,6 +86,7 @@ def stack_layers (input_layer, architecture, default, scope=None):
 
         # 2: Add dense layer according to specifications
         l = Dense(name=keras_layer_name('Dense'), **opts)(l)
+
         # 3: (Opt.) Add dropout regularisation layer after dense layer
         if dropout:
             l = Dropout(dropout, name=keras_layer_name('Dropout'))(l)
@@ -167,7 +168,8 @@ def adversary_model (gmm_dimensions, gmm_components=None, architecture=[], defau
     features = stack_layers(adversary_input_clf, architecture, default, scope=scope)
 
     # Minibatch discrimination
-    #minibatch = MinibatchDiscrimination(20, 10, name=layer_name('minibatch_discrimination'))(features)
+    minibatch = GradientReversalLayer(0)(features)
+    minibatch = MinibatchDiscrimination(10, 5, name=layer_name('minibatch_discrimination'))(minibatch)
     #features = Concatenate(name=layer_name('concatenate'))([features, minibatch])
 
     # Posterior p.d.f. parameters
@@ -222,8 +224,8 @@ def combined_model (classifier, adversary, lambda_reg=None, lr_ratio=None, scope
     layer_name       = layer_name_factory(scope)
 
     # Toggling sub-models
-    classifier.trainable = True
-    adversary .trainable = True
+    #classifier.trainable = True
+    #adversary .trainable = True
 
     # Reconstruct classifier
     classifier_input = classifier.layers[0]
