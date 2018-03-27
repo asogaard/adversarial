@@ -17,11 +17,13 @@ from scipy.stats import entropy
 from sklearn.metrics import roc_curve, roc_auc_score
 from sklearn.preprocessing import StandardScaler
 
+
 # Project import(s)
 from adversarial.utils import initialise_backend, roc_efficiencies, roc_auc, wpercentile, latex
 from adversarial.profile import profile, Profile
 from adversarial.new_utils import parse_args, initialise, load_data, mkdir
 from adversarial.constants import *
+import run.css.common as css
 
 # Custom import(s)
 import rootplotting as rp
@@ -138,8 +140,10 @@ def main (args):
     D2_kNN_var = 'D2-kNN({:d}%)'.format(kNN_eff)
     uboost_var = 'uBoost(#varepsilon={:d}%,#alpha={:.1f})'.format(uboost_eff, uboost_uni)
 
-    lambda_reg  = 1
-    lambda_regs = sorted([0.1, 10, 1, 100])
+    #lambda_reg  = 1
+    lambda_reg  = 10
+    #lambda_regs = sorted([0.1, 10, 1, 100])
+    lambda_regs = sorted([])
     ann_vars    = list()
     lambda_strs = list()
     for lambda_reg_ in lambda_regs:
@@ -151,7 +155,7 @@ def main (args):
         ann_vars.append(ann_var_)
         pass
 
-    ann_var = ann_vars[lambda_regs.index(lambda_reg)]
+    #ann_var = ann_vars[lambda_regs.index(lambda_reg)]
 
     nn_mass_var = "NN(m-weight)"
     nn_linear_vars = list()
@@ -159,9 +163,9 @@ def main (args):
         nn_linear_var_ = "NN(rho,#lambda={:.0f})".format(lambda_reg_)
         nn_linear_vars.append(nn_linear_var_)
         pass
-    nn_linear_var = nn_linear_vars[lambda_regs.index(lambda_reg)]
+    #nn_linear_var = nn_linear_vars[lambda_regs.index(lambda_reg)]
 
-    tagger_features = ['Tau21','Tau21DDT', 'D2', D2_kNN_var, 'NN', ann_var, 'Adaboost', uboost_var] #, nn_mass_var, nn_linear_var]  # D2CSS, N2KNN
+    tagger_features = ['Tau21','Tau21DDT', 'Tau21CSS', 'D2', D2_kNN_var, 'D2CSS', 'NN', 'Adaboost', uboost_var] #, nn_mass_var, nn_linear_var]  # D2CSS, N2KNN
 
     # DDT variables
     fit_range = (1.5, 4.0)
@@ -180,6 +184,18 @@ def main (args):
                 pass
             data['rhoDDT']   = pd.Series(np.log(np.square(data['m'])/(data['pt'] * 1.)), index=data.index)
             data['Tau21DDT'] = pd.Series(data['Tau21'] - ddt.predict(data['rhoDDT'].as_matrix().reshape((-1,1))), index=data.index)
+            pass
+
+        # D2CSS
+        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        with Profile("D2CSS"):
+            data['D2CSS'] = css.GetCSSSeries('D2', data)
+            pass
+
+        # Tau21CSS
+        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        with Profile("Tau21CSS"):
+            data['Tau21CSS'] = css.GetCSSSeries('Tau21', data)
             pass
 
         # D2-kNN
@@ -211,6 +227,7 @@ def main (args):
         # ANN
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         with Profile("ANN"):
+            classifier = load_model('models/adversarial/classifier/full/classifier.h5')
             adversary = adversary_model(gmm_dimensions=1,
                                         **cfg['adversary']['model'])
 
@@ -330,8 +347,8 @@ def main (args):
                 pass
 
             # Style
-            colour      = rp.colours[(ipoint // 2) % len(rp.colours)]
-            markerstyle = 20 + (ipoint % 2) * 4
+            colour      = rp.colours[(ipoint // 3) % len(rp.colours)]
+            markerstyle = 20 + (ipoint % 3) * 4
 
             # Draw
             c.graph([y], bins=[x], markercolor=colour, markerstyle=markerstyle, label=latex(label, ROOT=True), option='P')
@@ -360,6 +377,13 @@ def main (args):
             x2, y2, _ = points[2 * i + 1]
             colour = rp.colours[i]
             c.graph([y1, y2], bins=[x1, x2], linecolor=colour, linestyle=2, option='L')
+            pass
+
+        for i in [0,1]:
+            x1, y1, _ = points[2 * i + 0]
+            x2, y2, _ = points[2 * i + 2]
+            colour = rp.colours[i]
+            c.graph([y1, y2], bins=[x1, x2], linecolor=colour, linestyle=3, option='L')
             pass
 
         # Connecting lines
@@ -397,7 +421,8 @@ def main (args):
             qualifier=QUALIFIER)
 
         # Save
-        if args.save:
+        #if args.save:
+        if 1==1:
             mkdir('figures/')
             c.save('figures/genroc.pdf')
             pass
