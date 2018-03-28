@@ -140,10 +140,8 @@ def main (args):
     D2_kNN_var = 'D2-kNN({:d}%)'.format(kNN_eff)
     uboost_var = 'uBoost(#varepsilon={:d}%,#alpha={:.1f})'.format(uboost_eff, uboost_uni)
 
-    #lambda_reg  = 1
-    lambda_reg  = 10
-    #lambda_regs = sorted([0.1, 10, 1, 100])
-    lambda_regs = sorted([])
+    lambda_reg  = 1
+    lambda_regs = sorted([0.1, 10, 1, 100])
     ann_vars    = list()
     lambda_strs = list()
     for lambda_reg_ in lambda_regs:
@@ -155,7 +153,7 @@ def main (args):
         ann_vars.append(ann_var_)
         pass
 
-    #ann_var = ann_vars[lambda_regs.index(lambda_reg)]
+    ann_var = ann_vars[lambda_regs.index(lambda_reg)]
 
     nn_mass_var = "NN(m-weight)"
     nn_linear_vars = list()
@@ -163,9 +161,9 @@ def main (args):
         nn_linear_var_ = "NN(rho,#lambda={:.0f})".format(lambda_reg_)
         nn_linear_vars.append(nn_linear_var_)
         pass
-    #nn_linear_var = nn_linear_vars[lambda_regs.index(lambda_reg)]
+    nn_linear_var = nn_linear_vars[lambda_regs.index(lambda_reg)]
 
-    tagger_features = ['Tau21','Tau21DDT', 'Tau21CSS', 'D2', D2_kNN_var, 'D2CSS', 'NN', 'Adaboost', uboost_var] #, nn_mass_var, nn_linear_var]  # D2CSS, N2KNN
+    tagger_features = ['Tau21','Tau21DDT', 'Tau21CSS', 'D2', D2_kNN_var, 'D2CSS', 'NN', 'Adaboost', uboost_var, ann_var] #, nn_mass_var, nn_linear_var]  # D2CSS, N2KNN
 
     # DDT variables
     fit_range = (1.5, 4.0)
@@ -342,16 +340,18 @@ def main (args):
             idx = map(lambda t: t[2], points).index(feat)
             x, y, label = points[idx]
 
+
             if label.startswith('ANN'):
                 label = 'ANN'
                 pass
-
+            xbins = [x,x]
+            ybins = [y,y]
             # Style
             colour      = rp.colours[(ipoint // 3) % len(rp.colours)]
             markerstyle = 20 + (ipoint % 3) * 4
 
             # Draw
-            c.graph([y], bins=[x], markercolor=colour, markerstyle=markerstyle, label=latex(label, ROOT=True), option='P')
+            c.graph(ybins, bins=xbins, markercolor=colour, markerstyle=markerstyle, label=latex(label, ROOT=True), option='P')
             pass
 
         # Markers, paramerised decorrelation
@@ -372,16 +372,23 @@ def main (args):
             pass
 
         # Connecting lines
-        for i in [0,1,3]:
-            x1, y1, _ = points[2 * i + 0]
-            x2, y2, _ = points[2 * i + 1]
+        for i in [0,1]:
+            x1, y1, _ = points[3 * i + 0]
+            x2, y2, _ = points[3 * i + 1]
             colour = rp.colours[i]
             c.graph([y1, y2], bins=[x1, x2], linecolor=colour, linestyle=2, option='L')
             pass
 
+        for i in [1]:
+            x1, y1, _ = points[6]
+            x2, y2, _ = points[7]
+            colour = rp.colours[3]
+            c.graph([y1, y2], bins=[x1, x2], linecolor=colour, linestyle=2, option='L')
+            pass
+
         for i in [0,1]:
-            x1, y1, _ = points[2 * i + 0]
-            x2, y2, _ = points[2 * i + 2]
+            x1, y1, _ = points[3 * i + 0]
+            x2, y2, _ = points[3 * i + 2]
             colour = rp.colours[i]
             c.graph([y1, y2], bins=[x1, x2], linecolor=colour, linestyle=3, option='L')
             pass
@@ -421,8 +428,7 @@ def main (args):
             qualifier=QUALIFIER)
 
         # Save
-        #if args.save:
-        if 1==1:
+        if args.save:
             mkdir('figures/')
             c.save('figures/genroc.pdf')
             pass
