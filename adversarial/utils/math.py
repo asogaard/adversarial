@@ -64,14 +64,14 @@ def wcorr (x, y, w):
 
     # Numpy array-type
     if belongs_to(x, np):
-        return wcov(x, y, w) / np.sqrt(wcov(x, x, w) * wcov(y, y, w))
+        backend = np
 
-    # Tensorflow type
+    # Assuming Keras backend-type
     else:
-        import tensorflow as tf
-        if belongs_to(x, tf):
-            return wcov(x, y, w) / K.sqrt(wcov(x, x, w) * wcov(y, y, w))
+        import keras.backend as K
+        backend = K
         pass
+    return wcov(x, y, w) / backend.sqrt(wcov(x, x, w) * wcov(y, y, w))
 
     # Fallback
     raise ValueError("Input with type {} from module {} not recognised.".format(type(x), type(x).__module__))
