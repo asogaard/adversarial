@@ -182,7 +182,8 @@ def initialise (args):
         pass
 
     # @TODO: Scale loss_weights[0] by 1./(1. + lambda_reg)?
-
+    cfg['combined']['compile']['loss_weights'][0] *= 1./(1. + cfg['combined']['model']['lambda_reg'])
+    
     # Set adversary learning rate (LR) ratio from ratio of loss_weights
     try:
         cfg['combined']['model']['lr_ratio'] = cfg['combined']['compile']['loss_weights'][0] / \
@@ -196,13 +197,14 @@ def initialise (args):
 
 
 @profile
-def configure_theano (args):
+def configure_theano (args, num_cores):
     """
     Backend-specific method to configure Theano.
 
     Arguments:
         args: Namespace containing command-line arguments from argparse. These
             settings specify which back-end should be configured, and how.
+        num_cores: Number of CPU cores available for parallelism.
     """
 
     # Check(s)
@@ -234,13 +236,14 @@ def configure_theano (args):
 
 
 @profile
-def configure_tensorflow (args):
+def configure_tensorflow (args, num_cores):
     """
     Backend-specific method to configure Theano.
 
     Arguments:
         args: Namespace containing command-line arguments from argparse. These
             settings specify which back-end should be configured, and how.
+        num_cores: Number of CPU cores available for parallelism.
     """
 
     # Set print level to avoid unecessary warnings, e.g.
@@ -287,11 +290,27 @@ def initialise_backend (args):
     # Specify Keras backend and import module
     os.environ['KERAS_BACKEND'] = "theano" if args.theano else "tensorflow"
 
+    # Get number of cores on CPU(s), name of CPU devices, and number of physical
+    # cores in each device.
+    try:
+        cat_output = subprocess.check_output(["cat", "/proc/cpuinfo"]).split('\n')
+        num_cpus  = len(filter(lambda line: line.startswith('cpu cores'),  cat_output))
+        name_cpu  =     filter(lambda line: line.startswith('model name'), cat_output)[0] \
+                        .split(':')[-1].strip()
+        num_cores = int(filter(lambda line: line.startswith('cpu cores'),  cat_output)[0] \
+                        .split(':')[-1].strip())
+        log.info("Found {} {} devices with {} cores each.".format(num_cpus, name_cpu, num_cores))
+    except subprocess.CalledProcessError:
+        # @TODO: Implement CPU information for macOS
+        num_cores = 1
+        log.warning("Could not retrieve CPU information -- probably running on macOS. Therefore, multi-core running is disabled.")
+        pass
+
     # Configure backend
     if args.theano:
-        _       = configure_theano(args)
+        _       = configure_theano(args, num_cores)
     else:
-        session = configure_tensorflow(args)
+        session = configure_tensorflow(args, num_cores)
         pass
 
     # Import Keras backend
