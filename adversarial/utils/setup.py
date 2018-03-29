@@ -196,6 +196,75 @@ def initialise (args):
 
 
 @profile
+def initialise_theano (args):
+    """
+    ...
+    """
+
+    # Check(s)
+    if args.devices > 1:
+        log.warning("Currently it is not possible to specify more than one devices for Theano backend.")
+        pass
+
+    if not args.gpu:
+        # Set number of OpenMP threads to use; even if 1, set to force
+        # use of OpenMP which doesn't happen otherwise, for some
+        # reason. Gives speed-up of factor of ca. 6-7. (60 sec./epoch ->
+        # 9 sec./epoch)
+        os.environ['OMP_NUM_THREADS'] = str(num_cores * 2)
+        pass
+
+    # Switch: CPU/GPU
+    cuda_version = '8.0.61'
+    standard_flags = [
+        'device={}'.format('cuda' if args.gpu else 'cpu'),
+        'openmp=True',
+        ]
+    dnn_flags = [
+        'dnn.enabled=True',
+        'dnn.include_path=/exports/applications/apps/SL7/cuda/{}/include/'.format(cuda_version),
+        'dnn.library_path=/exports/applications/apps/SL7/cuda/{}/lib64/'  .format(cuda_version),
+        ]
+    os.environ["THEANO_FLAGS"] = ','.join(standard_flags + (dnn_flags if args.gpu else []))
+
+    return None
+
+
+@profile
+def initialise_tensorflow (args):
+    """
+    ...
+    """
+
+    # Set print level to avoid unecessary warnings, e.g.
+    #  $ The TensorFlow library wasn't compiled to use <SSE4.1, ...>
+    #  $ instructions, but these are available on your machine and could
+    #  $ speed up CPU computations.
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
+    # Load the tensorflow module here to make sure only the correct
+    # GPU devices are set up
+    import tensorflow as tf
+
+    # @TODO:
+    # - Some way to avoid starving GPU of data?
+
+    # Manually configure Tensorflow session
+    gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.1,
+                                allow_growth=True)
+
+    config = tf.ConfigProto(intra_op_parallelism_threads=num_cores * 2,
+                            inter_op_parallelism_threads=num_cores * 2,
+                            allow_soft_placement=True,
+                            device_count={'GPU': args.devices if args.gpu else 0},
+                            gpu_options=gpu_options if args.gpu else None)
+
+    session = tf.Session(config=config)
+
+    return session
+
+
+@profile
 def initialise_backend (args):
     """Initialise the Keras backend.
 
@@ -205,82 +274,20 @@ def initialise_backend (args):
     """
 
     # Check(s)
+    assert 'keras' not in sys.modules, \
+        "initialise_backend: Keras was imported before initialisation."
+
     if args.gpu and args.theano and args.devices > 1:
         raise NotImplementedError("Distributed training on GPUs is current not enabled.")
 
     # Specify Keras backend and import module
     os.environ['KERAS_BACKEND'] = "theano" if args.theano else "tensorflow"
 
-    # Get number of cores on CPU(s), name of CPU devices, and number of physical
-    # cores in each device.
-    try:
-        cat_output = subprocess.check_output(["cat", "/proc/cpuinfo"]).split('\n')
-        num_cpus  = len(filter(lambda line: line.startswith('cpu cores'),  cat_output))
-        name_cpu  =     filter(lambda line: line.startswith('model name'), cat_output)[0] \
-                        .split(':')[-1].strip()
-        num_cores = int(filter(lambda line: line.startswith('cpu cores'),  cat_output)[0] \
-                        .split(':')[-1].strip())
-        log.info("Found {} {} devices with {} cores each.".format(num_cpus, name_cpu, num_cores))
-    except subprocess.CalledProcessError:
-        # @TODO: Implement CPU information for macOS
-        num_cores = 1
-        log.warning("Could not retrieve CPU information -- probably running on macOS. Therefore, multi-core running is disabled.")
-        pass
-
-    # Configure backends
+    # Configure backend
     if args.theano:
-
-        if args.devices > 1:
-            log.warning("Currently it is not possible to specify more than one devices for Theano backend.")
-            pass
-
-        if not args.gpu:
-            # Set number of OpenMP threads to use; even if 1, set to force
-            # use of OpenMP which doesn't happen otherwise, for some
-            # reason. Gives speed-up of factor of ca. 6-7. (60 sec./epoch ->
-            # 9 sec./epoch)
-            os.environ['OMP_NUM_THREADS'] = str(num_cores * 2)
-            pass
-
-        # Switch: CPU/GPU
-        cuda_version = '8.0.61'
-        standard_flags = [
-            'device={}'.format('cuda' if args.gpu else 'cpu'),
-            'openmp=True',
-            ]
-        dnn_flags = [
-            'dnn.enabled=True',
-            'dnn.include_path=/exports/applications/apps/SL7/cuda/{}/include/'.format(cuda_version),
-            'dnn.library_path=/exports/applications/apps/SL7/cuda/{}/lib64/'  .format(cuda_version),
-            ]
-        os.environ["THEANO_FLAGS"] = ','.join(standard_flags + (dnn_flags if args.gpu else []))
-
+        initialise_theano(args)
     else:
-
-        # Set print level to avoid unecessary warnings, e.g.
-        #  $ The TensorFlow library wasn't compiled to use <SSE4.1, ...>
-        #  $ instructions, but these are available on your machine and could
-        #  $ speed up CPU computations.
-        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-
-        # Load the tensorflow module here to make sure only the correct
-        # GPU devices are set up
-        import tensorflow as tf
-
-        # @TODO:
-        # - Some way to avoid starving GPU of data?
-
-        # Manually configure Tensorflow session
-        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.1,
-                                    allow_growth=True)
-
-        config = tf.ConfigProto(intra_op_parallelism_threads=num_cores * 2,
-                                inter_op_parallelism_threads=num_cores * 2,
-                                allow_soft_placement=True,
-                                device_count={'GPU': args.devices if args.gpu else 0},
-                                gpu_options=gpu_options if args.gpu else None)
-
-        session = tf.Session(config=config)
+        session = initialise_tensorflow(args)
         pass
 
     # Import Keras backend
