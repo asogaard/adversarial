@@ -16,82 +16,10 @@ from scipy.stats import norm
 from keras import backend as K
 from keras.engine.topology import Layer
 
+# Project import(s)
+from .utils.ops import *
+from .utils.math import *
 
-# -----------------------------------------------------------------------------
-# @TODO:
-#  - Move all of these to `adversarial/ops.py`
-#  - Merge with `adversarial/new_utils.py`
-
-if K.backend() == 'tensorflow':
-    import tensorflow as tf
-    def erf (x):
-        """Error-function from TensorFlow backend."""
-        return tf.erf(x)
-else:
-    import theano.tensor as t
-    def erf (x):
-        """Error-function from Theano backend."""
-        return t.erf(x)
-    pass
-
-def cumulative (x):
-    """Cumulative distribution function for the unit gaussian."""
-    return 0.5 * (1. + erf(x / np.sqrt(2.)))
-
-
-def gaussian_integral_on_unit_interval (mean, width):
-    """Compute the integral of unit gaussians on the unit interval.
-
-    Args:
-        mean: Mean(s) of unit gaussian(s).
-        width: Width(s) of unit gaussian(s).
-
-    Returns:
-        Integral of unit gaussian on [0,1]
-    """
-    z0 = (0. - mean) / width
-    z1 = (1. - mean) / width
-    return cumulative(z1) - cumulative(z0)
-
-
-def gaussian (x, coeff, mean, width):
-    """Compute a unit gaussian using Keras-backend methods.
-
-    Args:
-        x: Variable value(s) at which to evaluate unit gaussian(s).
-        coeff: Normalisation constant(s) for unit gaussian(s).
-        mean: Mean(s) of unit gaussian(s).
-        width: Width(s) of unit gaussian(s).
-
-    Returns
-        Function value of unit gaussian(s) evaluated at `x`.
-    """
-    return coeff * K.exp( - K.square(x - mean) / 2. / K.square(width)) / K.sqrt( 2. * K.square(width) * np.pi)
-
-
-def _wmean (x, w):
-    """Weighted mean, computed using Keras backend methods.
-    From [https://stackoverflow.com/a/38647581]
-    """
-    assert K.backend() == 'tensorflow', \
-        "The method `correlation_coefficient` is only defined for TensorFlow backend."
-    return K.sum(tf.multiply(x, w)) / K.sum(w)
-
-def _wcov (x, y, w):
-    """Weighted covariance, computed using Keras backend methods.
-    From [https://stackoverflow.com/a/38647581]
-    """
-    xm = x - _wmean(x, w)
-    ym = y - _wmean(y, w)
-    return K.sum(tf.multiply(tf.multiply(w, xm), ym)) / K.sum(w)
-
-def _wcorr (x, y, w):
-    """Weighted correlation , computed using Keras backend methods.
-    From [https://stackoverflow.com/a/38647581]
-    """
-    return _wcov(x, y, w) / K.sqrt(_wcov(x, x, w) * _wcov(y, y, w))
-
-# -----------------------------------------------------------------------------
 
 class DecorrelationLayer (Layer):
     """
@@ -108,7 +36,7 @@ class DecorrelationLayer (Layer):
     def call (self, x, mask=None):
         assert isinstance(x, list)
         assert len(x) == 3
-        return K.tile(K.expand_dims(K.flatten(_wcorr(*x)), axis=1), K.shape(x[1]))
+        return K.tile(K.expand_dims(K.flatten(wcorr(*x)), axis=1), K.shape(x[1]))
 
     def compute_output_shape (self, input_shape):
         return (None, 1)

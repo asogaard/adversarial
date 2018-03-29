@@ -6,26 +6,75 @@
 # Basic import(s)
 import numpy as np
 
+# Project import(s)
+from .misc import belongs_to
+
 
 def wmean (x, w):
-    """Weighted Mean
+    """Weighted mean with flexible backend
     From [https://stackoverflow.com/a/38647581]
     """
-    return np.sum(x * w) / np.sum(w)
+
+    # Numpy array-type
+    if belongs_to(x, np):
+        return np.sum(x * w) / np.sum(w)
+
+    # Tensorflow type
+    else:
+        import tensorflow as tf
+        if belongs_to(x, tf):
+            import keras.backend as K
+            assert K.backend() == 'tensorflow', \
+                "The method `correlation_coefficient` is only defined for TensorFlow backend."
+            return K.sum(tf.multiply(x, w)) / K.sum(w)
+        pass
+
+    # Fallback
+    raise ValueError("Input with type {} from module {} not recognised.".format(type(x), type(x).__module__))
 
 
 def wcov (x, y, w):
-    """Weighted Covariance
+    """Weighted covariance with flexible backend
     From [https://stackoverflow.com/a/38647581]
     """
-    return np.sum(w * (x - wmean(x, w)) * (y - wmean(y, w))) / np.sum(w)
+
+    # Intermediary results
+    xm = x - wmean(x, w)
+    ym = y - wmean(y, w)
+
+    # Numpy array-type
+    if belongs_to(x, np):
+        return np.sum(w * xm * ym) / np.sum(w)
+
+    # Tensorflow type
+    else:
+        import tensorflow as tf
+        if belongs_to(x, tf):
+            return K.sum(tf.multiply(tf.multiply(w, xm), ym)) / K.sum(w)
+        pass
+
+    # Fallback
+    raise ValueError("Input with type {} from module {} not recognised.".format(type(x), type(x).__module__))
 
 
 def wcorr (x, y, w):
-    """Weighted Correlation
+    """Weighted linear correlation with flexible backend
     From [https://stackoverflow.com/a/38647581]
     """
-    return wcov(x, y, w) / np.sqrt(wcov(x, x, w) * wcov(y, y, w))
+
+    # Numpy array-type
+    if belongs_to(x, np):
+        return wcov(x, y, w) / np.sqrt(wcov(x, x, w) * wcov(y, y, w))
+
+    # Tensorflow type
+    else:
+        import tensorflow as tf
+        if belongs_to(x, tf):
+            return wcov(x, y, w) / K.sqrt(wcov(x, x, w) * wcov(y, y, w))
+        pass
+
+    # Fallback
+    raise ValueError("Input with type {} from module {} not recognised.".format(type(x), type(x).__module__))
 
 
 def wpercentile (data, percents, weights=None):

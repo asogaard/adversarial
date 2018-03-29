@@ -7,6 +7,11 @@
 import re
 
 
+def belongs_to (x, module):
+    """Return whether `x` belongs to `module` as determined by typename."""
+    return module.__name__ in type(x).__module__
+
+
 def snake_case (string):
     """ ... """
     s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', string)
