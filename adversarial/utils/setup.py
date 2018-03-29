@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 
 # Project import(s)
-from ..utils import mkdir
+from .management import mkdir
 from ..profile import profile
 
 # Global variable definition(s)
@@ -196,9 +196,13 @@ def initialise (args):
 
 
 @profile
-def initialise_theano (args):
+def configure_theano (args):
     """
-    ...
+    Backend-specific method to configure Theano.
+
+    Arguments:
+        args: Namespace containing command-line arguments from argparse. These
+            settings specify which back-end should be configured, and how.
     """
 
     # Check(s)
@@ -207,10 +211,9 @@ def initialise_theano (args):
         pass
 
     if not args.gpu:
-        # Set number of OpenMP threads to use; even if 1, set to force
-        # use of OpenMP which doesn't happen otherwise, for some
-        # reason. Gives speed-up of factor of ca. 6-7. (60 sec./epoch ->
-        # 9 sec./epoch)
+        # Set number of OpenMP threads to use; even if 1, set to force use of
+        # OpenMP which doesn't happen otherwise, for some reason. Gives speed-up
+        # of factor of ca. 6-7. (60 sec./epoch -> 9 sec./epoch)
         os.environ['OMP_NUM_THREADS'] = str(num_cores * 2)
         pass
 
@@ -231,9 +234,13 @@ def initialise_theano (args):
 
 
 @profile
-def initialise_tensorflow (args):
+def configure_tensorflow (args):
     """
-    ...
+    Backend-specific method to configure Theano.
+
+    Arguments:
+        args: Namespace containing command-line arguments from argparse. These
+            settings specify which back-end should be configured, and how.
     """
 
     # Set print level to avoid unecessary warnings, e.g.
@@ -245,9 +252,6 @@ def initialise_tensorflow (args):
     # Load the tensorflow module here to make sure only the correct
     # GPU devices are set up
     import tensorflow as tf
-
-    # @TODO:
-    # - Some way to avoid starving GPU of data?
 
     # Manually configure Tensorflow session
     gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.1,
@@ -285,9 +289,9 @@ def initialise_backend (args):
 
     # Configure backend
     if args.theano:
-        initialise_theano(args)
+        _       = configure_theano(args)
     else:
-        session = initialise_tensorflow(args)
+        session = configure_tensorflow(args)
         pass
 
     # Import Keras backend
