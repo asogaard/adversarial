@@ -16,6 +16,7 @@ import numpy as np
 import root_numpy
 
 # Project import(s)
+from adversarial.utils import mkdir
 from adversarial.profile import Profile, profile
 
 # Command-line arguments parser
@@ -38,7 +39,7 @@ def main ():
     # Reading in NTuples
     # --------------------------------------------------------------------------
     with Profile("reading"):
-        
+
         # Parse command-line argument
         args = parser.parse_args()
 
@@ -55,7 +56,7 @@ def main ():
         print "Reading input files from:\n  {}".format(args.input)
         print "Writing output files to: \n  {}".format(args.output)
         print "Assuming the files:{}\n exist in the input directory.".format('\n  '.join([''] + files))
-        
+
         paths = [args.input + f for f in files]
 
         # @TODO: Add |fjet_truthJet_eta| < 2.0?
@@ -68,7 +69,7 @@ def main ():
                     "fjet_dRmatched_WZChild1_dR < 0.75 && "
                     "fjet_dRmatched_WZChild2_dR < 0.75 && "
                     "fjet_truth_dRmatched_particle_dR < 0.75)"),
-            
+
             'bkg': ("(!W && !top && "
                     "fjet_truthJet_pt > 200E+03 && "
                     "fjet_truthJet_pt < 2000E+03 && "
@@ -88,13 +89,13 @@ def main ():
             'EventInfo_NPV',   # Kept for control
             'fjet_nthLeading', # @TODO: Check. Only use == 1?
 
-            # Substructure variables. 
-            'fjet_Tau1_wta', 
+            # Substructure variables.
+            'fjet_Tau1_wta',
             'fjet_Tau2_wta',
             'fjet_Tau3_wta',
             'fjet_Tau21_wta', # Wtop
             'fjet_Tau32_wta',
-            
+
             'fjet_ECF1',
             'fjet_ECF2',
             'fjet_ECF3',
@@ -117,7 +118,7 @@ def main ():
             'fjet_ZCut12',       # Wtop
             'fjet_Qw',
             'fjet_Mu12',
-            
+
             'fjet_SDt_Dcut1',
             'fjet_SDt_Dcut2',
 
@@ -140,7 +141,7 @@ def main ():
             name = name.replace('training_weight_pt_W', 'weight_flat')
             name = name.replace('testing_weight_pt', 'weight')
             return name
-        
+
         data = None
         for key in selection.keys():
             for path in paths:
@@ -170,10 +171,7 @@ def main ():
     with Profile("writing"):
 
         # Make sure output directory exists
-        if not os.path.exists(args.output):
-            print "Creating output directory:\n  {}".format(args.output)
-            os.makedirs(args.output)
-            pass
+        mkdir(args.output)
 
         # Save as HDF5
         with h5py.File(args.output + 'data.h5', 'w') as hf:
@@ -191,7 +189,7 @@ def main ():
             pass
         print "Read {} samples.".format(new_data.shape[0])
         pass
-    
+
     return
 
 

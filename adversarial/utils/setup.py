@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 
 # Project import(s)
+from ..utils import mkdir
 from ..profile import profile
 
 # Global variable definition(s)
@@ -163,10 +164,7 @@ def initialise (args):
     if not args.output.endswith('/'): args.output += '/'
 
     # Make sure output directory exists
-    if not os.path.exists(args.output):
-        print "Creating output directory:\n  {}".format(args.output)
-        os.makedirs(args.output)
-        pass
+    mkdir(args.output)
 
     # Load configuration file
     with open(args.config, 'r') as f:
