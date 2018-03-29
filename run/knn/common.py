@@ -18,13 +18,21 @@ from adversarial.profile import profile
 
 # Common definition(s)
 VAR  = 'D2'   # Substructure variable to decorrelate
-EFF  = 20     # Fixed backround efficiency at which to perform decorrelation
+EFF  = 10     # Fixed backround efficiency at which to perform decorrelation
 VARX = 'rho'  # X-axis variable from which to decorrelate
 VARY = 'pt'   # Y-axis variable from which to decorrelate
 AXIS = {      # Dict holding (num_bins, axis_min, axis_max) for axis variables
-    'rho': (20, -5.5, -2.0),
+    #'rho': (20, -5.5, -2.0),
+    #'pt':  (20, 200., 2000.),
+    'rho': (20, -7.0, -1.0),
     'pt':  (20, 200., 2000.),
 }
+
+#### ________________________________________________________________________
+#### 
+#### @NOTE: It is assumed that, for the chosen `VAR`, signal is towards small
+####        values; and background towards large values.
+#### ________________________________________________________________________
 
 
 @profile
@@ -64,6 +72,9 @@ def fill_profile (data):
         mskx = (data[VARX] > xmin) & (data[VARX] <= xmax)
         msky = (data[VARY] > ymin) & (data[VARY] <= ymax)
         msk  = mskx & msky
+
+        global EFF
+        EFF = 100 - EFF  # @TEMP !!! For NN test
 
         # Percentile
         perc = np.nan

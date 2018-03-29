@@ -13,8 +13,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # Project import(s)
+from adversarial.utils import parse_args, initialise, load_data, mkdir
 from adversarial.profile import profile, Profile
-from adversarial.new_utils import parse_args, initialise, load_data, mkdir
 from adversarial.constants import *
 
 # Local import(s)

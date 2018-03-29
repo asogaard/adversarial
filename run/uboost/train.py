@@ -16,9 +16,8 @@ from sklearn.tree import DecisionTreeClassifier
 from hep_ml.uboost import uBoostBDT, uBoostClassifier
 
 # Project import(s)
-from adversarial.utils import apply_patch
+from adversarial.utils import apply_patch, parse_args, initialise, load_data, mkdir
 from adversarial.profile import profile, Profile
-from adversarial.new_utils import parse_args, initialise, load_data, mkdir
 
 # Global variable(s)
 SEED=21
@@ -42,7 +41,7 @@ def main (args):
     # Reduce size of data
     drop_features = [feat for feat in list(data) if feat not in features + ['m', 'signal', 'weight']]
     data.drop(drop_features, axis=1)
-    
+
 
     # Config, to be relegated to configuration file
     cfg = {
@@ -54,7 +53,7 @@ def main (args):
         },
 
         'uBoost': {                      # @NOTE: or uBoostClassifier?
-            'n_estimators': 50,          # Optimise
+            'n_estimators': 500,          # Optimise
             'n_neighbors': 50,           # Optimise
 
             'target_efficiency': 0.92,   # @NOTE: Make ~50% sig. eff.
@@ -119,21 +118,21 @@ def main (args):
             # Update training configuration
             these_opts = dict(**opts['uBoost'])
             these_opts['uniforming_rate'] = uniforming_rate
-            
+
             # Create uBoost classifier
             uboost = uBoostBDT(base_estimator=base_tree, **these_opts)
-            
+
             # Fit uBoost classifier
             uboost.fit(X, y, sample_weight=w)
-            
+
             return uboost
-        
-        uniforming_rates = [0.0, 0.01, 0.1, 0.3, 1.0, 3.0, 5.0, 10.0]
+
+        uniforming_rates = [0.0, 0.01, 0.1, 0.3, 1.0, 3.0, 10.0, 30.0, 100.0]
         n_jobs = min(2, len(uniforming_rates))  # ...(10, ...
 
         jobs = [delayed(train_uBoost, check_pickle=False)(X, y, w, opts, uniforming_rate) for uniforming_rate in uniforming_rates]
 
-        result = Parallel(n_jobs=n_jobs, backend="threading")(jobs)                          
+        result = Parallel(n_jobs=n_jobs, backend="threading")(jobs)
         pass
 
 

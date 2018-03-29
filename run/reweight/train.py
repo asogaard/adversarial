@@ -13,8 +13,8 @@ import pandas as pd
 from hep_ml.reweight import BinsReweighter, GBReweighter
 
 # Project import(s)
+from adversarial.utils import parse_args, initialise, load_data, mkdir
 from adversarial.profile import profile, Profile
-from adversarial.new_utils import parse_args, initialise, load_data, mkdir
 from adversarial.constants import *
 
 # Local import(s)

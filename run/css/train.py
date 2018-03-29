@@ -14,8 +14,8 @@ import numpy as np
 import rootplotting as rp
 
 # Project import(s)
+from adversarial.utils import parse_args, initialise, load_data, mkdir
 from adversarial.profile import profile, Profile
-from adversarial.new_utils import parse_args, initialise, load_data, mkdir
 from adversarial.constants import *
 
 # Custom import(s)
@@ -98,7 +98,7 @@ def getCSSFns(shapeval, omega, originalHist, name):
   # Make the CDFs
   jssVar_CDF = getCDF(originalHist)
   jssVar_conv_CDF = getCDF(jssVar_conv)
-  
+
   #Let F = CDF of original function and G = CDF of convolution
   #Then, our map shoud be G^{-1}(F(X)) (http://math.arizona.edu/~jwatkins/f-transform.pdf page 3)
   fxvals = jssVar_CDF.GetXaxis().GetXbins()
@@ -181,7 +181,7 @@ def main (args):
     # --------------------------------------------------------------------------
     data, features, _ = load_data(args.input + 'data.h5')
     #data, features, _ = load_data('data/data.h5')
-    
+
     data = data[(data['train'] == 1) & (data['signal'] == 0)]
 
     # Filling Tau21 profile

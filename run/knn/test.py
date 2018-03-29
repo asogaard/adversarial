@@ -12,9 +12,8 @@ import ROOT
 import numpy as np
 
 # Project import(s)
-from adversarial.utils import latex
+from adversarial.utils import latex, parse_args, initialise, load_data, mkdir
 from adversarial.profile import profile, Profile
-from adversarial.new_utils import parse_args, initialise, load_data, mkdir
 from adversarial.constants import *
 
 # Local import(s)
@@ -36,7 +35,7 @@ def main (args):
     # Loading data
     # --------------------------------------------------------------------------
     data, _, _ = load_data(args.input + 'data.h5')
-    data = data[(data['train'] == 0) & (data['signal'] == 0)]
+    data = data[(data['train'] == 1) & (data['signal'] == 0)]
 
 
     # Common definitions
@@ -45,13 +44,35 @@ def main (args):
         ROOT.TF1('bounds_0', "TMath::Sqrt( TMath::Power( 40, 2) * TMath::Exp(-x) )", AXIS[VARX][1], AXIS[VARX][2]),
         ROOT.TF1('bounds_1', "TMath::Sqrt( TMath::Power(300, 2) * TMath::Exp(-x) )", AXIS[VARX][1], AXIS[VARX][2])
         ]
-    ROOT.gStyle.SetPalette(53)
+    #ROOT.gStyle.SetPalette(53)
     nb_contour = 13 * 16
 
+    # Shout out to Cynthia Brewer and Mark Harrower
+    # [http://colorbrewer2.org]. Palette is colorblind-safe.
+    rgbs = [
+        (247/255., 251/255., 255/255.),
+        (222/255., 235/255., 247/255.),
+        (198/255., 219/255., 239/255.),
+        (158/255., 202/255., 225/255.),
+        (107/255., 174/255., 214/255.),
+        ( 66/255., 146/255., 198/255.),
+        ( 33/255., 113/255., 181/255.),
+        (  8/255.,  81/255., 156/255.),
+        (  8/255.,  48/255., 107/255.)
+        ]
+
+    red, green, blue = map(np.array, zip(*rgbs))
+    nb_cols = len(rgbs)
+    stops = np.linspace(0, 1, nb_cols, endpoint=True)
+
+    ROOT.TColor.CreateGradientColorTable(nb_cols, stops, red, green, blue, nb_contour)
+
     for bound in bounds:
-        bound.SetLineColor(ROOT.kGray + 2)
+        bound.SetLineColor(ROOT.kGray + 3)
         bound.SetLineWidth(1)
         pass
+
+    zrange = (0.0, 2.0)
 
 
     # Adding variable(s)
@@ -79,18 +100,22 @@ def main (args):
         # Styling
         profile_meas.GetXaxis().SetTitle("Large-#it{R} jet " + latex(VARX, ROOT=True) + " = log(m^{2}/p_{T}^{2})")
         profile_meas.GetYaxis().SetTitle("Large-#it{R} jet " + latex(VARY, ROOT=True) + " [GeV]")
-        profile_meas.GetZaxis().SetTitle("Measured, weighted {}-percentile of {}".format(EFF, latex(VAR, ROOT=True)))
+        #profile_meas.GetZaxis().SetTitle("Measured, weighted {}-percentile of
+        #{}".format(EFF, latex(VAR, ROOT=True)))
+        profile_meas.GetZaxis().SetTitle("Measured %s^{(%s%%)}" % (latex(VAR, ROOT=True), EFF))
         profile_meas.GetYaxis().SetTitleOffset(1.6)
         profile_meas.GetZaxis().SetTitleOffset(1.4)
-        profile_meas.GetZaxis().SetRangeUser(0.7, 2.0)
+        if zrange:
+            profile_meas.GetZaxis().SetRangeUser(*zrange)
+            pass
         profile_meas.SetContour(nb_contour)
 
         # Draw
         profile_meas.Draw('COLZ')
         bounds[0].DrawCopy("SAME")
         bounds[1].DrawCopy("SAME")
-        c.latex("m > 40 GeV",  -4.5, bounds[0].Eval(-4.5) + 30, align=21, angle=-20, textsize=13, textcolor=ROOT.kGray + 2)
-        c.latex("m < 300 GeV", -3.2, bounds[1].Eval(-3.2) - 30, align=23, angle=-53, textsize=13, textcolor=ROOT.kGray + 2)
+        c.latex("m > 40 GeV",  -4.5, bounds[0].Eval(-4.5) + 30, align=21, angle=-20, textsize=13, textcolor=ROOT.kGray + 3)
+        c.latex("m < 300 GeV", -3.2, bounds[1].Eval(-3.2) - 30, align=23, angle=-53, textsize=13, textcolor=ROOT.kGray + 3)
 
         # Decorations
         c.text(qualifier=QUALIFIER,
@@ -107,7 +132,7 @@ def main (args):
 
         # Save
         mkdir('figures/')
-        c.save('figures/knn_profile.pdf')
+        c.save('figures/knn_profile_{:s}_{:.0f}.pdf'.format(VAR, EFF))
         pass
 
 
@@ -158,18 +183,22 @@ def main (args):
         # Styling
         profile_fit.GetXaxis().SetTitle("Large-#it{R} jet " + latex(VARX, ROOT=True) + " = log(m^{2}/p_{T}^{2})")  # @TODO: Improve...
         profile_fit.GetYaxis().SetTitle("Large-#it{R} jet " + latex(VARY, ROOT=True) + " [GeV]")
-        profile_fit.GetZaxis().SetTitle("kNN-fitted, weighted {}-percentile of {}".format(EFF, latex(VAR, ROOT=True)))
+        #profile_fit.GetZaxis().SetTitle("kNN-fitted, weighted {}-percentile of
+        #{}".format(EFF, latex(VAR, ROOT=True)))
+        profile_fit.GetZaxis().SetTitle("kNN-fitted %s^{(%s%%)}" % (latex(VAR, ROOT=True), EFF))
         profile_fit.GetYaxis().SetTitleOffset(1.6)
         profile_fit.GetZaxis().SetTitleOffset(1.4)
-        profile_fit.GetZaxis().SetRangeUser(0.7, 2.0)
+        if zrange:
+            profile_fit.GetZaxis().SetRangeUser(*zrange)
+            pass
         profile_fit.SetContour(nb_contour)
 
         # Draw
         profile_fit.Draw('COLZ')
         bounds[0].DrawCopy("SAME")
         bounds[1].DrawCopy("SAME")
-        c.latex("m > 40 GeV",  -4.5, bounds[0].Eval(-4.5) + 30, align=21, angle=-20, textsize=13, textcolor=ROOT.kGray + 2)
-        c.latex("m < 300 GeV", -3.2, bounds[1].Eval(-3.2) - 30, align=23, angle=-53, textsize=13, textcolor=ROOT.kGray + 2)
+        c.latex("m > 40 GeV",  -4.5, bounds[0].Eval(-4.5) + 30, align=21, angle=-20, textsize=13, textcolor=ROOT.kGray + 3)
+        c.latex("m < 300 GeV", -3.2, bounds[1].Eval(-3.2) - 30, align=23, angle=-53, textsize=13, textcolor=ROOT.kGray + 3)
 
         # Decorations
         c.text(qualifier=QUALIFIER,
@@ -186,7 +215,7 @@ def main (args):
 
         # Save
         mkdir('figures/')
-        c.save('figures/knn_fit.pdf')
+        c.save('figures/knn_fit_{:s}_{:.0f}.pdf'.format(VAR, EFF))
         pass
 
     return 0

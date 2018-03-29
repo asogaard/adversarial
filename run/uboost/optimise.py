@@ -16,8 +16,7 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline
 
 # Project import(s)
-from adversarial.utils import apply_patch
-from adversarial.new_utils import parse_args, initialise, load_data, mkdir
+from adversarial.utils import apply_patch, parse_args, initialise, load_data, mkdir
 from adversarial.profile import profile, Profile
 
 # Global variable(s)

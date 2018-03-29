@@ -18,7 +18,7 @@ from keras.layers.normalization import BatchNormalization
 
 # Project import(s)
 from .layers import *
-from .utils import rename_key, snake_case
+from .utils import snake_case
 
 
 # Utility methods for naming layers
@@ -168,9 +168,9 @@ def adversary_model (gmm_dimensions, gmm_components=None, architecture=[], defau
     features = stack_layers(adversary_input_clf, architecture, default, scope=scope)
 
     # Minibatch discrimination
-    minibatch = GradientReversalLayer(0)(features)
-    minibatch = MinibatchDiscrimination(10, 5, name=layer_name('minibatch_discrimination'))(minibatch)
-    #features = Concatenate(name=layer_name('concatenate'))([features, minibatch])
+    #### minibatch = GradientReversalLayer(0)(features)
+    #### minibatch = MinibatchDiscrimination(10, 5, name=layer_name('minibatch_discrimination'))(minibatch)
+    #### features = Concatenate(name=layer_name('concatenate'))([features, minibatch])
 
     # Posterior p.d.f. parameters
     r_coeffs = Dense(gmm_components, name=layer_name('coeffs'), activation='softmax')(features)
