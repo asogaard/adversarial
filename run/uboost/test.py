@@ -110,12 +110,12 @@ def test (data, title, name):
         with Profile("Plotting learning process"):
 
             # Get predictions
-            pred_test  = clf.predict_proba(data[data['train'] == 0])[:,1]
             pred_train = clf.predict_proba(data[data['train'] == 1])[:,1]
+            pred_test  = clf.predict_proba(data[data['train'] == 0])[:,1]
 
             # Get staged predicting, i.e. for each successive estimator
             idx_train = np.where(data['train'] == 1)[0]
-            idx_test  = np.where(data['train'] == 1)[0]
+            idx_test  = np.where(data['train'] == 0)[0]
 
             idx_train = np.random.choice(idx_train, int(0.05 * idx_train.size), replace=False)
             idx_test  = np.random.choice(idx_test , int(0.05 * idx_test .size), replace=False)
