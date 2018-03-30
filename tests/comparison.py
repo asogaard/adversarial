@@ -22,6 +22,7 @@ from sklearn.preprocessing import StandardScaler
 from adversarial.utils import initialise_backend, wpercentile, latex, parse_args, initialise, load_data, mkdir
 from adversarial.profile import profile, Profile
 from adversarial.constants import *
+from .studies.common import *
 
 # Custom import(s)
 import rootplotting as rp
@@ -110,7 +111,7 @@ def main (args):
     D2_kNN_var = 'D2-kNN({:d}%)'.format(kNN_eff)
     uboost_var = 'uBoost(#varepsilon={:d}%,#alpha={:.1f})'.format(uboost_eff, uboost_uni)
 
-    lambda_reg  = 10
+    lambda_reg  = 60
     lambda_regs = sorted([3, 10, 30, 60, 100])
     ann_vars    = list()
     lambda_strs = list()
@@ -255,6 +256,14 @@ def main (args):
 
     # Perform distributions study
     # --------------------------------------------------------------------------
+    from .studies import study_distribution
+    for feat in tagger_features:
+        study_distribution(data, args, feat)
+        pass
+
+
+    return
+    '''
     with Profile("Study: Distributions"):
         for feat in tagger_features:
 
@@ -314,6 +323,7 @@ def main (args):
                 pass
             pass
         pass
+        '''
 
 
     # Perform jet mass distributions study
@@ -402,7 +412,7 @@ def main (args):
             # Save
             if args.save:
                 mkdir('figures/')
-                c.save('figures/jetmass_{}__eff_sig_{:d}.pdf'.format(filename(feat), int(eff_sig)))
+                c.save('figures/jetmass_{}__eff_sig_{:d}.pdf'.format(standardise(feat), int(eff_sig)))
                 pass
 
             # Show
@@ -601,7 +611,7 @@ def main (args):
             # Save
             if args.save:
                 mkdir('figures/')
-                c.save('figures/eff_{}.pdf'.format(filename(feat)))
+                c.save('figures/eff_{}.pdf'.format(standardise(feat)))
                 pass
 
             # Show
