@@ -13,6 +13,23 @@ from adversarial.constants import *
 import rootplotting as rp
 
 
+# Global variable definition(s)
+STYLE = {  # key = signal
+    True: {
+        'fillcolor': rp.colours[5],
+        'linecolor': rp.colours[5],
+        'fillstyle': 3454,
+        'label': "#it{W} jets",
+        },
+    False: {
+        'fillcolor': rp.colours[1],
+        'linecolor': rp.colours[1],
+        'fillstyle': 3445,
+        'label': "QCD jets",
+        }
+}
+
+
 @showsave
 def distribution (data, args, feat):
     """
@@ -57,26 +74,12 @@ def plot (args, data, feat, bins):
     ROOT.gStyle.SetHatchesLineWidth(3)
     ROOT.gStyle.SetTitleOffset(1.6, 'y')
     base = dict(bins=bins, alpha=0.5, normalise=True, linewidth=3)
-    style = {  # key = signal
-        True: {
-            'fillcolor': rp.colours[5],
-            'linecolor': rp.colours[5],
-            'fillstyle': 3454,
-            'label': "#it{W} jets",
-            },
-        False: {
-            'fillcolor': rp.colours[1],
-            'linecolor': rp.colours[1],
-            'fillstyle': 3445,
-            'label': "QCD jets",
-            }
-    }
 
     # Plots
     for signal in [0, 1]:
         msk = (data['signal'] == signal)
         style[signal].update(base)
-        c.hist(data.loc[msk, feat].values, weights=data.loc[msk, 'weight'].values, **style[signal])
+        c.hist(data.loc[msk, feat].values, weights=data.loc[msk, 'weight'].values, **STYLE[signal])
         pass
 
     # Decorations
