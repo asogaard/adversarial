@@ -114,7 +114,7 @@ def study_summary (data, args, tagger_features, scan_features):
     for is_simple in [True, False]:
         # Split the legend into simple- and MVA taggers
         for ipoint, feat in enumerate(tagger_features):
-            if is_simple != ('tau21' in feat.lower() or 'd2' in feat.lower() or 'n2' in feat.lower()):
+            if is_simple != signal_high(feat):
                 continue
 
             # Coordinates, label
