@@ -55,7 +55,7 @@ def main (args):
     # --------------------------------------------------------------------------
     data, features, _ = load_data(args.input + 'data.h5')
     data = data[data['train'] == 0]
-    data = data.sample(frac=0.01)  # @TEMP!
+    #data = data.sample(frac=0.01)  # @TEMP!
 
 
     # Common definitions
@@ -215,7 +215,6 @@ def main (args):
     # Perform distributions study
     # --------------------------------------------------------------------------
     with Profile("Study: Substructure tagger distributions"):
-        #from .studies import study_distribution
         for feat in tagger_features:
             studies.distribution(data, args, feat)
             pass
@@ -224,7 +223,6 @@ def main (args):
     # Perform jet mass distributions study
     # --------------------------------------------------------------------------
     with Profile("Study: Jet mass distributions"):
-        #from .studies import study_jetmass
         for feat in tagger_features:
             studies.jetmass(data, args, feat)
             pass
@@ -234,98 +232,7 @@ def main (args):
     # Perform robustness study
     # --------------------------------------------------------------------------
     with Profile("Study: Robustness"):
-
-        # Define common variables
-        msk = data['signal'] == 0
-        effs = np.linspace(0, 100, 10 * 2, endpoint=False)[1:].astype(int)
-        ROOT.gStyle.SetTitleOffset(2.0, 'y')
-
-        # Loop tagger features
-        jsd = {feat: [] for feat in tagger_features}
-        c = rp.canvas(batch=not args.show)
-        for feat in tagger_features:
-
-            # Filter out NaNs (outside restricted phase-space)
-            valid = ~np.isnan(data[feat])
-
-            # Define cuts
-            cuts = list()
-            for eff in effs:
-                cut = wpercentile(data.loc[valid & msk, feat].as_matrix().flatten(), eff, weights=data.loc[valid & msk, 'weight'].as_matrix().flatten())
-                cuts.append(cut)
-                pass
-
-            # Ensure correct direction of cut
-            if not signal_high(feat):
-                cuts = list(reversed(cuts))
-                pass
-
-            # Compute KL divergence for successive cuts
-            for cut, eff in zip(cuts, effs):
-                # Create ROOT histograms
-                msk_pass = data[feat] > cut
-                h_pass = c.hist(data.loc[valid &  msk_pass & msk, 'm'].as_matrix().flatten(), bins=MASSBINS, weights=data.loc[valid &  msk_pass & msk, 'weight'].as_matrix().flatten(), normalise=True, display=False)
-                h_fail = c.hist(data.loc[valid & ~msk_pass & msk, 'm'].as_matrix().flatten(), bins=MASSBINS, weights=data.loc[valid & ~msk_pass & msk, 'weight'].as_matrix().flatten(), normalise=True, display=False)
-
-                # Convert to numpy arrays
-                p = root_numpy.hist2array(h_pass)
-                f = root_numpy.hist2array(h_fail)
-
-                # Compute Jensen-Shannon divergence
-                jsd[feat].append(JSD(p, f, base=2))
-                pass
-            pass
-
-        # Canvas
-        c = rp.canvas(batch=not args.show)
-
-        # Plots
-        ref = ROOT.TH1F('ref', "", 10, 0., 1.)
-        for i in range(ref.GetXaxis().GetNbins()):
-            ref.SetBinContent(i + 1, 1)
-            pass
-        c.hist(ref, linecolor=ROOT.kGray + 2, linewidth=1)
-        for ifeat, feat in enumerate(tagger_features):
-            colour = rp.colours[(ifeat // 2) % len(rp.colours)]
-            linestyle = 1 + (ifeat % 2)
-            markerstyle = 20 + (ifeat // 2)
-            c.plot(jsd[feat], bins=np.array(effs) / 100., linecolor=colour, markercolor=colour, linestyle=linestyle, markerstyle=markerstyle, label=latex(feat, ROOT=True), option='PL')
-
-            # Split legend
-            if   ifeat == 3:
-                c.legend(xmin=0.56, width=0.18)
-            elif ifeat == len(tagger_features) - 1:
-                c.legend(xmin=0.73, width=0.18)
-                pass
-            pass
-
-
-        # Decorations
-        c.xlabel("Background efficiency #varepsilon_{bkg.}")
-        #c.ylabel("JSD(1/N_{pass} dN_{pass}/dm #parallel 1/N_{fail}
-        #dN_{fail}/dm)")
-        c.ylabel("Mass correlation, JSD")
-        c.text(["#sqrt{s} = 13 TeV,  QCD jets",
-                "Testing dataset",
-                "Baseline selection",
-                ],
-            qualifier=QUALIFIER)
-        c.latex("Maximal sculpting", 0.065, 1.2, align=11, textsize=11, textcolor=ROOT.kGray + 2)
-        c.xlim(0, 1)
-        c.ymin(5E-05)
-        c.padding(0.45)
-        c.logy()
-
-        # Save
-        if args.save:
-            mkdir('figures/')
-            c.save('figures/jsd.pdf')
-            pass
-
-        # Show
-        if args.show:
-            c.show()
-            pass
+        studies.jsd(data, args, tagger_features)
         pass
 
 
