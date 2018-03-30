@@ -24,16 +24,16 @@ import argparse
 
 parser = argparse.ArgumentParser(description="Prepare data for training and evaluation of adversarial neural networks for de-correlated jet tagging.")
 
-parser.add_argument('-i', '--input', dest='input', action='store', type=str,
-                    default='/exports/eddie/scratch/s1562020/adversarial/data/MLTrainingTesting/',
+parser.add_argument('--input', action='store', type=str,
+                    default='/eos/atlas/atlascerngroupdisk/perf-jets/JSS/TopBosonTagAnalysis2016/FlatNtuplesR21/',
                     help='Input directory, from which to read input ROOT files.')
-parser.add_argument('-o', '--output', dest='output', action='store', type=str,
-                    default='/exports/eddie/scratch/s1562020/adversarial/data/prepared/',
+parser.add_argument('--output', action='store', type=str,
+                    default='/eos/atlas/user/a/asogaard/adversarial/data/2018-03-30/',
                     help='Output directory, to which to write output files.')
 
 # Global definition(s)
 SELECTION = {
-    'common': ("(fjet_truthJet_pt >   200E+03 && "
+    'common': ("(fjet_truthJet_pt >  200E+03 && "
                " fjet_truthJet_pt < 2000E+03 && "
                " fjet_truthJet_eta > -2.0 && "
                " fjet_truthJet_eta <  2.0 && "
@@ -46,7 +46,7 @@ SELECTION = {
             " fjet_dRmatched_WZChild2_dR < 0.75 && "
             " fjet_truth_dRmatched_particle_dR < 0.75)"),
 
-    'bkg': ("(!W &&
+    'bkg': ("(!W && "
             " !top)")
     }
 
@@ -88,6 +88,7 @@ BRANCHES = [
     'fjet_Dip12',
     'fjet_FoxWolfram20', # Wtop
     'fjet_KtDR',         # Wtop
+    'fjet_N2beta1',
     'fjet_PlanarFlow',   # Wtop
     'fjet_Sphericity',
     'fjet_Split12',      # Wtop
@@ -116,6 +117,7 @@ def rename (name):
         return 'signal'
     name = name.replace('fjet_', '')
     name = name.replace('_wta', '')
+    name = name.replace('beta1', '')
     name = name.replace('CaloTACombinedMassUncorrelated', 'm')
     name = name.replace('JetpTCorrByCombinedMass', 'pt')
     name = name.replace('training_weight_pt_W', 'weight_train')
