@@ -17,7 +17,14 @@ import rootplotting as rp
 @profile
 def study_distribution (data, args, feat):
     """
-    ...
+    Perform study of combined classification- and decorrelation performance.
+
+    Saves plot `figures/distribution_[feat].pdf`
+
+    Arguments:
+        data: Pandas data frame from which to read data.
+        args: Namespace holding command-line arguments.
+        feat: Feature for which to plot signal- and background distributions.
     """
 
     # Define bins
@@ -39,14 +46,9 @@ def study_distribution (data, args, feat):
 
     # Plots
     ROOT.gStyle.SetHatchesLineWidth(3)
-    c.hist(data.loc[(data['signal'] == 0), feat].values, bins=bins,
-           weights=data.loc[(data['signal'] == 0), 'weight'].values,
-           alpha=0.5, fillcolor=rp.colours[1], label="QCD jets", normalise=True,
-           fillstyle=3445, linewidth=3, linecolor=rp.colours[1])
-    c.hist(data.loc[(data['signal'] == 1), feat].values, bins=bins,
-           weights=data.loc[(data['signal'] == 1), 'weight'].values,
-           alpha=0.5, fillcolor=rp.colours[5], label="#it{W} jets", normalise=True,
-           fillstyle=3454, linewidth=3, linecolor=rp.colours[5])
+    base =  dict(bins=bins, alpha=0.5, normalise=True, linewidth=3)
+    c.hist(data.loc[(data['signal'] == 0), feat].values, weights=data.loc[(data['signal'] == 0), 'weight'].values, fillstyle=3445, fillcolor=rp.colours[1], linecolor=rp.colours[1], label="QCD jets",    **base)
+    c.hist(data.loc[(data['signal'] == 1), feat].values, weights=data.loc[(data['signal'] == 1), 'weight'].values, fillstyle=3454, fillcolor=rp.colours[5], linecolor=rp.colours[5], label="#it{W} jets", **base)
 
     # Decorations
     ROOT.gStyle.SetTitleOffset(1.6, 'y')
