@@ -40,6 +40,20 @@ def distribution (data, args, feat):
 
     bins = np.linspace(xmin, xmax, 50 + 1, endpoint=True)
 
+    # Perform plotting
+    c = plot(feat, bins)
+
+    # Output
+    path = 'figures/distribution_{}.pdf'.format(standardise(feat))
+
+    return c, args, path
+
+
+def plot (feat, bins):
+    """
+    Method for delegating plotting.
+    """
+
     # Canvas
     c = rp.canvas(batch=not args.show)
 
@@ -61,8 +75,4 @@ def distribution (data, args, feat):
     c.ylim(2E-03, 2E+00)
     c.logy()
     c.legend()
-
-    # Output
-    path = 'figures/distribution_{}.pdf'.format(standardise(feat))
-
-    return c, args, path
+    return c
