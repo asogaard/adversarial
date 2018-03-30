@@ -62,10 +62,13 @@ def distribution (data, args, feat):
     return c, args, path
 
 
-def plot (args, data, feat, bins):
+def plot (*argv):
     """
     Method for delegating plotting.
     """
+
+    # Unpack arguments
+    args, data, feat, bins = argv
 
     # Canvas
     c = rp.canvas(batch=not args.show)
@@ -78,7 +81,7 @@ def plot (args, data, feat, bins):
     # Plots
     for signal in [0, 1]:
         msk = (data['signal'] == signal)
-        style[signal].update(base)
+        STYLE[signal].update(base)
         c.hist(data.loc[msk, feat].values, weights=data.loc[msk, 'weight'].values, **STYLE[signal])
         pass
 

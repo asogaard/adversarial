@@ -14,6 +14,23 @@ from adversarial.constants import *
 import rootplotting as rp
 
 
+# Global variable definition(s)
+STYLE = {  # key = passing
+    True: {
+        'fillcolor': rp.colours[5],
+        'linecolor': rp.colours[5],
+        'fillstyle': 3454,
+        'label': "Passing cut",
+        },
+    False: {
+        'fillcolor': rp.colours[1],
+        'linecolor': rp.colours[1],
+        'fillstyle': 3445,
+        'label': "Failing jets",
+        }
+}
+
+
 @showsave
 def jetmass (data, args, feat, eff_sig=50):
     """
@@ -40,26 +57,40 @@ def jetmass (data, args, feat, eff_sig=50):
         msk_pass = ~msk_pass
         pass
 
+    # Perform plotting
+    c = plot(data, args, feat, msk_pass, msk_bkg, eff_sig)
+
+    # Output
+    path = 'figures/jetmass_{}__eff_sig_{:d}.pdf'.format(standardise(feat), int(eff_sig))
+
+    return c, args, path
+
+
+def plot (*argv):
+    """
+    Method for delegating plotting.
+    """
+
+    # Unpack arguments
+    data, args, feat, msk_pass, msk_bkg, eff_sig = argv
+
     # Canvas
     c = rp.canvas(num_pads=2, size=(int(800 * 600 / 857.), 600), batch=not args.show)
 
     # Plots
     ROOT.gStyle.SetHatchesLineWidth(3)
-    h_fail = c.hist(data.loc[msk_bkg & ~msk_pass, 'm'].values, bins=MASSBINS,
-                    weights=data.loc[msk_bkg & ~msk_pass, 'weight'].values,
-                    alpha=0.3, fillcolor=rp.colours[1], normalise=True,
-                    fillstyle=3445, linewidth=3, label="Failing cut",
-                    linecolor=rp.colours[1])
-    h_pass = c.hist(data.loc[msk_bkg &  msk_pass, 'm'].values, bins=MASSBINS,
-                    weights=data.loc[msk_bkg &  msk_pass, 'weight'].values,
-                    alpha=0.3, fillcolor=rp.colours[5], normalise=True,
-                    fillstyle=3454, linewidth=3, label="Passing cut",
-                    linecolor=rp.colours[5])
+    base = dict(bins=MASSBINS, alpha=0.3, normalise=True, linewidth=3)
+    hist = dict()
+    for passing, name in zip([False, True], ['fail', 'pass']):
+        msk = msk_bkg & (msk_pass if passing else ~msk_pass)
+        STYLE[passing].update(base)
+        hist[name] = c.hist(data.loc[msk, 'm'].values, weights=data.loc[msk, 'weight'].values, **STYLE[passing])
+        pass
 
     # Ratio plots
     c.pads()[1].hist([1], bins=[MASSBINS[0], MASSBINS[-1]], linecolor=ROOT.kGray + 1, linewidth=1, linestyle=1)
-    h_ratio = c.ratio_plot((h_pass, h_fail), option='E2',   fillstyle=1001, fillcolor=rp.colours[0], linecolor=rp.colours[0], alpha=0.3)
-    c.ratio_plot((h_pass, h_fail), option='HIST', fillstyle=0, linewidth=3, linecolor=rp.colours[0])
+    h_ratio = c.ratio_plot((hist['pass'], hist['fail']), option='E2',   fillstyle=1001, fillcolor=rp.colours[0], linecolor=rp.colours[0], alpha=0.3)
+    c.ratio_plot((hist['pass'], hist['fail']), option='HIST', fillstyle=0, linewidth=3, linecolor=rp.colours[0])
 
     # Out-of-bounds indicators
     ymin, ymax = 1E-01, 1E+01
@@ -101,7 +132,4 @@ def jetmass (data, args, feat, eff_sig=50):
     c.logy()
     c.legend()
 
-    # Output
-    path = 'figures/jetmass_{}__eff_sig_{:d}.pdf'.format(standardise(feat), int(eff_sig))
-
-    return c, args, path
+    return c
