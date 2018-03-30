@@ -66,7 +66,6 @@ def plot (*argv):
     c = rp.canvas(num_pads=2, size=(int(800 * 600 / 857.), 600), batch=not args.show)
 
     # Plots
-    ROOT.gStyle.SetHatchesLineWidth(3)
     base = dict(bins=MASSBINS, alpha=0.3, normalise=True, linewidth=3)
     hist = dict()
     for passing, name in zip([False, True], ['fail', 'pass']):
@@ -76,46 +75,27 @@ def plot (*argv):
         pass
 
     # Ratio plots
-    c.pads()[1].hist([1], bins=[MASSBINS[0], MASSBINS[-1]], linecolor=ROOT.kGray + 1, linewidth=1, linestyle=1)
-    h_ratio = c.ratio_plot((hist['pass'], hist['fail']), option='E2',   fillstyle=1001, fillcolor=rp.colours[0], linecolor=rp.colours[0], alpha=0.3)
-    c.ratio_plot((hist['pass'], hist['fail']), option='HIST', fillstyle=0, linewidth=3, linecolor=rp.colours[0])
+    c.ratio_plot((hist['pass'], hist['pass']), option='HIST', fillstyle=0, linecolor=ROOT.kGray + 1, linewidth=1, linestyle=1)
+    c.ratio_plot((hist['pass'], hist['fail']), option='E2', fillstyle=1001, fillcolor=rp.colours[0], linecolor=rp.colours[0], alpha=0.3)
 
-    # Out-of-bounds indicators
-    ymin, ymax = 1E-01, 1E+01
-    ratio = root_numpy.hist2array(h_ratio)
-    centres = MASSBINS[:-1] + 0.5 * np.diff(MASSBINS)
-    offset = 0.05  # Relative offset from top- and bottom of ratio pad
+    # -- Set this before drawing OOB markers
+    c.pads()[1].logy()
+    c.pads()[1].ylim(1E-01, 1E+01)
 
-    lymin, lymax = map(np.log10, (ymin, ymax))
-    ldiff = lymax - lymin
+    h_ratio = c.ratio_plot((hist['pass'], hist['fail']), option='HIST', fillstyle=0, linewidth=3, linecolor=rp.colours[0], oob=True, oob_color=rp.colours[0])
 
-    oobx = map(lambda t: t[0], filter(lambda t: t[1] > ymax, zip(centres,ratio)))
-    ooby = np.ones_like(oobx) * np.power(10, lymax - offset * ldiff)
-    if len(oobx) > 0:
-        c.pads()[1].graph(ooby, bins=oobx, markercolor=rp.colours[0], markerstyle=22, option='P')
-        pass
-
-    oobx = map(lambda t: t[0], filter(lambda t: t[1] < ymin, zip(centres,ratio)))
-    ooby = np.ones_like(oobx) * np.power(10, lymin + offset * ldiff)
-    if len(oobx) > 0:
-        c.pads()[1].graph(ooby, bins=oobx, markercolor=rp.colours[0], markerstyle=23, option='P')
-        pass
 
     # Decorations
-    ROOT.gStyle.SetTitleOffset(1.6, 'y')
     c.xlabel("Large-#it{R} jet mass [GeV]")
     c.ylabel("Fraction of jets")
     c.text(["#sqrt{s} = 13 TeV,  QCD jets",
             "Testing dataset",
             "Baseline selection",
             "Fixed #varepsilon_{sig.} = %d%% cut on %s" % (eff_sig, latex(feat, ROOT=True)),
-            ],
-        qualifier=QUALIFIER)
+            ], qualifier=QUALIFIER)
     c.ylim(2E-04, 2E+02)
 
     c.pads()[1].ylabel("Passing / failing")
-    c.pads()[1].logy()
-    c.pads()[1].ylim(ymin, ymax)
 
     c.logy()
     c.legend()

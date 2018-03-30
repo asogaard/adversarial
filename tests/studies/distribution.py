@@ -62,8 +62,6 @@ def plot (*argv):
     c = rp.canvas(batch=not args.show)
 
     # Style
-    ROOT.gStyle.SetHatchesLineWidth(3)
-    ROOT.gStyle.SetTitleOffset(1.6, 'y')
     base = dict(bins=bins, alpha=0.5, normalise=True, linewidth=3)
 
     # Plots
@@ -79,8 +77,7 @@ def plot (*argv):
     c.text(["#sqrt{s} = 13 TeV",
             "Testing dataset",
             "Baseline selection",
-            ],
-        qualifier=QUALIFIER)
+            ], qualifier=QUALIFIER)
     c.ylim(2E-03, 2E+00)
     c.logy()
     c.legend()

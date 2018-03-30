@@ -5,8 +5,14 @@
 import numpy as np
 from scipy.stats import entropy
 
+# ROOT import(s)
+import ROOT
+
 # Project imports
 from adversarial.utils import mkdir
+
+# Custom import(s)
+import rootplotting as rp
 
 
 # Define global variable(s)
@@ -25,6 +31,11 @@ HISTSTYLE = {  # key = signal / passing
         'fillstyle': 3445,
         }
 }
+
+# Global ROOT TStyle settings
+ROOT.gStyle.SetHatchesLineWidth(3)
+ROOT.gStyle.SetTitleOffset(1.6, 'y')
+
 
 def showsave (f):
     """
