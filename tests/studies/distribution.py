@@ -14,20 +14,8 @@ import rootplotting as rp
 
 
 # Global variable definition(s)
-STYLE = {  # key = signal
-    True: {
-        'fillcolor': rp.colours[5],
-        'linecolor': rp.colours[5],
-        'fillstyle': 3454,
-        'label': "#it{W} jets",
-        },
-    False: {
-        'fillcolor': rp.colours[1],
-        'linecolor': rp.colours[1],
-        'fillstyle': 3445,
-        'label': "QCD jets",
-        }
-}
+HISTSTYLE[True] ['label'] = "#it{W} jets"
+HISTSTYLE[False]['label'] = "QCD jets"
 
 
 @showsave
@@ -81,8 +69,8 @@ def plot (*argv):
     # Plots
     for signal in [0, 1]:
         msk = (data['signal'] == signal)
-        STYLE[signal].update(base)
-        c.hist(data.loc[msk, feat].values, weights=data.loc[msk, 'weight'].values, **STYLE[signal])
+        HISTSTYLE[signal].update(base)
+        c.hist(data.loc[msk, feat].values, weights=data.loc[msk, 'weight'].values, **HISTSTYLE[signal])
         pass
 
     # Decorations

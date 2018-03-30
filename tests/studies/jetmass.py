@@ -15,20 +15,8 @@ import rootplotting as rp
 
 
 # Global variable definition(s)
-STYLE = {  # key = passing
-    True: {
-        'fillcolor': rp.colours[5],
-        'linecolor': rp.colours[5],
-        'fillstyle': 3454,
-        'label': "Passing cut",
-        },
-    False: {
-        'fillcolor': rp.colours[1],
-        'linecolor': rp.colours[1],
-        'fillstyle': 3445,
-        'label': "Failing jets",
-        }
-}
+HISTSTYLE[True] ['label'] = "Passing cut"
+HISTSTYLE[False]['label'] = "Failing cut"
 
 
 @showsave
@@ -83,8 +71,8 @@ def plot (*argv):
     hist = dict()
     for passing, name in zip([False, True], ['fail', 'pass']):
         msk = msk_bkg & (msk_pass if passing else ~msk_pass)
-        STYLE[passing].update(base)
-        hist[name] = c.hist(data.loc[msk, 'm'].values, weights=data.loc[msk, 'weight'].values, **STYLE[passing])
+        HISTSTYLE[passing].update(base)
+        hist[name] = c.hist(data.loc[msk, 'm'].values, weights=data.loc[msk, 'weight'].values, **HISTSTYLE[passing])
         pass
 
     # Ratio plots

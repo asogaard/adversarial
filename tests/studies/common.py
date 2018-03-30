@@ -12,6 +12,19 @@ from adversarial.utils import mkdir
 # Define global variable(s)
 MASSBINS = np.linspace(40, 300, (300 - 40) // 10 + 1, endpoint=True)
 
+# Global variable definition(s)
+HISTSTYLE = {  # key = signal / passing
+    True: {
+        'fillcolor': rp.colours[5],
+        'linecolor': rp.colours[5],
+        'fillstyle': 3454,
+        },
+    False: {
+        'fillcolor': rp.colours[1],
+        'linecolor': rp.colours[1],
+        'fillstyle': 3445,
+        }
+}
 
 def showsave (f):
     """
