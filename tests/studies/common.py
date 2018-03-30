@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Basic import(s)
-
 # Scientific import(s)
 import numpy as np
 from scipy.stats import entropy
