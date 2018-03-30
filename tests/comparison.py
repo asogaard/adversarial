@@ -17,13 +17,11 @@ from scipy.stats import entropy
 from sklearn.metrics import roc_curve, roc_auc_score
 from sklearn.preprocessing import StandardScaler
 
-
 # Project import(s)
-from adversarial.utils import initialise_backend, roc_efficiencies, roc_auc, wpercentile, latex
+from adversarial.utils import initialise_backend, wpercentile, latex, parse_args, initialise, load_data, mkdir  # roc_efficiencies, roc_auc
 from adversarial.profile import profile, Profile
-from adversarial.new_utils import parse_args, initialise, load_data, mkdir
+#from adversarial.new_utils import
 from adversarial.constants import *
-import run.css.common as css
 
 # Custom import(s)
 import rootplotting as rp
@@ -134,14 +132,18 @@ def main (args):
     eps = np.finfo(float).eps
     msk_mass = (data['m'] > 60.) & (data['m'] < 100.)  # W mass window
     msk_sig  = data['signal'] == 1
-    kNN_eff = 20
+    kNN_eff = 10
     uboost_eff = 20
     uboost_uni = 1.0
     D2_kNN_var = 'D2-kNN({:d}%)'.format(kNN_eff)
     uboost_var = 'uBoost(#varepsilon={:d}%,#alpha={:.1f})'.format(uboost_eff, uboost_uni)
 
-    lambda_reg  = 1
-    lambda_regs = sorted([0.1, 10, 1, 100])
+    #lambda_reg  = 1
+    #lambda_regs = sorted([0.1, 0.3, 1, 3, 10, 30, 100])#, 100])  # 10, 100
+    #lambda_reg  = 3
+    #lambda_regs = sorted([3, 10, 30, 50, 100, 300])  # , 30, 100])#, 100])  # 10, 100
+    lambda_reg  = 10
+    lambda_regs = sorted([3, 10, 30, 60, 100])
     ann_vars    = list()
     lambda_strs = list()
     for lambda_reg_ in lambda_regs:
@@ -163,7 +165,7 @@ def main (args):
         pass
     nn_linear_var = nn_linear_vars[lambda_regs.index(lambda_reg)]
 
-    tagger_features = ['Tau21','Tau21DDT', 'Tau21CSS', 'D2', D2_kNN_var, 'D2CSS', 'NN', 'Adaboost', uboost_var, ann_var] #, nn_mass_var, nn_linear_var]  # D2CSS, N2KNN
+    tagger_features = ['Tau21','Tau21DDT', 'D2', D2_kNN_var, 'D2CSS', 'NN', ann_var, 'Adaboost', uboost_var] #, nn_mass_var, nn_linear_var]  # D2CSS, N2KNN
 
     # DDT variables
     fit_range = (1.5, 4.0)
@@ -182,36 +184,56 @@ def main (args):
                 pass
             data['rhoDDT']   = pd.Series(np.log(np.square(data['m'])/(data['pt'] * 1.)), index=data.index)
             data['Tau21DDT'] = pd.Series(data['Tau21'] - ddt.predict(data['rhoDDT'].as_matrix().reshape((-1,1))), index=data.index)
-            pass
 
-        # D2CSS
-        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-        with Profile("D2CSS"):
-            data['D2CSS'] = css.GetCSSSeries('D2', data)
-            pass
-
-        # Tau21CSS
-        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-        with Profile("Tau21CSS"):
-            data['Tau21CSS'] = css.GetCSSSeries('Tau21', data)
+            # Restrict phase-space
+            #from run.ddt.common import FIT_RANGE as ddt_rhoDDT_range
+            #valid = (data['rhoDDT'] > ddt_rhoDDT_range[0]) & (data['rhoDDT'] < ddt_rhoDDT_range[1])
+            #data.loc[~valid, 'Tau21']    = np.nan  # To compare apples-to-apples
+            #data.loc[~valid, 'Tau21DDT'] = np.nan
             pass
 
         # D2-kNN
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         with Profile("D2-kNN"):
-            data['rho'] = pd.Series(np.log(np.square(data['m']) / np.square(data['pt'])), index=data.index)
+            # Common, classifier-specific import(s)
+            from run.knn.common import AXIS as knn_axis
+            from run.knn.common import VAR  as knn_var
+            from run.knn.common import VARX as knn_varx
+            from run.knn.common import VARY as knn_vary
+            from run.knn.common import add_variables as knn_add_variables
 
-            X = data[['rho', 'pt']].as_matrix().astype(np.float)
-            X[:,0] -= -5.5
-            X[:,0] /= -2.0 - (-5.5)
-            X[:,1] -= 200.
-            X[:,1] /= 2000. - 200.
+            # Add necessary variables
+            knn_add_variables(data)
 
-            with gzip.open('models/knn/knn_D2_{}.pkl.gz'.format(kNN_eff), 'r') as f:
+            X = data[[knn_varx, knn_vary]].as_matrix().astype(np.float)
+            X[:,0] -= knn_axis[knn_varx][1]
+            X[:,0] /= knn_axis[knn_varx][2] - knn_axis[knn_varx][1]
+            X[:,1] -= knn_axis[knn_vary][1]
+            X[:,1] /= knn_axis[knn_vary][2]  - knn_axis[knn_vary][1]
+
+            with gzip.open('models/knn/knn_{}_{}.pkl.gz'.format(knn_var, kNN_eff), 'r') as f:
                 knn = pickle.load(f)
                 pass
+
             kNN_percentile = knn.predict(X).flatten()
-            data[D2_kNN_var] = pd.Series(data['D2'] - kNN_percentile, index=data.index)
+            data[D2_kNN_var] = pd.Series(data[knn_var] - kNN_percentile, index=data.index)
+
+            # Restrict phase-space
+            #valid = np.ones((data.shape[0],)).astype(bool)
+            #for var, limits in knn_axis.iteritems():
+            #    valid &= (data[var] > limits[1]) & (data[var] < limits[2])
+            #data.loc[~valid, 'D2']       = np.nan  # To compare apples-to-apples
+            #data.loc[~valid, D2_kNN_var] = np.nan
+            pass
+
+        # D2-CSS
+        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        with Profile("D2-CSS"):
+            # Common, classifier-specific import(s)
+            from run.css.common import AddCSS
+
+            # Add necessary variables
+            AddCSS("D2", data)
             pass
 
         # NN
@@ -225,7 +247,6 @@ def main (args):
         # ANN
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         with Profile("ANN"):
-            classifier = load_model('models/adversarial/classifier/full/classifier.h5')
             adversary = adversary_model(gmm_dimensions=1,
                                         **cfg['adversary']['model'])
 
@@ -233,9 +254,12 @@ def main (args):
                                       **cfg['combined']['model'])
 
             for ann_var_, lambda_str_ in zip(ann_vars, lambda_strs):
+                print "== Loading model for {}".format(ann_var_)
+                #combined.load_weights('models/adversarial/combined/crossval/combined_lambda{}__1of5.h5'.format(lambda_str_))
                 combined.load_weights('models/adversarial/combined/full/combined_lambda{}.h5'.format(lambda_str_))
                 data[ann_var_] = pd.Series(classifier.predict(data[features].as_matrix().astype(K.floatx()), batch_size=2048 * 8).flatten().astype(K.floatx()), index=data.index)
                 pass
+            print "== Done loading ANN models"
             pass
 
 
@@ -288,7 +312,10 @@ def main (args):
     # Perform generalised ROC study
     # --------------------------------------------------------------------------
     target_tpr = 0.5
-    axisrange = (0.5, 500.)
+    axisrangex = (0.6,   500.)
+    axisrangey = (0.4, 50000.)
+    aminx, amaxx = axisrangex
+    aminy, amaxy = axisrangey
     with Profile("Study: Generalised ROC"):
 
         points = list()
@@ -306,7 +333,10 @@ def main (args):
                 print "   Reversing cut direction for {}".format(feat)
                 pred *= -1.
                 pass
-            fpr, tpr, thresholds = roc_curve(data['signal'], pred, sample_weight=data['weight'])
+
+            # Filter out NaNs (outside restricted phase-space)
+            valid = ~np.isnan(pred)
+            fpr, tpr, thresholds = roc_curve(data['signal'][valid], pred[valid], sample_weight=data['weight'][valid])
 
             # Get background rejection factor @ eff_sig. = 50%
             idx = np.argmin(np.abs(tpr - target_tpr))
@@ -317,8 +347,8 @@ def main (args):
             msk      = data['signal'] == False
             msk_pass = pred > cut
 
-            p, _ = np.histogram(data.loc[ msk_pass & msk, 'm'].values, bins=MASSBINS, weights=data.loc[ msk_pass & msk, 'weight'].values, density=True)
-            f, _ = np.histogram(data.loc[~msk_pass & msk, 'm'].values, bins=MASSBINS, weights=data.loc[~msk_pass & msk, 'weight'].values, density=True)
+            p, _ = np.histogram(data.loc[ msk_pass & msk & valid, 'm'].values, bins=MASSBINS, weights=data.loc[ msk_pass & msk & valid, 'weight'].values, density=True)
+            f, _ = np.histogram(data.loc[~msk_pass & msk & valid, 'm'].values, bins=MASSBINS, weights=data.loc[~msk_pass & msk & valid, 'weight'].values, density=True)
 
             jsd = JSD(p, f)
 
@@ -326,35 +356,60 @@ def main (args):
             points.append((rej, 1. / jsd, feat))
             pass
 
+
+        # Pre-styling
+        ref_title_offset_x = ROOT.gStyle.GetTitleOffset('x')
+        ret_title_offset_y = ROOT.gStyle.GetTitleOffset('y')
+
+        ROOT.gStyle.SetTitleOffset(1.8, 'x')
+        ROOT.gStyle.SetTitleOffset(1.6, 'y')
+
         # Canvas
         c = rp.canvas(batch=not args.show, size=(600,600))
 
         # Reference lines
-        c.plot([.1, .1, 9999, 9999], bins=[axisrange[0] + 0.05, 9999, 9999, axisrange[0] + 0.048], linecolor=0,              linewidth=0, markerstyle=0, markersize=0, option='AP')
-        c.plot([1, 9999],            bins=[1, 1],                                                  linecolor=ROOT.kGray + 2, linewidth=1, option='L')
-        c.plot([1, 1],               bins=[1, 9999],                                               linecolor=ROOT.kGray + 2, linewidth=1, option='L')
+        nullopts = dict(linecolor=0, linewidth=0, linestyle=0, markerstyle=0, markersize=0, fillstyle=0)
+        c.hist([aminy], bins=list(axisrangex), **nullopts)
+        #c.plot([aminx, aminx, amaxx, amaxy], bins=[amin + 0.05, amax, amax, amin + 0.048], **nullopts)  # option='AP')
+        c.plot([1, amaxy], bins=[1, 1],    linecolor=ROOT.kGray + 2, linewidth=1, option='L')
+        c.plot([1, 1],     bins=[1, amaxx], linecolor=ROOT.kGray + 2, linewidth=1, option='L')
 
         # Markers
-        for ipoint, feat in enumerate(tagger_features):
-            # Coordinates, label
-            idx = map(lambda t: t[2], points).index(feat)
-            x, y, label = points[idx]
+        for is_simple in [True, False]:
+            # Split the legend into simple- and MVA taggers
+            for ipoint, feat in enumerate(tagger_features):
+                if is_simple != ('tau21' in feat.lower() or 'd2' in feat.lower() or 'n2' in feat.lower()):
+                    continue
+                # Coordinates, label
+                idx = map(lambda t: t[2], points).index(feat)
+                x, y, label = points[idx]
 
+                if label.startswith('ANN'):
+                    label = 'ANN'
+                    pass
 
-            if label.startswith('ANN'):
-                label = 'ANN'
+                # Style
+                if ipoint > 3:  # @TEMP
+                    ipoint += 3
+                    pass
+                colour      = rp.colours[(ipoint // 2) % len(rp.colours)]
+                markerstyle = 20 + (ipoint % 2) * 4
+
+                # Draw
+                #restricts = ('knn' in feat.lower() or 'ddt' in feat.lower())
+                #asterisk  = ("#color[13]{*}" if restricts else "")
+                c.graph([y], bins=[x], markercolor=colour, markerstyle=markerstyle, label=latex(label, ROOT=True), option='P')
                 pass
-            xbins = [x,x]
-            ybins = [y,y]
-            # Style
-            colour      = rp.colours[(ipoint // 3) % len(rp.colours)]
-            markerstyle = 20 + (ipoint % 3) * 4
 
-            # Draw
-            c.graph(ybins, bins=xbins, markercolor=colour, markerstyle=markerstyle, label=latex(label, ROOT=True), option='P')
+            # Draw class-specific legend
+            width = 0.18
+            c.legend(header=("Simple:" if is_simple else "MVA:"),
+                     width=width, xmin=0.54 + (width + 0.02) * (is_simple), ymax=0.827)  # ymax=0.782)
+            c.pads()[0]._legends[-1].GetListOfPrimitives()[0].SetTextSize(ROOT.gStyle.GetLegendTextSize() * 0.8)
+            c.pads()[0]._legends[-1].GetListOfPrimitives()[0].SetTextColor(ROOT.kGray + 3)
             pass
 
-        # Markers, paramerised decorrelation
+        # Markers, parametrised decorrelation
         for feat in ann_vars:
             #if feat in tagger_features:
             #    continue
@@ -362,7 +417,7 @@ def main (args):
             x, y, label = points[idx]
 
             # Style
-            ipoint = 5
+            ipoint = 5 + 4  # @TEMP
             colour      = rp.colours[(ipoint // 2) % len(rp.colours)]
             markerstyle = 20 + (ipoint % 2) * 4
 
@@ -373,59 +428,71 @@ def main (args):
 
         # Connecting lines
         for i in [0,1]:
-            x1, y1, _ = points[3 * i + 0]
-            x2, y2, _ = points[3 * i + 1]
+            x1, y1, _ = points[2 * i + 0]
+            x2, y2, _ = points[2 * i + 1]
             colour = rp.colours[i]
             c.graph([y1, y2], bins=[x1, x2], linecolor=colour, linestyle=2, option='L')
             pass
 
-        for i in [1]:
-            x1, y1, _ = points[6]
-            x2, y2, _ = points[7]
-            colour = rp.colours[3]
-            c.graph([y1, y2], bins=[x1, x2], linecolor=colour, linestyle=2, option='L')
-            pass
-
-        for i in [0,1]:
-            x1, y1, _ = points[3 * i + 0]
-            x2, y2, _ = points[3 * i + 2]
-            colour = rp.colours[i]
-            c.graph([y1, y2], bins=[x1, x2], linecolor=colour, linestyle=3, option='L')
-            pass
-
-        # Connecting lines
-        feats = [tagger_features[4]] + ann_vars
+        # Connecting lines (ANN)
+        feats = [tagger_features[5]] + ann_vars  # @TEMP: Take CSS into account
         for feat1, feat2 in zip(feats[:-1], feats[1:]):
             idx1 = map(lambda t: t[2], points).index(feat1)
             idx2 = map(lambda t: t[2], points).index(feat2)
 
             x1, y1, _ = points[idx1]
             x2, y2, _ = points[idx2]
-            colour = rp.colours[2]
+            colour = rp.colours[4]  # @TEMP: Default is 2
             c.graph([y1, y2], bins=[x1, x2], linecolor=colour, linestyle=2, option='L')
             pass
 
+        # Connecting lines (uBoost)
+        feats = tagger_features[-2:]
+        for feat1, feat2 in zip(feats[:-1], feats[1:]):
+            idx1 = map(lambda t: t[2], points).index(feat1)
+            idx2 = map(lambda t: t[2], points).index(feat2)
+
+            x1, y1, _ = points[idx1]
+            x2, y2, _ = points[idx2]
+            colour = rp.colours[5]  # @TEMP: Default is 3
+            c.graph([y1, y2], bins=[x1, x2], linecolor=colour, linestyle=2, option='L')
+            pass
+
+        # Boxes
+        box1 = ROOT.TBox(aminx, aminy, 1, amaxy)
+        box1.SetFillColorAlpha(ROOT.kBlack, 0.05)
+        box1.Draw("SAME")
+
+        box2 = ROOT.TBox(1, aminy, amaxx, 1)
+        box2.SetFillColorAlpha(ROOT.kBlack, 0.05)
+        box2.Draw("SAME")
+        c.pads()[0]._primitives[0].Draw('AXIS SAME')
+
         # Decorations
-        c.legend(xmin=0.65, xmax=0.90)
+        #c.legend(xmin=0.65, xmax=0.90)
         c.xlabel("Background rejection, 1 / #varepsilon_{bkg.} @ #varepsilon_{sig.} = 50%")
-        c.ylabel("1 / JSD(P_{pass}(m) #parallel P_{fail}(m) ) @ #varepsilon_{sig.} = 50%")
-        c.xlim(*axisrange)
-        c.ylim(axisrange[0], axisrange[1] * 10)
+        c.ylabel("Mass decorrelation, 1 / JSD @ #varepsilon_{sig.} = 50%")
+        c.xlim(*axisrangex)
+        c.ylim(*axisrangey)
         c.logx()
         c.logy()
-        c.latex("No separation",                   0.95, 420.,   angle=90, align=31, textsize=11, textcolor=ROOT.kGray + 2)
-        c.latex("Maximal dissimilarity",         400.,     0.95, angle= 0, align=33, textsize=11, textcolor=ROOT.kGray + 2)
-        c.latex("Less sculpting #rightarrow",      1.1,   25.,   angle=90, align=23, textsize=11, textcolor=ROOT.kGray + 2)
-        c.latex("Greater separtion #rightarrow",  25.,     1.1,  angle= 0, align=21, textsize=11, textcolor=ROOT.kGray + 2)
-        ROOT.gStyle.SetTitleOffset(3.0, 'x')
-        ROOT.gStyle.SetTitleOffset(1.6, 'y')
 
-        c.text(["#sqrt{s} = 13 TeV,  QCD jets",
+        opts_text = dict(textsize=11, textcolor=ROOT.kGray + 2)
+        midpointx = np.power(10, 0.5 * np.log10(amaxx))
+        midpointy = np.power(10, 0.5 * np.log10(amaxy))
+        c.latex("No separation",                     0.90, midpointy, angle=90, align=21, **opts_text)
+        c.latex("Maximal sculpting",                 midpointx, 0.90, angle= 0, align=23, **opts_text)
+        c.latex("    Less sculpting #rightarrow",    1.1, midpointy,  angle=90, align=23,**opts_text)
+        c.latex("    Greater separtion #rightarrow", midpointx, 1.1,  angle= 0, align=21,**opts_text)
+
+        c.text(["#sqrt{s} = 13 TeV",
                 "Testing dataset",
                 "Baseline selection",
                 ],
-            xmin=0.27,
+            xmin=0.24,
             qualifier=QUALIFIER)
+
+        #c.latex("* Restricting phase-space", 0.58, 0.57, NDC=True, align=12, **opts_text)
 
         # Save
         if args.save:
@@ -440,18 +507,19 @@ def main (args):
 
         # ...
 
+        # Reset styles
+        ROOT.gStyle.SetTitleOffset(ref_title_offset_x, 'x')
+        ROOT.gStyle.SetTitleOffset(ret_title_offset_y, 'y')
         pass
-
-
-    exit()  # @TEMP
-
-    # ...
 
 
     # Perform distributions study
     # --------------------------------------------------------------------------
     with Profile("Study: Distributions"):
         for feat in tagger_features:
+
+            # Filter out NaNs (outside restricted phase-space)
+            valid = ~np.isnan(data[feat])
 
             # Define bins
             if 'knn' in feat.lower():
@@ -461,8 +529,8 @@ def main (args):
             elif feat == 'D2':
                 xmin, xmax = 0, 3.5
             else:
-                xmin = wpercentile (data[feat].as_matrix().flatten(),  1, weights=data['weight'].as_matrix().flatten())
-                xmax = wpercentile (data[feat].as_matrix().flatten(), 99, weights=data['weight'].as_matrix().flatten())
+                xmin = wpercentile (data.loc[valid, feat].as_matrix().flatten(),  1, weights=data.loc[valid, 'weight'].as_matrix().flatten())
+                xmax = wpercentile (data.loc[valid, feat].as_matrix().flatten(), 99, weights=data.loc[valid, 'weight'].as_matrix().flatten())
                 pass
 
             bins = np.linspace(xmin, xmax, 50 + 1, endpoint=True)
@@ -472,12 +540,12 @@ def main (args):
 
             # Plots
             ROOT.gStyle.SetHatchesLineWidth(3)
-            c.hist(data.loc[data['signal'] == 0, feat].as_matrix().flatten(), bins=bins,
-                   weights=data.loc[data['signal'] == 0, 'weight'].as_matrix().flatten(),
+            c.hist(data.loc[valid & (data['signal'] == 0), feat].as_matrix().flatten(), bins=bins,
+                   weights=data.loc[valid & (data['signal'] == 0), 'weight'].as_matrix().flatten(),
                    alpha=0.5, fillcolor=rp.colours[1], label="QCD jets", normalise=True,
                    fillstyle=3445, linewidth=3, linecolor=rp.colours[1])
-            c.hist(data.loc[data['signal'] == 1, feat].as_matrix().flatten(), bins=bins,
-                   weights=data.loc[data['signal'] == 1, 'weight'].as_matrix().flatten(),
+            c.hist(data.loc[valid & (data['signal'] == 1), feat].as_matrix().flatten(), bins=bins,
+                   weights=data.loc[valid & (data['signal'] == 1), 'weight'].as_matrix().flatten(),
                    alpha=0.5, fillcolor=rp.colours[5], label="#it{W} jets", normalise=True,
                    fillstyle=3454, linewidth=3, linecolor=rp.colours[5])
 
@@ -514,11 +582,12 @@ def main (args):
         for feat in tagger_features:
 
             # Define masks; fixed signal efficiency cut
-            eff_bkg = 20
+            eff_sig = 50
+            valid = ~np.isnan(data[feat])
             msk_sig = data['signal'] == 1
             msk_bkg = ~msk_sig
-            eff_cut = eff_bkg if signal_high(feat) else 100 - eff_bkg
-            cut = wpercentile(data.loc[msk_bkg, feat].as_matrix().flatten(), eff_cut, weights=data.loc[msk_bkg, 'weight'].as_matrix().flatten())
+            eff_cut = eff_sig if signal_high(feat) else 100 - eff_sig
+            cut = wpercentile(data.loc[valid & msk_sig, feat].as_matrix().flatten(), eff_cut, weights=data.loc[valid & msk_sig, 'weight'].as_matrix().flatten())
             msk_pass = data[feat] > cut
 
             # Ensure correct cut direction
@@ -534,13 +603,13 @@ def main (args):
 
             # Plots
             ROOT.gStyle.SetHatchesLineWidth(3)
-            h_fail = c.hist(data.loc[msk_bkg & ~msk_pass, 'm'].as_matrix().flatten(), bins=bins,
-                            weights=data.loc[msk_bkg & ~msk_pass, 'weight'].as_matrix().flatten(),
+            h_fail = c.hist(data.loc[valid & msk_bkg & ~msk_pass, 'm'].as_matrix().flatten(), bins=bins,
+                            weights=data.loc[valid & msk_bkg & ~msk_pass, 'weight'].as_matrix().flatten(),
                             alpha=0.3, fillcolor=rp.colours[1], normalise=True,
                             fillstyle=3445, linewidth=3, label="Failing cut",
                             linecolor=rp.colours[1])
-            h_pass = c.hist(data.loc[msk_bkg &  msk_pass, 'm'].as_matrix().flatten(), bins=bins,
-                            weights=data.loc[msk_bkg &  msk_pass, 'weight'].as_matrix().flatten(),
+            h_pass = c.hist(data.loc[valid & msk_bkg &  msk_pass, 'm'].as_matrix().flatten(), bins=bins,
+                            weights=data.loc[valid & msk_bkg &  msk_pass, 'weight'].as_matrix().flatten(),
                             alpha=0.3, fillcolor=rp.colours[5], normalise=True,
                             fillstyle=3454, linewidth=3, label="Passing cut",
                             linecolor=rp.colours[5])
@@ -578,7 +647,7 @@ def main (args):
             c.text(["#sqrt{s} = 13 TeV,  QCD jets",
                     "Testing dataset",
                     "Baseline selection",
-                    "Fixed #varepsilon_{bkg.} = %d%% cut on %s" % (eff_bkg, latex(feat, ROOT=True)),
+                    "Fixed #varepsilon_{sig.} = %d%% cut on %s" % (eff_sig, latex(feat, ROOT=True)),
                     ],
                 qualifier=QUALIFIER)
             c.ylim(2E-04, 2E+02)
@@ -593,7 +662,7 @@ def main (args):
             # Save
             if args.save:
                 mkdir('figures/')
-                c.save('figures/jetmass_{}__eff_bkg_{:d}.pdf'.format(filename(feat), int(eff_bkg)))
+                c.save('figures/jetmass_{}__eff_sig_{:d}.pdf'.format(filename(feat), int(eff_sig)))
                 pass
 
             # Show
@@ -619,10 +688,13 @@ def main (args):
         c = rp.canvas(batch=not args.show)
         for feat in tagger_features:
 
+            # Filter out NaNs (outside restricted phase-space)
+            valid = ~np.isnan(data[feat])
+
             # Define cuts
             cuts = list()
             for eff in effs:
-                cut = wpercentile(data.loc[msk, feat].as_matrix().flatten(), eff, weights=data.loc[msk, 'weight'].as_matrix().flatten())
+                cut = wpercentile(data.loc[valid & msk, feat].as_matrix().flatten(), eff, weights=data.loc[valid & msk, 'weight'].as_matrix().flatten())
                 cuts.append(cut)
                 pass
 
@@ -635,8 +707,8 @@ def main (args):
             for cut, eff in zip(cuts, effs):
                 # Create ROOT histograms
                 msk_pass = data[feat] > cut
-                h_pass = c.hist(data.loc[ msk_pass & msk, 'm'].as_matrix().flatten(), bins=bins, weights=data.loc[ msk_pass & msk, 'weight'].as_matrix().flatten(), normalise=True, display=False)
-                h_fail = c.hist(data.loc[~msk_pass & msk, 'm'].as_matrix().flatten(), bins=bins, weights=data.loc[~msk_pass & msk, 'weight'].as_matrix().flatten(), normalise=True, display=False)
+                h_pass = c.hist(data.loc[valid &  msk_pass & msk, 'm'].as_matrix().flatten(), bins=bins, weights=data.loc[valid &  msk_pass & msk, 'weight'].as_matrix().flatten(), normalise=True, display=False)
+                h_fail = c.hist(data.loc[valid & ~msk_pass & msk, 'm'].as_matrix().flatten(), bins=bins, weights=data.loc[valid & ~msk_pass & msk, 'weight'].as_matrix().flatten(), normalise=True, display=False)
 
                 # Convert to numpy arrays
                 p = root_numpy.hist2array(h_pass)
@@ -673,13 +745,15 @@ def main (args):
 
         # Decorations
         c.xlabel("Background efficiency #varepsilon_{bkg.}")
-        c.ylabel("JSD(1/N_{pass} dN_{pass}/dm #parallel 1/N_{fail} dN_{fail}/dm)")
+        #c.ylabel("JSD(1/N_{pass} dN_{pass}/dm #parallel 1/N_{fail}
+        #dN_{fail}/dm)")
+        c.ylabel("Mass correlation, JSD")
         c.text(["#sqrt{s} = 13 TeV,  QCD jets",
                 "Testing dataset",
                 "Baseline selection",
                 ],
             qualifier=QUALIFIER)
-        c.latex("Maximal dissimilarity", 0.065, 1.2, align=11, textsize=11, textcolor=ROOT.kGray + 2)
+        c.latex("Maximal sculpting", 0.065, 1.2, align=11, textsize=11, textcolor=ROOT.kGray + 2)
         c.xlim(0, 1)
         c.ymin(5E-05)
         c.padding(0.45)
@@ -711,10 +785,13 @@ def main (args):
         c = rp.canvas(batch=not args.show)
         for feat in tagger_features:
 
+            # Filter out NaNs (outside restricted phase-space)
+            valid = ~np.isnan(data[feat])
+
             # Define cuts
             cuts = list()
             for eff in effs:
-                cut = wpercentile(data.loc[msk, feat].as_matrix().flatten(), eff, weights=data.loc[msk, 'weight'].as_matrix().flatten())
+                cut = wpercentile(data.loc[valid & msk, feat].as_matrix().flatten(), eff, weights=data.loc[valid & msk, 'weight'].as_matrix().flatten())
                 cuts.append(cut)
                 pass
 
@@ -739,8 +816,8 @@ def main (args):
                 profile = ROOT.TProfile('profile_{}_{}'.format(feat, cut), "",
                                         len(bins) - 1, bins)
 
-                M = np.vstack((data.loc[msk, 'm'].as_matrix().flatten(), msk_pass[msk])).T
-                weights = data.loc[msk, 'weight'].as_matrix().flatten()
+                M = np.vstack((data.loc[valid & msk, 'm'].as_matrix().flatten(), msk_pass[valid & msk])).T
+                weights = data.loc[valid & msk, 'weight'].as_matrix().flatten()
 
                 root_numpy.fill_profile(profile, M, weights=weights)
 
@@ -804,10 +881,18 @@ def main (args):
         with Profile("Computing ROC curves"):
             ROCs = dict()
             for feat in tagger_features:
-                eff_sig, eff_bkg = roc_efficiencies (data.loc[msk_mass &  msk_sig, feat].as_matrix().flatten().astype(float),
-                                                     data.loc[msk_mass & ~msk_sig, feat].as_matrix().flatten().astype(float),
-                                                     sig_weight=data.loc[msk_mass &  msk_sig, 'weight'].as_matrix().flatten().astype(float),
-                                                     bkg_weight=data.loc[msk_mass & ~msk_sig, 'weight'].as_matrix().flatten().astype(float))
+
+                # Filter out NaNs (outside restricted phase-space)
+                valid = ~np.isnan(data[feat])
+
+                eff_sig, eff_bkg, thresholds = roc_curve(data.loc[valid & msk_mass, 'signal'].values,
+                                                         data.loc[valid & msk_mass, feat]    .values,
+                                                         sample_weight=data.loc[valid & msk_mass, 'weight'].values)
+
+                #### eff_sig, eff_bkg = roc_efficiencies (data.loc[valid & msk_mass &  msk_sig, feat].as_matrix().flatten().astype(float),
+                ####                                      data.loc[valid & msk_mass & ~msk_sig, feat].as_matrix().flatten().astype(float),
+                ####                                      sig_weight=data.loc[valid & msk_mass &  msk_sig, 'weight'].as_matrix().flatten().astype(float),
+                ####                                      bkg_weight=data.loc[valid & msk_mass & ~msk_sig, 'weight'].as_matrix().flatten().astype(float))
 
                 # Filter, to advoid background rejection blowing up
                 indices = np.where((eff_bkg > 0) & (eff_sig > 0))
@@ -815,10 +900,10 @@ def main (args):
                 eff_bkg = eff_bkg[indices]
 
                 # Subsample to 1% steps
-                targets = np.linspace(0, 1, 100 + 1, endpoint=True)
-                indices = np.array([np.argmin(np.abs(eff_sig - t)) for t in targets])
-                eff_sig = eff_sig[indices]
-                eff_bkg = eff_bkg[indices]
+                #### targets = np.linspace(0, 1, 100 + 1, endpoint=True)
+                #### indices = np.array([np.argmin(np.abs(eff_sig - t)) for t in targets])
+                #### eff_sig = eff_sig[indices]
+                #### eff_bkg = eff_bkg[indices]
 
                 # Store
                 ROCs[feat] = (eff_sig,eff_bkg)
@@ -831,7 +916,10 @@ def main (args):
         with Profile("Computing ROC AUCs"):
             AUCs = dict()
             for feat in tagger_features:
-                AUCs[feat] = roc_auc (*ROCs[feat])
+                #AUCs[feat] = roc_auc (*ROCs[feat])
+                AUCs[feat] = roc_auc_score(data.loc[valid & msk_mass, 'signal'].values,
+                                           data.loc[valid & msk_mass, feat]    .values,
+                                           sample_weight=data.loc[valid & msk_mass, 'weight'].values)
             pass
 
 
