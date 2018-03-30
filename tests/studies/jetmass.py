@@ -82,8 +82,7 @@ def plot (*argv):
     c.pads()[1].logy()
     c.pads()[1].ylim(1E-01, 1E+01)
 
-    h_ratio = c.ratio_plot((hist['pass'], hist['fail']), option='HIST', fillstyle=0, linewidth=3, linecolor=rp.colours[0], oob=True, oob_color=rp.colours[0])
-
+    h_ratio = c.ratio_plot((hist['pass'], hist['fail']), option='HIST', fillstyle=0, linewidth=3, linecolor=rp.colours[0])  # oob=True, oob_color=rp.colours[0])
 
     # Decorations
     c.xlabel("Large-#it{R} jet mass [GeV]")
@@ -93,11 +92,11 @@ def plot (*argv):
             "Baseline selection",
             "Fixed #varepsilon_{sig.} = %d%% cut on %s" % (eff_sig, latex(feat, ROOT=True)),
             ], qualifier=QUALIFIER)
+
     c.ylim(2E-04, 2E+02)
-
-    c.pads()[1].ylabel("Passing / failing")
-
     c.logy()
     c.legend()
+
+    c.pads()[1].ylabel("Passing / failing")
 
     return c
