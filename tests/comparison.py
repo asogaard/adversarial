@@ -4,6 +4,7 @@
 """Script for performing comparison studies."""
 
 # Basic import(s)
+import re
 import gzip
 
 # Scientific import(s)
@@ -24,34 +25,6 @@ from adversarial.constants import *
 
 # Custom import(s)
 import rootplotting as rp
-
-def filename (name):
-    """Method to standardise a given filename, and remove special characters."""
-    return name.lower() \
-           .replace('#', '') \
-           .replace(',', '__') \
-           .replace('.', 'p') \
-           .replace('(', '__') \
-           .replace(')', '') \
-           .replace('%', '') \
-           .replace('=', '_')
-
-
-def signal_high (feat):
-    """Method to determine whether the signal distribution is towards higher values."""
-    return ('tau21' in feat.lower() or 'd2' in feat.lower())
-
-# Define mass bins
-MASSBINS = np.linspace(40, 300, (300 - 40) // 10 + 1, endpoint=True)
-
-def JSD(P, Q, base=2):
-    """Compute Jensen-Shannon divergence of two distribtions.
-    From: [https://stackoverflow.com/a/27432724]
-    """
-    _P = P / np.sum(P)
-    _Q = Q / np.sum(Q)
-    _M = 0.5 * (_P + _Q)
-    return 0.5 * (entropy(_P, _M, base=base) + entropy(_Q, _M, base=base))
 
 
 # Main function definition
@@ -80,6 +53,7 @@ def main (args):
     # --------------------------------------------------------------------------
     data, features, _ = load_data(args.input + 'data.h5')
     data = data[data['train'] == 0]
+    #data = data.sample(frac=0.01)  # @TEMP!
 
 
     # Common definitions
@@ -267,208 +241,16 @@ def main (args):
         pass
 
 
-    # Perform generalised ROC study
+    # Perform summary plot study
     # --------------------------------------------------------------------------
-    target_tpr = 0.5
-    axisrangex = (0.6,   500.)
-    axisrangey = (0.4, 50000.)
-    aminx, amaxx = axisrangex
-    aminy, amaxy = axisrangey
-    with Profile("Study: Generalised ROC"):
+    regex_nn = re.compile('\#lambda=[\d\.]+')
+    regex_ub = re.compile('\#alpha=[\d\.]+')
 
-        points = list()
-        for feat in tagger_features + ann_vars:
-            print  "-- {}".format(feat)
+    scan_features = {'NN': map(lambda feat: (feat, regex_nn.search(feat).group(0)), ann_vars),
+                     'Adaboost': [(uboost_var, regex_ub.search(uboost_var).group(0))]}
 
-            # Check for duplicates
-            if feat in map(lambda t: t[2], points):
-                print "    Skipping (already encounted)"
-                continue
-
-            # scikit-learn assumes signal towards 1, background towards 0
-            pred = data[feat].values.copy()
-            if 'Tau' in feat or 'D2' in feat:
-                print "   Reversing cut direction for {}".format(feat)
-                pred *= -1.
-                pass
-
-            # Filter out NaNs (outside restricted phase-space)
-            valid = ~np.isnan(pred)
-            fpr, tpr, thresholds = roc_curve(data['signal'][valid], pred[valid], sample_weight=data['weight'][valid])
-
-            # Get background rejection factor @ eff_sig. = 50%
-            idx = np.argmin(np.abs(tpr - target_tpr))
-            rej = 1. / fpr[idx]
-            cut = thresholds[idx]
-
-            # Get JSD(pass || fail) @ eff_sig. = 50%
-            msk      = data['signal'] == False
-            msk_pass = pred > cut
-
-            p, _ = np.histogram(data.loc[ msk_pass & msk & valid, 'm'].values, bins=MASSBINS, weights=data.loc[ msk_pass & msk & valid, 'weight'].values, density=True)
-            f, _ = np.histogram(data.loc[~msk_pass & msk & valid, 'm'].values, bins=MASSBINS, weights=data.loc[~msk_pass & msk & valid, 'weight'].values, density=True)
-
-            jsd = JSD(p, f)
-
-            # Add point to array
-            points.append((rej, 1. / jsd, feat))
-            pass
-
-
-        # Pre-styling
-        ref_title_offset_x = ROOT.gStyle.GetTitleOffset('x')
-        ret_title_offset_y = ROOT.gStyle.GetTitleOffset('y')
-
-        ROOT.gStyle.SetTitleOffset(1.8, 'x')
-        ROOT.gStyle.SetTitleOffset(1.6, 'y')
-
-        # Canvas
-        c = rp.canvas(batch=not args.show, size=(600,600))
-
-        # Reference lines
-        nullopts = dict(linecolor=0, linewidth=0, linestyle=0, markerstyle=0, markersize=0, fillstyle=0)
-        c.hist([aminy], bins=list(axisrangex), **nullopts)
-        #c.plot([aminx, aminx, amaxx, amaxy], bins=[amin + 0.05, amax, amax, amin + 0.048], **nullopts)  # option='AP')
-        c.plot([1, amaxy], bins=[1, 1],    linecolor=ROOT.kGray + 2, linewidth=1, option='L')
-        c.plot([1, 1],     bins=[1, amaxx], linecolor=ROOT.kGray + 2, linewidth=1, option='L')
-
-        # Markers
-        for is_simple in [True, False]:
-            # Split the legend into simple- and MVA taggers
-            for ipoint, feat in enumerate(tagger_features):
-                if is_simple != ('tau21' in feat.lower() or 'd2' in feat.lower() or 'n2' in feat.lower()):
-                    continue
-                # Coordinates, label
-                idx = map(lambda t: t[2], points).index(feat)
-                x, y, label = points[idx]
-
-                if label.startswith('ANN'):
-                    label = 'ANN'
-                    pass
-
-                # Style
-                if ipoint > 3:  # @TEMP
-                    ipoint += 3
-                    pass
-                colour      = rp.colours[(ipoint // 2) % len(rp.colours)]
-                markerstyle = 20 + (ipoint % 2) * 4
-
-                # Draw
-                #restricts = ('knn' in feat.lower() or 'ddt' in feat.lower())
-                #asterisk  = ("#color[13]{*}" if restricts else "")
-                c.graph([y], bins=[x], markercolor=colour, markerstyle=markerstyle, label=latex(label, ROOT=True), option='P')
-                pass
-
-            # Draw class-specific legend
-            width = 0.18
-            c.legend(header=("Simple:" if is_simple else "MVA:"),
-                     width=width, xmin=0.54 + (width + 0.02) * (is_simple), ymax=0.827)  # ymax=0.782)
-            c.pads()[0]._legends[-1].GetListOfPrimitives()[0].SetTextSize(ROOT.gStyle.GetLegendTextSize() * 0.8)
-            c.pads()[0]._legends[-1].GetListOfPrimitives()[0].SetTextColor(ROOT.kGray + 3)
-            pass
-
-        # Markers, parametrised decorrelation
-        for feat in ann_vars:
-            #if feat in tagger_features:
-            #    continue
-            idx = map(lambda t: t[2], points).index(feat)
-            x, y, label = points[idx]
-
-            # Style
-            ipoint = 5 + 4  # @TEMP
-            colour      = rp.colours[(ipoint // 2) % len(rp.colours)]
-            markerstyle = 20 + (ipoint % 2) * 4
-
-            # Draw
-            c.graph([y], bins=[x], markercolor=colour, markerstyle=markerstyle, option='P')
-            c.latex("   " + label[4:-1], x, y, textsize=11, align=12, textcolor=ROOT.kGray + 2)
-            pass
-
-        # Connecting lines
-        for i in [0,1]:
-            x1, y1, _ = points[2 * i + 0]
-            x2, y2, _ = points[2 * i + 1]
-            colour = rp.colours[i]
-            c.graph([y1, y2], bins=[x1, x2], linecolor=colour, linestyle=2, option='L')
-            pass
-
-        # Connecting lines (ANN)
-        feats = [tagger_features[5]] + ann_vars  # @TEMP: Take CSS into account
-        for feat1, feat2 in zip(feats[:-1], feats[1:]):
-            idx1 = map(lambda t: t[2], points).index(feat1)
-            idx2 = map(lambda t: t[2], points).index(feat2)
-
-            x1, y1, _ = points[idx1]
-            x2, y2, _ = points[idx2]
-            colour = rp.colours[4]  # @TEMP: Default is 2
-            c.graph([y1, y2], bins=[x1, x2], linecolor=colour, linestyle=2, option='L')
-            pass
-
-        # Connecting lines (uBoost)
-        feats = tagger_features[-2:]
-        for feat1, feat2 in zip(feats[:-1], feats[1:]):
-            idx1 = map(lambda t: t[2], points).index(feat1)
-            idx2 = map(lambda t: t[2], points).index(feat2)
-
-            x1, y1, _ = points[idx1]
-            x2, y2, _ = points[idx2]
-            colour = rp.colours[5]  # @TEMP: Default is 3
-            c.graph([y1, y2], bins=[x1, x2], linecolor=colour, linestyle=2, option='L')
-            pass
-
-        # Boxes
-        box1 = ROOT.TBox(aminx, aminy, 1, amaxy)
-        box1.SetFillColorAlpha(ROOT.kBlack, 0.05)
-        box1.Draw("SAME")
-
-        box2 = ROOT.TBox(1, aminy, amaxx, 1)
-        box2.SetFillColorAlpha(ROOT.kBlack, 0.05)
-        box2.Draw("SAME")
-        c.pads()[0]._primitives[0].Draw('AXIS SAME')
-
-        # Decorations
-        #c.legend(xmin=0.65, xmax=0.90)
-        c.xlabel("Background rejection, 1 / #varepsilon_{bkg.} @ #varepsilon_{sig.} = 50%")
-        c.ylabel("Mass decorrelation, 1 / JSD @ #varepsilon_{sig.} = 50%")
-        c.xlim(*axisrangex)
-        c.ylim(*axisrangey)
-        c.logx()
-        c.logy()
-
-        opts_text = dict(textsize=11, textcolor=ROOT.kGray + 2)
-        midpointx = np.power(10, 0.5 * np.log10(amaxx))
-        midpointy = np.power(10, 0.5 * np.log10(amaxy))
-        c.latex("No separation",                     0.90, midpointy, angle=90, align=21, **opts_text)
-        c.latex("Maximal sculpting",                 midpointx, 0.90, angle= 0, align=23, **opts_text)
-        c.latex("    Less sculpting #rightarrow",    1.1, midpointy,  angle=90, align=23,**opts_text)
-        c.latex("    Greater separtion #rightarrow", midpointx, 1.1,  angle= 0, align=21,**opts_text)
-
-        c.text(["#sqrt{s} = 13 TeV",
-                "Testing dataset",
-                "Baseline selection",
-                ],
-            xmin=0.24,
-            qualifier=QUALIFIER)
-
-        #c.latex("* Restricting phase-space", 0.58, 0.57, NDC=True, align=12, **opts_text)
-
-        # Save
-        if args.save:
-            mkdir('figures/')
-            c.save('figures/genroc.pdf')
-            pass
-
-        # Show
-        if args.show:
-            c.show()
-            pass
-
-        # ...
-
-        # Reset styles
-        ROOT.gStyle.SetTitleOffset(ref_title_offset_x, 'x')
-        ROOT.gStyle.SetTitleOffset(ret_title_offset_y, 'y')
-        pass
+    from .studies import study_summary
+    study_summary(data, args, tagger_features, scan_features)
 
 
     # Perform distributions study
