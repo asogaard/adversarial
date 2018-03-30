@@ -53,21 +53,33 @@ def plot (args, data, feat, bins):
     # Canvas
     c = rp.canvas(batch=not args.show)
 
-    # Plots
+    # Style
     ROOT.gStyle.SetHatchesLineWidth(3)
+    ROOT.gStyle.SetTitleOffset(1.6, 'y')
     base = dict(bins=bins, alpha=0.5, normalise=True, linewidth=3)
+    style = {  # key = signal
+        True: {
+            'fillcolor': rp.colours[5],
+            'linecolor': rp.colours[5],
+            'fillstyle': 3454,
+            'label': "#it{W} jets",
+            },
+        False: {
+            'fillcolor': rp.colours[1],
+            'linecolor': rp.colours[1],
+            'fillstyle': 3445,
+            'label': "QCD jets",
+            }
+    }
+
+    # Plots
     for signal in [0, 1]:
-        msk    = (data['signal'] == signal)
-        colour = rp.colours[5 if signal else 1]
-        opts = dict(fillstyle=3454 if signal else 3445,
-                    label="#it{W} jets" if signal else "QCD jets",
-                    fillcolor=colour, linecolor=colour)
-        opts.update(base)
-        c.hist(data.loc[msk, feat].values, weights=data.loc[msk, 'weight'].values, **opts)
+        msk = (data['signal'] == signal)
+        style[signal].update(base)
+        c.hist(data.loc[msk, feat].values, weights=data.loc[msk, 'weight'].values, **style[signal])
         pass
 
     # Decorations
-    ROOT.gStyle.SetTitleOffset(1.6, 'y')
     c.xlabel("Large-#it{R} jet " + latex(feat, ROOT=True))
     c.ylabel("Fraction of jets")
     c.text(["#sqrt{s} = 13 TeV",
