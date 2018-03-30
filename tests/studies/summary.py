@@ -1,10 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-
-# Basic import(s)
-# ...
-
 # Scientific import(s)
 from sklearn.metrics import roc_curve
 
@@ -113,22 +109,19 @@ def study_summary (data, args, tagger_features, scan_features):
     # Markers
     for is_simple in [True, False]:
         # Split the legend into simple- and MVA taggers
-        for ipoint, feat in enumerate(tagger_features):
-            if is_simple != signal_high(feat):
-                continue
+        for ipoint, feat in enumerate(filter(lambda feat: signal_high(feat) == is_simple, tagger_features)):
 
             # Coordinates, label
             idx = map(lambda t: t[2], points).index(feat)
             x, y, label = points[idx]
 
-            if label.startswith('ANN'):
-                label = 'ANN'
-                pass
+            # Overwrite default name of parameter-scan classifier
+            label = 'ANN' if label.startswith('ANN') else label
+            # @TODO: uBoost
 
             # Style
-            if ipoint > 3:  # @TEMP
-                ipoint += 3
-                pass
+            ipoint += 3 if ipoint > 3 else 0  # @TEMP
+
             colour      = rp.colours[(ipoint // 2) % len(rp.colours)]
             markerstyle = 20 + (ipoint % 2) * 4
 
@@ -148,9 +141,7 @@ def study_summary (data, args, tagger_features, scan_features):
     for base_feat, group in scan_features.iteritems():
         # Get index in list of features
         ipoint = tagger_features.index(base_feat)
-        if ipoint > 3:  # @TEMP
-            ipoint += 3
-            pass
+        ipoint += 3 if ipoint > 3 else 0  # @TEMP
 
         # Style
         colour      = rp.colours[(ipoint // 2) % len(rp.colours)]
