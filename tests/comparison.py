@@ -23,6 +23,7 @@ from adversarial.utils import initialise_backend, wpercentile, latex, parse_args
 from adversarial.profile import profile, Profile
 from adversarial.constants import *
 from .studies.common import *
+import studies
 
 # Custom import(s)
 import rootplotting as rp
@@ -54,54 +55,11 @@ def main (args):
     # --------------------------------------------------------------------------
     data, features, _ = load_data(args.input + 'data.h5')
     data = data[data['train'] == 0]
-    #data = data.sample(frac=0.01)  # @TEMP!
+    data = data.sample(frac=0.01)  # @TEMP!
 
 
     # Common definitions
     # --------------------------------------------------------------------------
-    """
-    configs = [
-        {'type', 'DDT',
-         'name': '#tau_{21}',
-         'params': {
-             'transformed:' False,
-            },
-        },
-
-        {'type', 'DDT',
-         'name': '#tau_{21}^{DDT}',
-         'params': {
-             'transformed:' True,
-            },
-        },
-
-        {'type', 'kNN',
-         'name': 'D_{2}',
-         'params': {
-             'transformed': False,
-             'efficiency':  None
-            },
-        },
-
-        {'type', 'kNN',
-         'name': 'D_{2}^{kNN(%d%%)}' % kNN_eff,
-         'params': {
-             'transformed:' True,
-             'efficiency':  kNN_eff,
-            },
-        },
-
-        {'type': 'ANN',
-         'name': "ANN(#lambda={:.0f})".format(lambda_reg) ,
-         'params': {
-             'lambda': lambda_reg,
-            }
-
-        },
-        # ...
-    ]
-    #"""
-
     eps = np.finfo(float).eps
     msk_mass = (data['m'] > 60.) & (data['m'] < 100.)  # W mass window
     msk_sig  = data['signal'] == 1
@@ -244,184 +202,33 @@ def main (args):
 
     # Perform summary plot study
     # --------------------------------------------------------------------------
-    regex_nn = re.compile('\#lambda=[\d\.]+')
-    regex_ub = re.compile('\#alpha=[\d\.]+')
+    with Profile("Study: Summary plot"):
+        regex_nn = re.compile('\#lambda=[\d\.]+')
+        regex_ub = re.compile('\#alpha=[\d\.]+')
 
-    scan_features = {'NN': map(lambda feat: (feat, regex_nn.search(feat).group(0)), ann_vars),
-                     'Adaboost': [(uboost_var, regex_ub.search(uboost_var).group(0))]}
+        scan_features = {'NN': map(lambda feat: (feat, regex_nn.search(feat).group(0)), ann_vars),
+                         'Adaboost': [(uboost_var, regex_ub.search(uboost_var).group(0))]}
 
-    from .studies import study_summary
-    study_summary(data, args, tagger_features, scan_features)
-
+        studies.summary(data, args, tagger_features, scan_features)
+        pass
 
     # Perform distributions study
     # --------------------------------------------------------------------------
-    from .studies import study_distribution
-    for feat in tagger_features:
-        study_distribution(data, args, feat)
-        pass
-
-
-    return
-    '''
-    with Profile("Study: Distributions"):
+    with Profile("Study: Substructure tagger distributions"):
+        #from .studies import study_distribution
         for feat in tagger_features:
-
-            # Filter out NaNs (outside restricted phase-space)
-            valid = ~np.isnan(data[feat])
-
-            # Define bins
-            if 'knn' in feat.lower():
-                xmin, xmax = -1, 2
-            elif 'NN' in feat or 'tau21' in feat.lower() or 'boost' in feat.lower():
-                xmin, xmax = 0., 1.
-            elif feat == 'D2':
-                xmin, xmax = 0, 3.5
-            else:
-                xmin = wpercentile (data.loc[valid, feat].as_matrix().flatten(),  1, weights=data.loc[valid, 'weight'].as_matrix().flatten())
-                xmax = wpercentile (data.loc[valid, feat].as_matrix().flatten(), 99, weights=data.loc[valid, 'weight'].as_matrix().flatten())
-                pass
-
-            bins = np.linspace(xmin, xmax, 50 + 1, endpoint=True)
-
-            # Canvas
-            c = rp.canvas(batch=not args.show)
-
-            # Plots
-            ROOT.gStyle.SetHatchesLineWidth(3)
-            c.hist(data.loc[valid & (data['signal'] == 0), feat].as_matrix().flatten(), bins=bins,
-                   weights=data.loc[valid & (data['signal'] == 0), 'weight'].as_matrix().flatten(),
-                   alpha=0.5, fillcolor=rp.colours[1], label="QCD jets", normalise=True,
-                   fillstyle=3445, linewidth=3, linecolor=rp.colours[1])
-            c.hist(data.loc[valid & (data['signal'] == 1), feat].as_matrix().flatten(), bins=bins,
-                   weights=data.loc[valid & (data['signal'] == 1), 'weight'].as_matrix().flatten(),
-                   alpha=0.5, fillcolor=rp.colours[5], label="#it{W} jets", normalise=True,
-                   fillstyle=3454, linewidth=3, linecolor=rp.colours[5])
-
-            # Decorations
-            ROOT.gStyle.SetTitleOffset(1.6, 'y')
-            c.xlabel("Large-#it{R} jet " + latex(feat, ROOT=True))
-            c.ylabel("1/N dN/d{}".format(latex(feat, ROOT=True)))
-            c.text(["#sqrt{s} = 13 TeV",
-                    "Testing dataset",
-                    "Baseline selection",
-                    ],
-                qualifier=QUALIFIER)
-            c.ylim(2E-03, 2E+00)
-            c.logy()
-            c.legend()
-
-            # Save
-            if args.save:
-                mkdir('figures/')
-                c.save('figures/dist_{}.pdf'.format(filename(feat)))
-                pass
-
-            # Show
-            if args.show:
-                c.show()
-                pass
+            studies.distribution(data, args, feat)
             pass
         pass
-        '''
-
 
     # Perform jet mass distributions study
     # --------------------------------------------------------------------------
     with Profile("Study: Jet mass distributions"):
+        #from .studies import study_jetmass
         for feat in tagger_features:
-
-            # Define masks; fixed signal efficiency cut
-            eff_sig = 50
-            valid = ~np.isnan(data[feat])
-            msk_sig = data['signal'] == 1
-            msk_bkg = ~msk_sig
-            eff_cut = eff_sig if signal_high(feat) else 100 - eff_sig
-            cut = wpercentile(data.loc[valid & msk_sig, feat].as_matrix().flatten(), eff_cut, weights=data.loc[valid & msk_sig, 'weight'].as_matrix().flatten())
-            msk_pass = data[feat] > cut
-
-            # Ensure correct cut direction
-            if signal_high(feat):
-                msk_pass = ~msk_pass
-                pass
-
-            # Define bins
-            bins = MASSBINS
-
-            # Canvas
-            c = rp.canvas(num_pads=2, size=(int(800 * 600 / 857.), 600), batch=not args.show)
-
-            # Plots
-            ROOT.gStyle.SetHatchesLineWidth(3)
-            h_fail = c.hist(data.loc[valid & msk_bkg & ~msk_pass, 'm'].as_matrix().flatten(), bins=bins,
-                            weights=data.loc[valid & msk_bkg & ~msk_pass, 'weight'].as_matrix().flatten(),
-                            alpha=0.3, fillcolor=rp.colours[1], normalise=True,
-                            fillstyle=3445, linewidth=3, label="Failing cut",
-                            linecolor=rp.colours[1])
-            h_pass = c.hist(data.loc[valid & msk_bkg &  msk_pass, 'm'].as_matrix().flatten(), bins=bins,
-                            weights=data.loc[valid & msk_bkg &  msk_pass, 'weight'].as_matrix().flatten(),
-                            alpha=0.3, fillcolor=rp.colours[5], normalise=True,
-                            fillstyle=3454, linewidth=3, label="Passing cut",
-                            linecolor=rp.colours[5])
-
-            # Ratio plots
-            c.pads()[1].hist([1], bins=[bins[0], bins[-1]], linecolor=ROOT.kGray + 1, linewidth=1, linestyle=1)
-            h_ratio = c.ratio_plot((h_pass, h_fail), option='E2',   fillstyle=1001, fillcolor=rp.colours[0], linecolor=rp.colours[0], alpha=0.3)
-            c.ratio_plot((h_pass, h_fail), option='HIST', fillstyle=0, linewidth=3, linecolor=rp.colours[0])
-
-            # Out-of-bounds indicators
-            ymin, ymax = 1E-01, 1E+01
-            ratio = root_numpy.hist2array(h_ratio)
-            centres = bins[:-1] + 0.5 * np.diff(bins)
-            offset = 0.05  # Relative offset from top- and bottom of ratio pad
-
-            lymin, lymax = map(np.log10, (ymin, ymax))
-            ldiff = lymax - lymin
-
-            oobx = map(lambda t: t[0], filter(lambda t: t[1] > ymax, zip(centres,ratio)))
-            ooby = np.ones_like(oobx) * np.power(10, lymax - offset * ldiff)
-            if len(oobx) > 0:
-                c.pads()[1].graph(ooby, bins=oobx, markercolor=rp.colours[0], markerstyle=22, option='P')
-                pass
-
-            oobx = map(lambda t: t[0], filter(lambda t: t[1] < ymin, zip(centres,ratio)))
-            ooby = np.ones_like(oobx) * np.power(10, lymin + offset * ldiff)
-            if len(oobx) > 0:
-                c.pads()[1].graph(ooby, bins=oobx, markercolor=rp.colours[0], markerstyle=23, option='P')
-                pass
-
-            # Decorations
-            ROOT.gStyle.SetTitleOffset(1.6, 'y')
-            c.xlabel("Large-#it{R} jet mass [GeV]")
-            c.ylabel("1/N dN/d{}".format('m'))
-            c.text(["#sqrt{s} = 13 TeV,  QCD jets",
-                    "Testing dataset",
-                    "Baseline selection",
-                    "Fixed #varepsilon_{sig.} = %d%% cut on %s" % (eff_sig, latex(feat, ROOT=True)),
-                    ],
-                qualifier=QUALIFIER)
-            c.ylim(2E-04, 2E+02)
-
-            c.pads()[1].ylabel("Passing / failing")
-            c.pads()[1].logy()
-            c.pads()[1].ylim(ymin, ymax)
-
-            c.logy()
-            c.legend()
-
-            # Save
-            if args.save:
-                mkdir('figures/')
-                c.save('figures/jetmass_{}__eff_sig_{:d}.pdf'.format(standardise(feat), int(eff_sig)))
-                pass
-
-            # Show
-            if args.show:
-                c.show()
-                pass
+            studies.jetmass(data, args, feat)
             pass
         pass
-
 
 
     # Perform robustness study
@@ -457,8 +264,8 @@ def main (args):
             for cut, eff in zip(cuts, effs):
                 # Create ROOT histograms
                 msk_pass = data[feat] > cut
-                h_pass = c.hist(data.loc[valid &  msk_pass & msk, 'm'].as_matrix().flatten(), bins=bins, weights=data.loc[valid &  msk_pass & msk, 'weight'].as_matrix().flatten(), normalise=True, display=False)
-                h_fail = c.hist(data.loc[valid & ~msk_pass & msk, 'm'].as_matrix().flatten(), bins=bins, weights=data.loc[valid & ~msk_pass & msk, 'weight'].as_matrix().flatten(), normalise=True, display=False)
+                h_pass = c.hist(data.loc[valid &  msk_pass & msk, 'm'].as_matrix().flatten(), bins=MASSBINS, weights=data.loc[valid &  msk_pass & msk, 'weight'].as_matrix().flatten(), normalise=True, display=False)
+                h_fail = c.hist(data.loc[valid & ~msk_pass & msk, 'm'].as_matrix().flatten(), bins=MASSBINS, weights=data.loc[valid & ~msk_pass & msk, 'weight'].as_matrix().flatten(), normalise=True, display=False)
 
                 # Convert to numpy arrays
                 p = root_numpy.hist2array(h_pass)

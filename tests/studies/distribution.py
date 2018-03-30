@@ -7,15 +7,14 @@ import ROOT
 # Project import(s)
 from .common import *
 from adversarial.utils import mkdir, latex, wpercentile
-from adversarial.profile import profile
 from adversarial.constants import *
 
 # Custom import(s)
 import rootplotting as rp
 
 
-@profile
-def study_distribution (data, args, feat):
+@showsave
+def distribution (data, args, feat):
     """
     Perform study of substructure variable distributions.
 
@@ -63,15 +62,7 @@ def study_distribution (data, args, feat):
     c.logy()
     c.legend()
 
-    # Save
-    if args.save:
-        mkdir('figures/')
-        c.save('figures/distribution_{}.pdf'.format(standardise(feat)))
-        pass
+    # Output
+    path = 'figures/distribution_{}.pdf'.format(standardise(feat))
 
-    # Show
-    if args.show:
-        c.show()
-        pass
-
-    return
+    return c, args, path

@@ -10,15 +10,14 @@ import ROOT
 # Project import(s)
 from .common import *
 from adversarial.utils import mkdir, latex
-from adversarial.profile import profile
 from adversarial.constants import *
 
 # Custom import(s)
 import rootplotting as rp
 
 
-@profile
-def study_summary (data, args, tagger_features, scan_features):
+@showsave
+def summary (data, args, tagger_features, scan_features):
     """
     Perform study of combined classification- and decorrelation performance.
 
@@ -109,7 +108,10 @@ def study_summary (data, args, tagger_features, scan_features):
     # Markers
     for is_simple in [True, False]:
         # Split the legend into simple- and MVA taggers
-        for ipoint, feat in enumerate(filter(lambda feat: signal_high(feat) == is_simple, tagger_features)):
+        for ipoint, feat in enumerate(tagger_features):
+
+            # Select only appropriate taggers
+            if is_simple != signal_high(feat): continue
 
             # Coordinates, label
             idx = map(lambda t: t[2], points).index(feat)
@@ -211,18 +213,11 @@ def study_summary (data, args, tagger_features, scan_features):
         xmin=0.24,
         qualifier=QUALIFIER)
 
-    # Save
-    if args.save:
-        mkdir('figures/')
-        c.save('figures/summary.pdf')
-        pass
-
-    # Show
-    if args.show:
-        c.show()
-        pass
-
     # Reset styles
     ROOT.gStyle.SetTitleOffset(ref_title_offset_x, 'x')
     ROOT.gStyle.SetTitleOffset(ret_title_offset_y, 'y')
-    pass
+
+    # Output
+    path = 'figures/summary.pdf'
+
+    return c, args, path

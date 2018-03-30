@@ -5,9 +5,37 @@
 import numpy as np
 from scipy.stats import entropy
 
+# Project imports
+from adversarial.utils import mkdir
+
 
 # Define global variable(s)
 MASSBINS = np.linspace(40, 300, (300 - 40) // 10 + 1, endpoint=True)
+
+
+def showsave (f):
+    """
+    Method decorrator for all study method, to (optionally) show and save the
+    canvas to file.
+    """
+    def wrapper (*args, **kwargs):
+        # Run study
+        c, args, path = f(*args, **kwargs)
+
+        # Save
+        if args.save:
+            dir = '/'.join(path.split('/')[:-1])
+            mkdir(dir)
+            c.save(path)
+            pass
+
+        # Show
+        if args.show:
+            c.show()
+            pass
+        return
+
+    return wrapper
 
 
 def signal_high (feat):
