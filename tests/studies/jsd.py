@@ -112,8 +112,6 @@ def plot (*argv):
 
         c.legend(header=("Simple:" if is_simple else "MVA:"),
                  width=width, xmin=0.56 + (width + 0.02) * (is_simple), ymax=0.888)  # ymax=0.782)
-        c.pads()[0]._legends[-1].GetListOfPrimitives()[0].SetTextSize(ROOT.gStyle.GetLegendTextSize() * 0.8)
-        c.pads()[0]._legends[-1].GetListOfPrimitives()[0].SetTextColor(ROOT.kGray + 3)
         pass
 
     # Decorations

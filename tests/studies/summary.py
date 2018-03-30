@@ -135,8 +135,6 @@ def summary (data, args, tagger_features, scan_features):
         width = 0.18
         c.legend(header=("Simple:" if is_simple else "MVA:"),
                  width=width, xmin=0.54 + (width + 0.02) * (is_simple), ymax=0.827)  # ymax=0.782)
-        c.pads()[0]._legends[-1].GetListOfPrimitives()[0].SetTextSize(ROOT.gStyle.GetLegendTextSize() * 0.8)
-        c.pads()[0]._legends[-1].GetListOfPrimitives()[0].SetTextColor(ROOT.kGray + 3)
         pass
 
     # Markers, parametrised decorrelation
