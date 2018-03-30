@@ -27,21 +27,17 @@ def distribution (data, args, feat):
     """
 
     # Define bins
-    if 'knn' in feat.lower():
-        xmin, xmax = -1, 2
-    elif 'NN' in feat or 'tau21' in feat.lower() or 'boost' in feat.lower():
-        xmin, xmax = 0., 1.
-    elif feat == 'D2':
-        xmin, xmax = 0, 3.5
-    else:
-        xmin = wpercentile (data[feat].values,  1, weights=data['weight'].values)
-        xmax = wpercentile (data[feat].values, 99, weights=data['weight'].values)
-        pass
+    xmin = wpercentile (data[feat].values,  1, weights=data['weight'].values)
+    xmax = wpercentile (data[feat].values, 99, weights=data['weight'].values)
+
+    snap = 0.5  # Snap to nearest multiple in appropriate direction
+    xmin = np.floor(xmin / snap) * snap
+    xmax = np.ceil (xmax / snap) * snap
 
     bins = np.linspace(xmin, xmax, 50 + 1, endpoint=True)
 
     # Perform plotting
-    c = plot(feat, bins)
+    c = plot(args, data, feat, bins)
 
     # Output
     path = 'figures/distribution_{}.pdf'.format(standardise(feat))
@@ -49,7 +45,7 @@ def distribution (data, args, feat):
     return c, args, path
 
 
-def plot (feat, bins):
+def plot (args, data, feat, bins):
     """
     Method for delegating plotting.
     """
@@ -59,9 +55,16 @@ def plot (feat, bins):
 
     # Plots
     ROOT.gStyle.SetHatchesLineWidth(3)
-    base =  dict(bins=bins, alpha=0.5, normalise=True, linewidth=3)
-    c.hist(data.loc[(data['signal'] == 0), feat].values, weights=data.loc[(data['signal'] == 0), 'weight'].values, fillstyle=3445, fillcolor=rp.colours[1], linecolor=rp.colours[1], label="QCD jets",    **base)
-    c.hist(data.loc[(data['signal'] == 1), feat].values, weights=data.loc[(data['signal'] == 1), 'weight'].values, fillstyle=3454, fillcolor=rp.colours[5], linecolor=rp.colours[5], label="#it{W} jets", **base)
+    base = dict(bins=bins, alpha=0.5, normalise=True, linewidth=3)
+    for signal in [0, 1]:
+        msk    = (data['signal'] == signal)
+        colour = rp.colours[5 if signal else 1]
+        opts = dict(fillstyle=3454 if signal else 3445,
+                    label="#it{W} jets" if signal else "QCD jets",
+                    fillcolor=colour, linecolor=colour)
+        opts.update(base)
+        c.hist(data.loc[msk, feat].values, weights=data.loc[msk, 'weight'].values, **opts)
+        pass
 
     # Decorations
     ROOT.gStyle.SetTitleOffset(1.6, 'y')
