@@ -9,7 +9,7 @@ import ROOT
 
 # Project import(s)
 from .common import *
-from adversarial.utils import mkdir, latex, flatten
+from adversarial.utils import mkdir, latex
 from adversarial.profile import profile
 from adversarial.constants import *
 
