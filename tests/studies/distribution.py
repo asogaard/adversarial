@@ -17,7 +17,7 @@ import rootplotting as rp
 @profile
 def study_distribution (data, args, feat):
     """
-    Perform study of combined classification- and decorrelation performance.
+    Perform study of substructure variable distributions.
 
     Saves plot `figures/distribution_[feat].pdf`
 
