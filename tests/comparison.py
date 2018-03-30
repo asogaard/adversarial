@@ -18,9 +18,8 @@ from sklearn.metrics import roc_curve, roc_auc_score
 from sklearn.preprocessing import StandardScaler
 
 # Project import(s)
-from adversarial.utils import initialise_backend, wpercentile, latex, parse_args, initialise, load_data, mkdir  # roc_efficiencies, roc_auc
+from adversarial.utils import initialise_backend, wpercentile, latex, parse_args, initialise, load_data, mkdir
 from adversarial.profile import profile, Profile
-#from adversarial.new_utils import
 from adversarial.constants import *
 
 # Custom import(s)
@@ -81,7 +80,6 @@ def main (args):
     # --------------------------------------------------------------------------
     data, features, _ = load_data(args.input + 'data.h5')
     data = data[data['train'] == 0]
-    #data = data.sample(frac=0.2)  # @TEMP!
 
 
     # Common definitions
@@ -138,10 +136,6 @@ def main (args):
     D2_kNN_var = 'D2-kNN({:d}%)'.format(kNN_eff)
     uboost_var = 'uBoost(#varepsilon={:d}%,#alpha={:.1f})'.format(uboost_eff, uboost_uni)
 
-    #lambda_reg  = 1
-    #lambda_regs = sorted([0.1, 0.3, 1, 3, 10, 30, 100])#, 100])  # 10, 100
-    #lambda_reg  = 3
-    #lambda_regs = sorted([3, 10, 30, 50, 100, 300])  # , 30, 100])#, 100])  # 10, 100
     lambda_reg  = 10
     lambda_regs = sorted([3, 10, 30, 60, 100])
     ann_vars    = list()
@@ -165,7 +159,7 @@ def main (args):
         pass
     nn_linear_var = nn_linear_vars[lambda_regs.index(lambda_reg)]
 
-    tagger_features = ['Tau21','Tau21DDT', 'D2', D2_kNN_var, 'D2CSS', 'NN', ann_var, 'Adaboost', uboost_var] #, nn_mass_var, nn_linear_var]  # D2CSS, N2KNN
+    tagger_features = ['Tau21','Tau21DDT', 'D2', D2_kNN_var, 'D2CSS', 'NN', ann_var, 'Adaboost', uboost_var]
 
     # DDT variables
     fit_range = (1.5, 4.0)
@@ -184,12 +178,6 @@ def main (args):
                 pass
             data['rhoDDT']   = pd.Series(np.log(np.square(data['m'])/(data['pt'] * 1.)), index=data.index)
             data['Tau21DDT'] = pd.Series(data['Tau21'] - ddt.predict(data['rhoDDT'].as_matrix().reshape((-1,1))), index=data.index)
-
-            # Restrict phase-space
-            #from run.ddt.common import FIT_RANGE as ddt_rhoDDT_range
-            #valid = (data['rhoDDT'] > ddt_rhoDDT_range[0]) & (data['rhoDDT'] < ddt_rhoDDT_range[1])
-            #data.loc[~valid, 'Tau21']    = np.nan  # To compare apples-to-apples
-            #data.loc[~valid, 'Tau21DDT'] = np.nan
             pass
 
         # D2-kNN
@@ -217,13 +205,6 @@ def main (args):
 
             kNN_percentile = knn.predict(X).flatten()
             data[D2_kNN_var] = pd.Series(data[knn_var] - kNN_percentile, index=data.index)
-
-            # Restrict phase-space
-            #valid = np.ones((data.shape[0],)).astype(bool)
-            #for var, limits in knn_axis.iteritems():
-            #    valid &= (data[var] > limits[1]) & (data[var] < limits[2])
-            #data.loc[~valid, 'D2']       = np.nan  # To compare apples-to-apples
-            #data.loc[~valid, D2_kNN_var] = np.nan
             pass
 
         # D2-CSS
@@ -255,34 +236,11 @@ def main (args):
 
             for ann_var_, lambda_str_ in zip(ann_vars, lambda_strs):
                 print "== Loading model for {}".format(ann_var_)
-                #combined.load_weights('models/adversarial/combined/crossval/combined_lambda{}__1of5.h5'.format(lambda_str_))
                 combined.load_weights('models/adversarial/combined/full/combined_lambda{}.h5'.format(lambda_str_))
                 data[ann_var_] = pd.Series(classifier.predict(data[features].as_matrix().astype(K.floatx()), batch_size=2048 * 8).flatten().astype(K.floatx()), index=data.index)
                 pass
             print "== Done loading ANN models"
             pass
-
-
-        """ @TEMP
-        # NN: mass-reweighted
-        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-        with Profile("NN (mass-reweighted)"):
-            classifier = load_model('models/adversarial/classifier_massreweighted/full/classifier_massreweighted.h5')
-
-            data[nn_mass_var] = pd.Series(classifier.predict(data[features].as_matrix().astype(K.floatx()), batch_size=2048 * 8).flatten().astype(K.floatx()), index=data.index)
-            pass
-
-        # NN: linearly decorrelated
-        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-        with Profile("NN (linearly decorrelated)"):
-            decorrelator = decorrelation_model(classifier, 1, **cfg['combined']['model'])
-            for nn_linear_var_, lambda_str_ in zip(nn_linear_vars, lambda_strs):
-                decorrelator.load_weights('models/adversarial/combined/full/classifier_decorrelator_lambda{}.h5'.format(lambda_str_))
-                data[nn_linear_var_] = pd.Series(classifier.predict(data[features].as_matrix().astype(K.floatx()), batch_size=2048 * 8).flatten().astype(K.floatx()), index=data.index)
-                pass
-            pass
-        #"""
-
 
         # Adaboost
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -319,7 +277,7 @@ def main (args):
     with Profile("Study: Generalised ROC"):
 
         points = list()
-        for feat in tagger_features + ann_vars:  # + nn_linear_vars:
+        for feat in tagger_features + ann_vars:
             print  "-- {}".format(feat)
 
             # Check for duplicates
@@ -885,8 +843,10 @@ def main (args):
                 # Filter out NaNs (outside restricted phase-space)
                 valid = ~np.isnan(data[feat])
 
+                sign = 1. if ('D2' in feat or 'Tau21' in feat or 'N2' in feat) else -1.
+
                 eff_sig, eff_bkg, thresholds = roc_curve(data.loc[valid & msk_mass, 'signal'].values,
-                                                         data.loc[valid & msk_mass, feat]    .values,
+                                                         data.loc[valid & msk_mass, feat]    .values * sign,
                                                          sample_weight=data.loc[valid & msk_mass, 'weight'].values)
 
                 #### eff_sig, eff_bkg = roc_efficiencies (data.loc[valid & msk_mass &  msk_sig, feat].as_matrix().flatten().astype(float),
@@ -900,10 +860,10 @@ def main (args):
                 eff_bkg = eff_bkg[indices]
 
                 # Subsample to 1% steps
-                #### targets = np.linspace(0, 1, 100 + 1, endpoint=True)
-                #### indices = np.array([np.argmin(np.abs(eff_sig - t)) for t in targets])
-                #### eff_sig = eff_sig[indices]
-                #### eff_bkg = eff_bkg[indices]
+                targets = np.linspace(0, 1, 100 + 1, endpoint=True)
+                indices = np.array([np.argmin(np.abs(eff_sig - t)) for t in targets])
+                eff_sig = eff_sig[indices]
+                eff_bkg = eff_bkg[indices]
 
                 # Store
                 ROCs[feat] = (eff_sig,eff_bkg)
@@ -917,8 +877,9 @@ def main (args):
             AUCs = dict()
             for feat in tagger_features:
                 #AUCs[feat] = roc_auc (*ROCs[feat])
+                sign = 1. if ('D2' in feat or 'Tau21' in feat or 'N2' in feat) else -1.
                 AUCs[feat] = roc_auc_score(data.loc[valid & msk_mass, 'signal'].values,
-                                           data.loc[valid & msk_mass, feat]    .values,
+                                           data.loc[valid & msk_mass, feat]    .values * sign,
                                            sample_weight=data.loc[valid & msk_mass, 'weight'].values)
             pass
 
