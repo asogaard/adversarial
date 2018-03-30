@@ -67,7 +67,7 @@ def study_summary (data, args, tagger_features, scan_features):
 
         # scikit-learn assumes signal towards 1, background towards 0
         pred = data[feat].values.copy()
-        if 'Tau' in feat or 'D2' in feat or 'N2' in feat:
+        if signal_high(feat):
             print "   Reversing cut direction for {}".format(feat)
             pred *= -1.
             pass
