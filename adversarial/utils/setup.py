@@ -181,7 +181,7 @@ def initialise (args):
         apply_patch(cfg, patch)
         pass
 
-    # @TODO: Scale loss_weights[0] by 1./(1. + lambda_reg)?
+    # Scale loss_weights[0] by 1./(1. + lambda_reg)
     cfg['combined']['compile']['loss_weights'][0] *= 1./(1. + cfg['combined']['model']['lambda_reg'])
     
     # Set adversary learning rate (LR) ratio from ratio of loss_weights

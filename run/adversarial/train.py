@@ -34,7 +34,6 @@ import matplotlib.pyplot as plt
 from adversarial.utils     import *
 from adversarial.profile   import *
 from adversarial.constants import *
-from adversarial.new_utils import parse_args, initialise, load_data, mkdir, kill, save, load, lwtnn_save
 
 
 # Global variable(s)
@@ -71,7 +70,6 @@ def main (args):
             cfg['combined']['fit']['verbose'] = 2
 
             pass
-
 
         cfg['classifier']['fit']['verbose'] = 2  # @TEMP
         cfg['combined']  ['fit']['verbose'] = 2  # @TEMP
@@ -168,7 +166,7 @@ def main (args):
     lambda_reg = cfg['combined']['model']['lambda_reg']  # Use same `lambda` as the adversary
     digits = int(np.ceil(max(-np.log10(lambda_reg), 0)))
     lambda_str = '{l:.{d:d}f}'.format(d=digits,l=lambda_reg).replace('.', 'p')
-    
+
     # Get standard-formatted inputs for reweighting regressor
     from run.reweight.common import get_input as reweighter_input
     from run.reweight.common import Scenario as ReweightedScenario
@@ -194,9 +192,13 @@ def main (args):
         weight_flatness *= np.sum(data.loc[msk, 'weight']) / np.sum(weight_flatness)
 
         # Store flatness-boosted weights
-        weight_flatness_      = data['weight'].copy().as_matrix()
+        weight_flatness_      = data['weight'].copy().as_matrix() * 0.  # @NOTE: Make sure that this is the right thing to do
         weight_flatness_[msk] = weight_flatness
         data['weight_flatness'] = pd.Series(weight_flatness_, index=data.index)
+        #data['weight_flatness'] *= np.sum(data['weight']) / np.sum(data.loc[data['signal'] == 0, 'weight'])  # @NOTE: Make sure that this is the right thing to do
+        data['weight_flatness'] /= np.mean(data['weight_flatness'])  # @NOTE: Make sure that this is the right thing to do
+        #print "@TEMP: Mean weight_flatness:", np.mean(data['weight_flatness'])
+
 
         # Jet mass
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -218,7 +220,7 @@ def main (args):
         pass
 
 
-    # Classifier-only fit
+    # Classifier-only fit, cross-validation
     # --------------------------------------------------------------------------
     with Profile("Classifier-only fit, cross-validation"):
         # @TODO:
@@ -254,8 +256,8 @@ def main (args):
                 with Profile("Fold {}/{}".format(fold + 1, args.folds)):
 
                     # Map to DataFrame indices
-                    train      = data.index[train]
-                    validation = data.index[validation]
+                    #train      = data.index[train]
+                    #validation = data.index[validation]
 
                     # Define unique name for current classifier
                     name = '{}__{}of{}'.format(basename, fold + 1, args.folds)
@@ -276,13 +278,13 @@ def main (args):
                     parallelised.compile(**cfg['classifier']['compile'])
 
                     # Prepare arrays
-                    X = data.loc[train, features].values
-                    Y = data.loc[train, 'signal'].values
-                    W = data.loc[train, 'weight'].values
+                    X = data[features].values[train]
+                    Y = data['signal'].values[train]
+                    W = data['weight'].values[train]
                     validation_data = (
-                        data.loc[validation, features].values,
-                        data.loc[validation, 'signal'].values,
-                        data.loc[validation, 'weight'].values
+                        data[features].values[validation],
+                        data['signal'].values[validation],
+                        data['weight'].values[validation]
                     )
 
                     # Create callbacks
@@ -328,9 +330,10 @@ def main (args):
                     histories.append(history)
                     pass
             except IOError as err:
-                log.error("[ERROR] {}".format(err))
-                log.error("[ERROR] Not all files were loaded. Exiting.")
-                return 1
+                log.error("{}".format(err))
+                log.error("Not all files were loaded. Exiting.")
+                #return 1  # @TEMP
+                pass
 
             pass # end: train/load
         pass
@@ -374,7 +377,6 @@ def main (args):
                 pass
 
             # Compile model (necessary to save properly)
-            # @TODO: Reset optimiser?
             parallelised.compile(**cfg['classifier']['compile'])
 
             # Create callbacks
@@ -388,7 +390,7 @@ def main (args):
             # Prepare arrays
             X = data[features].values
             Y = data['signal'].values
-            W = data['weight'].values
+            W = data['weight'].values  # @TODO: Normalise to mean 1
 
             # Fit classifier model
             ret = parallelised.fit(X, Y, sample_weight=W, callbacks=callbacks, **cfg['classifier']['fit'])
@@ -413,132 +415,173 @@ def main (args):
     lwtnn_save(classifier, 'nn')
 
 
-    # Mass-reweighted classifier fit, full
+    # Definitions for adversarial training
     # --------------------------------------------------------------------------
-    with Profile("Mass-reweighted classifier fit, full"):
+    # Create custom Kullback-Leibler (KL) divergence cost.
+    def kullback_leibler (p_true, p_pred):
+        return -K.log(p_pred)
 
-        # Define variable(s)
-        name    = 'classifier_massreweighted'
-        basedir = 'models/adversarial/classifier/full/'
+    cfg['combined']['compile']['loss'][1] = kullback_leibler
 
-        if args.train or args.train_classifier:
-            log.info("Training full classifier")
-
-            # Get classifier
-            classifier = classifier_model(num_features, **cfg['classifier']['model'])
-
-            # Parallelise on GPUs
-            if (not args.theano) and args.gpu and args.devices > 1:
-                parallelised = multi_gpu_model(classifier, args.devices)
-            else:
-                parallelised = classifier
-                pass
-
-            # Compile model (necessary to save properly)
-            # @TODO: Reset optimiser?
-            parallelised.compile(**cfg['classifier']['compile'])
-
-            # Create callbacks
-            callbacks = []
-
-            # -- TensorBoard
-            if not args.theano:
-                callbacks += [TensorBoard(log_dir=tensorboard_dir + name + '/')]
-                pass
-
-            # Prepare arrays
-            X = data[features].values
-            Y = data['signal'].values
-            W = data['weight_mass'].values  # @TODO
-
-            # Fit classifier model
-            ret = parallelised.fit(X, Y, sample_weight=W, callbacks=callbacks, **cfg['classifier']['fit'])
-
-            # Save classifier model and training history to file, both in unique
-            # output directory and in the directory for pre-trained classifiers.
-            for destination in [args.output, basedir]:
-                save(destination, name, classifier, ret.history)
-                pass
-
-        else:
-
-            # Load pre-trained classifier
-            log.info("Loading full classifier from file")
-            classifier, history = load(basedir, name)
-            pass # end: train/load
-        pass
+    pretrain_epochs = 5  # @TODO: Make configurable  # `1` leads to good performance.
 
 
-    # Linearly decorrelated classifier fit, full
+    # Combined adversarial fit, cross-validation
     # --------------------------------------------------------------------------
-    with Profile("Linearly decorrelated classifier fit, full"):
+    weight_var = 'weight'  # 'weight_flatness'
+    data['weight_adv'] = pd.Series(np.multiply(data[weight_var].values, 1. - data['signal'].values), index=data.index)
+    data['weight_adv'] /= data['weight_adv'].mean()
 
-        # Define variable(s)
-        name    = 'classifier_decorrelator_lambda{}'.format(lambda_str)
-        basedir = 'models/adversarial/combined/full/'
 
-        # Load pre-trained classifier
-        classifier, _ = load('models/adversarial/classifier/full/', 'classifier')
+    """ @TEMP
+    with Profile("Combined adversarial fit, cross-validation"):
+        # @TODO:
+        # - Checkpointing
 
-        # Create decorrelation model
-        decorrelator = decorrelation_model(classifier, decorrelation.shape[1], **cfg['combined']['model'])
+        # Define variables
+        basename = 'combined_lambda{}'.format(lambda_str)
+        basedir  = 'models/adversarial/combined/crossval/'
+
+        # Get indices for each fold in stratified k-fold training
+        # @NOTE: No shuffling is performed -- assuming that's already done above.
+        skf = StratifiedKFold(n_splits=args.folds).split(data[features].values,
+                                                         data['signal'].values)
 
         if args.train or args.train_adversarial:
-            log.info("Training full classifier")
+            log.info("Training combined model cross-validation")
 
-            # Save classifier model diagram to file
-            plot_model(decorrelator, to_file=args.output + 'model_{}.png'.format(name), show_shapes=True)
+            # Loop `k` folds
+            for fold, (train, validation) in enumerate(skf):
+                with Profile("Fold {}/{}".format(fold + 1, args.folds)):
 
-            # Parallelise on GPUs
-            if (not args.theano) and args.gpu and args.devices > 1:
-                parallelised = multi_gpu_model(decorrelator, args.devices)
-            else:
-                parallelised = decorrelator
+                    # Map to DataFrame indices
+                    #train      = data.index[train]
+                    #validation = data.index[validation]
+
+                    # Define unique name for current classifier
+                    name = '{}__{}of{}'.format(basename, fold + 1, args.folds)
+
+                    # Load pre-trained classifier
+                    classifier, _ = load('models/adversarial/classifier/full/', 'classifier')
+
+                    # Set up adversary
+                    adversary = adversary_model(gmm_dimensions=decorrelation.shape[1],
+                                                **cfg['adversary']['model'])
+
+                    # Set up combined, adversarial model
+                    combined = combined_model(classifier, adversary, **cfg['combined']['model'])
+
+                    # Parallelise on GPUs
+                    if (not args.theano) and args.gpu and args.devices > 1:
+                        parallelised = multi_gpu_model(combined, args.devices)
+                    else:
+                        parallelised = combined
+                        pass
+
+                    # Prepare arrays
+                    # @TODO:
+                    # - Properly handle non-reweighted case
+                    W2_train      = np.multiply(data[weight_var].values[train],      1. - data['signal'].values[train])
+                    W2_validation = np.multiply(data[weight_var].values[validation], 1. - data['signal'].values[validation])
+                    W2_train      /= np.mean(W2_train)       # @TEMP
+                    W2_validation /= np.mean(W2_validation)  # @TEMP
+                    #### W2_train      *= 2.  # @TEMP
+                    #### W2_validation *= 2.  # @TEMP
+
+                    X = [data[features].values[train], decorrelation[train]]
+                    Y = [data['signal'].values[train], np.ones_like(data['signal'].values[train]).astype(K.floatx())]
+                    W = [data['weight'].values[train], data['weight_adv'].values[train]]
+                    validation_data = (
+                        [data[features].values[validation], decorrelation[validation]],
+                        [data['signal'].values[validation], np.ones_like(data['signal'].values[validation]).astype(K.floatx())],
+                        [data['weight'].values[validation], data['weight_adv'].values[validation]]
+                    )
+                    #W = [data['weight'].values, np.multiply(data['weight_flatness'].values, 1. - data['signal'].values)]
+                    #W = [data['weight'].values, np.multiply(data['weight'].values, 1. - data['signal'].values)]
+
+                    # Pre-training adversary
+                    log.info("Pre-training")
+                    classifier.trainable = False
+
+                    # Compile model for pre-training
+                    save_lr = K.get_value(cfg['combined']['compile']['optimizer'].lr)
+                    K.set_value(cfg['combined']['compile']['optimizer'].lr, save_lr)
+                    parallelised.compile(**cfg['combined']['compile'])
+
+                    log.info("Learning rate before pre-training:  {}".format(K.get_value(cfg['combined']['compile']['optimizer'].lr)))
+
+                    # Compute initial losses
+                    log.info("Computing initial loss")
+                    X_val, Y_val, W_val = validation_data
+                    eval_opts = dict(batch_size=cfg['combined']['fit']['batch_size'], verbose=0)
+                    K.set_learning_phase(1)  # Manually set to training phase, for consistent comparison
+                    initial_losses = [parallelised.evaluate(X,     Y,     sample_weight=W,     **eval_opts),
+                                      parallelised.evaluate(X_val, Y_val, sample_weight=W_val, **eval_opts)]
+
+                    pretrain_fit_opts = dict(**cfg['combined']['fit'])
+                    pretrain_fit_opts['epochs'] = pretrain_epochs
+                    ret_pretrain = parallelised.fit(X, Y, sample_weight=W, validation_data=validation_data, **pretrain_fit_opts)
+
+                    # Fit classifier model
+                    log.info("Actual training")
+                    classifier.trainable = True
+
+                    # Re-compile combined model for full training
+                    K.set_value(cfg['combined']['compile']['optimizer'].lr, save_lr)
+                    parallelised.compile(**cfg['combined']['compile'])
+                    log.info("Learning rate before full training: {}".format(K.get_value(cfg['combined']['compile']['optimizer'].lr)))
+
+                    ret = parallelised.fit(X, Y, sample_weight=W, validation_data=validation_data, **cfg['combined']['fit'])
+
+                    # Compute final losses (check) @TEMP
+                    log.info("Computing final loss")
+                    final_losses = [parallelised.evaluate(X,     Y,     sample_weight=W,     **eval_opts),
+                                    parallelised.evaluate(X_val, Y_val, sample_weight=W_val, **eval_opts)]
+
+                    # Prepend initial losses
+                    for metric, loss_train, loss_val in zip(parallelised.metrics_names, *initial_losses):
+                        ret_pretrain.history[metric]         .insert(0, loss_train)
+                        ret_pretrain.history['val_' + metric].insert(0, loss_val)
+                        pass
+
+                    for metric in parallelised.metrics_names:
+                        ret.history[metric]          = ret_pretrain.history[metric]          + ret.history[metric]
+                        ret.history['val_' + metric] = ret_pretrain.history['val_' + metric] + ret.history['val_' + metric]
+                        pass
+
+                    #### for metric, loss_train, loss_val in zip(parallelised.metrics_names, *final_losses):
+                    ####     ret.history[metric]         .append(loss_train)
+                    ####     ret.history['val_' + metric].append(loss_val)
+                    ####     pass
+
+                    # Save combined model and training history to file, both in unique
+                    # output directory and in the directory for pre-trained classifiers.
+                    for destination in [args.output, basedir]:
+                        print "Saving {} to {}".format(name, destination)
+                        save(destination, name, combined, ret.history)
+                        pass
+                    pass
                 pass
-
-            # Update compilation config
-            # -- Add linear correlation loss
-            cfg['classifier']['compile']['loss'] = [cfg['classifier']['compile']['loss'], 'MSE']
-            # -- Scale learning rate down by 1000
-            cfg['classifier']['compile']['optimizer'].lr *= 1.0E-03
-
-            # Compile model (necessary to save properly)
-            # @TODO: Reset optimiser?
-            parallelised.compile(loss_weights=[1., lambda_reg], **cfg['classifier']['compile'])
-
-            # Create callbacks
-            callbacks = []
-
-            # -- TensorBoard
-            if not args.theano:
-                callbacks += [TensorBoard(log_dir=tensorboard_dir + name + '/')]
-                pass
-
-            # Prepare arrays
-            X = data[features].values
-            Y = data['signal'].values
-            W = data['weight'].values
-            zeros = np.zeros((X.shape[0],))
-
-            # Fit classifier model
-            ret = parallelised.fit([X, decorrelation, W], [Y, zeros], sample_weight=[W, W], callbacks=callbacks, **cfg['classifier']['fit'])
-
-            # Save classifier model and training history to file, both in unique
-            # output directory and in the directory for pre-trained classifiers.
-            for destination in [args.output, basedir]:
-                save(destination, name, decorrelator, ret.history)
-                pass
-
-        else:
-
-            # Load pre-trained classifier
-            log.info("Loading full classifier from file")
-            decorrelator, history = load(basedir, name, model=decorrelator)
-            pass # end: train/load
+            pass
         pass
+        """
+
+    # Early stopping in case of adversarial network
+    # --------------------------------------------------------------------------
+    if args.optimise_adversarial:
+        # Kill TensorBoard
+        if args.tensorboard:
+            kill(tensorboard_pid, "TensorBoard")
+            pass
+
+        # @TODO:
+        # - Decide on proper metric!
+        #   - clf_loss - lambda * <JSD( pass(m) || fail(m) )>?
+        #   - Stratified k-fold cross-validation?
+        return None
 
 
-    # Combined adversarial fit, full (@TODO: Cross-val?)
+    # Combined adversarial fit, full
     # --------------------------------------------------------------------------
     with Profile("Combined adversarial fit, full"):
         # @TODO:
@@ -586,13 +629,6 @@ def main (args):
         if args.train or args.train_adversarial:
             log.info("Training full, combined model")
 
-            # Create custom Kullback-Leibler (KL) divergence cost.
-            eps = np.finfo(float).eps
-            def kullback_leibler (p_true, p_pred):
-                return - K.log(p_pred)  # + eps)
-
-            cfg['combined']['compile']['loss'][1] = kullback_leibler
-
             # Parallelise on GPUs
             if (not args.theano) and args.gpu and args.devices > 1:
                 parallelised = multi_gpu_model(combined, args.devices)
@@ -604,12 +640,33 @@ def main (args):
             parallelised.compile(**cfg['combined']['compile'])
 
             # Prepare arrays
-            # @TODO:
-            # - Properly handle non-reweighted case
             X = [data[features].values, decorrelation]
             Y = [data['signal'].values.astype(K.floatx()), np.ones_like(data['signal'].values).astype(K.floatx())]
-            #W = [data['weight'].values, np.multiply(data['weight_flatness'].values, 1. - data['signal'].values)]
-            W = [data['weight'].values, np.multiply(data['weight'].values, 1. - data['signal'].values)]
+            W = [data['weight'].values / data['weight'].mean(), data['weight_adv'].values]
+
+            # Pre-training adversary
+            log.info("Pre-training")
+            classifier.trainable = False
+
+            # Compile model for pre-training
+            save_lr = K.get_value(cfg['combined']['compile']['optimizer'].lr)
+            K.set_value(cfg['combined']['compile']['optimizer'].lr, save_lr)
+            parallelised.compile(**cfg['combined']['compile'])
+
+            log.info("Learning rate before pre-training:  {}".format(K.get_value(cfg['combined']['compile']['optimizer'].lr)))
+
+            pretrain_fit_opts = dict(**cfg['combined']['fit'])
+            pretrain_fit_opts['epochs'] = pretrain_epochs
+            ret_pretrain = parallelised.fit(X, Y, sample_weight=W, **pretrain_fit_opts)
+
+            # Fit classifier model
+            log.info("Actual training")
+            classifier.trainable = True
+
+            # Re-compile combined model for full training
+            K.set_value(cfg['combined']['compile']['optimizer'].lr, save_lr)
+            parallelised.compile(**cfg['combined']['compile'])
+            log.info("Learning rate before full training: {}".format(K.get_value(cfg['combined']['compile']['optimizer'].lr)))
 
             # Fit classifier model
             ret = parallelised.fit(X, Y, sample_weight=W, callbacks=callbacks, **cfg['combined']['fit'])
@@ -632,25 +689,139 @@ def main (args):
         pass
 
 
-    # Early stopping in case of adversarial network
-    # --------------------------------------------------------------------------
-    if args.optimise_adversarial:
-        # Kill TensorBoard
-        if args.tensorboard:
-            kill(tensorboard_pid, "TensorBoard")
-            pass
-
-        # @TODO:
-        # - Decide on proper metric!
-        #   - clf_loss - lambda * <JSD( pass(m) || fail(m) )>?
-        #   - Stratified k-fold cross-validation?
-        return None
-
-
     # Saving adversarially trained classifier in lwtnn-friendly format.
     # --------------------------------------------------------------------------
     lwtnn_save(classifier, 'ann')
 
+
+    # Auxiliary mass-decorrelation methods
+    # --------------------------------------------------------------------------
+    if args.train_aux:
+
+        # Mass-reweighted classifier fit, full
+        # ------------------------------------
+        with Profile("Mass-reweighted classifier fit, full"):
+
+            # Define variable(s)
+            name    = 'classifier_massreweighted'
+            basedir = 'models/adversarial/classifier/full/'
+
+            if args.train or args.train_classifier:
+                log.info("Training full classifier")
+
+                # Get classifier
+                classifier = classifier_model(num_features, **cfg['classifier']['model'])
+
+                # Parallelise on GPUs
+                if (not args.theano) and args.gpu and args.devices > 1:
+                    parallelised = multi_gpu_model(classifier, args.devices)
+                else:
+                    parallelised = classifier
+                    pass
+
+                # Compile model (necessary to save properly)
+                # @TODO: Reset optimiser?
+                parallelised.compile(**cfg['classifier']['compile'])
+
+                # Create callbacks
+                callbacks = []
+
+                # -- TensorBoard
+                if not args.theano:
+                    callbacks += [TensorBoard(log_dir=tensorboard_dir + name + '/')]
+                    pass
+
+                # Prepare arrays
+                X = data[features].values
+                Y = data['signal'].values
+                W = data['weight_mass'].values  # @TODO
+
+                # Fit classifier model
+                ret = parallelised.fit(X, Y, sample_weight=W, callbacks=callbacks, **cfg['classifier']['fit'])
+
+                # Save classifier model and training history to file, both in unique
+                # output directory and in the directory for pre-trained classifiers.
+                for destination in [args.output, basedir]:
+                    save(destination, name, classifier, ret.history)
+                    pass
+
+            else:
+
+                # Load pre-trained classifier
+                log.info("Loading full classifier from file")
+                classifier, history = load(basedir, name)
+                pass # end: train/load
+            pass
+
+
+        # Linearly decorrelated classifier fit, full
+        # ------------------------------------------
+        with Profile("Linearly decorrelated classifier fit, full"):
+
+            # Define variable(s)
+            name    = 'classifier_decorrelator_lambda{}'.format(lambda_str)
+            basedir = 'models/adversarial/combined/full/'
+
+            # Load pre-trained classifier
+            classifier, _ = load('models/adversarial/classifier/full/', 'classifier')
+
+            # Create decorrelation model
+            decorrelator = decorrelation_model(classifier, decorrelation.shape[1], **cfg['combined']['model'])
+
+            if args.train or args.train_adversarial:
+                log.info("Training full classifier")
+
+                # Save classifier model diagram to file
+                plot_model(decorrelator, to_file=args.output + 'model_{}.png'.format(name), show_shapes=True)
+
+                # Parallelise on GPUs
+                if (not args.theano) and args.gpu and args.devices > 1:
+                    parallelised = multi_gpu_model(decorrelator, args.devices)
+                else:
+                    parallelised = decorrelator
+                    pass
+
+                # Update compilation config
+                # -- Add linear correlation loss
+                cfg['classifier']['compile']['loss'] = [cfg['classifier']['compile']['loss'], 'MSE']
+                # -- Scale learning rate down by 1000
+                cfg['classifier']['compile']['optimizer'].lr *= 1.0E-03
+
+                # Compile model (necessary to save properly)
+                # @TODO: Reset optimiser?
+                parallelised.compile(loss_weights=[1., lambda_reg], **cfg['classifier']['compile'])
+
+                # Create callbacks
+                callbacks = []
+
+                # -- TensorBoard
+                if not args.theano:
+                    callbacks += [TensorBoard(log_dir=tensorboard_dir + name + '/')]
+                    pass
+
+                # Prepare arrays
+                X = data[features].values
+                Y = data['signal'].values
+                W = data['weight'].values
+                zeros = np.zeros((X.shape[0],))
+
+                # Fit classifier model
+                ret = parallelised.fit([X, decorrelation, W], [Y, zeros], sample_weight=[W, W], callbacks=callbacks, **cfg['classifier']['fit'])
+
+                # Save classifier model and training history to file, both in unique
+                # output directory and in the directory for pre-trained classifiers.
+                for destination in [args.output, basedir]:
+                    save(destination, name, decorrelator, ret.history)
+                    pass
+
+            else:
+
+                # Load pre-trained classifier
+                log.info("Loading full classifier from file")
+                decorrelator, history = load(basedir, name, model=decorrelator)
+                pass # end: train/load
+            pass
+        pass
 
     # Clean-up
     # --------------------------------------------------------------------------
