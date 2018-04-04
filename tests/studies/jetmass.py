@@ -36,12 +36,12 @@ def jetmass (data, args, feat, eff_sig=50):
     # Define masks and direction-dependent cut value
     msk_sig = data['signal'] == 1
     msk_bkg = ~msk_sig
-    eff_cut = eff_sig if signal_high(feat) else 100 - eff_sig
+    eff_cut = eff_sig if signal_low(feat) else 100 - eff_sig
     cut = wpercentile(data.loc[msk_sig, feat].values, eff_cut, weights=data.loc[msk_sig, 'weight'].values)
     msk_pass = data[feat] > cut
 
     # Ensure correct cut direction
-    if signal_high(feat):
+    if signal_low(feat):
         msk_pass = ~msk_pass
         pass
 
