@@ -7,8 +7,11 @@
 import os
 import sys
 import json
+import gzip
+import pickle
 import argparse
 import subprocess
+import collections
 import logging as log
 
 # Scientific import(s)
@@ -183,7 +186,7 @@ def initialise (args):
 
     # Scale loss_weights[0] by 1./(1. + lambda_reg)
     cfg['combined']['compile']['loss_weights'][0] *= 1./(1. + cfg['combined']['model']['lambda_reg'])
-    
+
     # Set adversary learning rate (LR) ratio from ratio of loss_weights
     try:
         cfg['combined']['model']['lr_ratio'] = cfg['combined']['compile']['loss_weights'][0] / \
@@ -360,28 +363,50 @@ def load_data (path, name='dataset', train_fraction=0.8):
     data = pd.read_hdf(path, name)
 
     # Perform selection
-    msk  = (data['m']  >  40.) & (data['m']  <  300.)
+    msk  = (data['m']  >  50.) & (data['m']  <  300.)
     msk &= (data['pt'] > 200.) & (data['pt'] < 2000.)
     data = data[msk]
 
     # Select featues
     features_input         = ['Tau21', 'C2', 'D2', 'Angularity', 'Aplanarity', 'FoxWolfram20', 'KtDR', 'PlanarFlow', 'Split12', 'ZCut12']
     features_decorrelation = ['m']
-    features_auxiliary     = ['signal', 'weight', 'pt']
+    features_auxiliary     = ['signal', 'weight', 'weight_flat', 'pt', 'EventInfo_NPV']
     data = data[features_input + features_decorrelation + features_auxiliary]
-
-    # Re-scale weights
-    msk = data['signal'].astype(bool)
-    num_signal = float(msk.sum())
-    data.loc[ msk,'weight'] *= num_signal / data['weight'][ msk].sum()
-    data.loc[~msk,'weight'] *= num_signal / data['weight'][~msk].sum()
 
     # Shuffle and re-index to allow better indexing
     data = data.sample(frac=1, random_state=RNG).reset_index(drop=True)  # For reproducibility
 
-    # Split
-    train = RNG.rand(data.shape[0]) < train_fraction
+    # Split into training- and test dataset
+    num_sig = int((data['signal'] == 1).sum())
+    num_bkg = int((data['signal'] == 0).sum())
+    num_train = int(num_sig * train_fraction)
+
+    index = data.index.values
+
+    train_sig = RNG.choice(index[data['signal'] == 1], num_train, replace=False)
+    train_bkg = RNG.choice(index[data['signal'] == 0], num_train, replace=False)
+
+    train = np.zeros((data.shape[0],)).astype(bool)
+    train[train_sig] = True
+    train[train_bkg] = True
     data['train'] = pd.Series(train, index=data.index)
+
+    # Re-scale weights
+    msk = data['signal'].astype(bool)
+    for feat in ['weight', 'weight_flat']:
+        data.loc[ msk, feat] /= data.loc[ msk, feat].mean()
+        data.loc[~msk, feat] /= data.loc[~msk, feat].mean()
+        pass
+
+    # Report
+    for feat in ['weight', 'weight_flat']:
+        for signal in [True, False]:
+            msk  = data['signal'] == int(signal)
+            name = 'Signal' if signal else 'Background'
+            w = data.loc[msk, feat]
+            print "{name:11s} Mean {feat:<12s} {:4.2f} | 99th percentile {feat:<12s} {:4.1f} | Max. {feat:<12s} {:4.0f}".format(w.mean(), np.percentile(w, 99), w.max(), name=name+':', feat=feat+':')
+            pass
+        pass
 
     # Return
     return data, features_input, features_decorrelation
