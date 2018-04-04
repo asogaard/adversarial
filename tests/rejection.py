@@ -76,17 +76,10 @@ def main ():
         f = ROOT.TFile(paths[cls], 'READ')
         t = f.Get("FlatSubstructureJetTree")
  
-        #### print "\nBranches found for class {:s}:".format(cls)
-        #### for name in map(lambda br: br.GetName(), t.GetListOfBranches()):
-        ####     print "  {:s}".format(name)
-       
         # Read data from TTree
         data[cls] = root_numpy.tree2array(t, 
                                           branches=branches, 
-                                          selection=SELECTION[cls], 
-                                          #stop=2*int(3E+05 if cls == 'sig' else
-                                          #1E+06))
-                                          )
+                                          selection=SELECTION[cls])
 
         # Take random samples with same statistics as reported in note
         got  = data[cls].size
@@ -125,142 +118,54 @@ def main ():
     background = (data['signal'] == 0)
     signal     = ~background
 
-    def get_rejection (data, feat, target_tpr=0.5, preselection=None, selection=None, verbose=False):
-        """
-        Method to get background rejection at `target_tpr` signal efficiency.
-
-        Arguments:
-            data: Numpy recarray holding the fields 'signal', 'weight', and 
-                `feat`.
-            feat: Name of feature in `data` for which to compute background 
-                rejection.
-            target_tpr: Signal efficiency at which to compute background 
-                rejection.
-            preselection: Boolean numpy array indicating any preselection to be 
-                performed before computing efficiencies and rejection factors.
-            selection: Boolean numpy array indicating any selection to be 
-                performed after the pre-selection, in conjunction with a cut on
-                `feat` (e.g. a jet mass window selection).
-            verbose: Whether to print information during call.
-
-        Returns:
-            The background rejection factor, after pre-selection and accounting 
-            for any additional selection, computed at the specified signal 
-            efficiency.
-        """
-
-        # Check(s)
-        if preselection is None:
-            preselection = np.ones((data.shape[0],)).astype(bool)
-            pass
-
-        if selection is None:
-            selection = np.ones_like(preselection).astype(bool)
-            pass
-
-        # (Opt.) Print information
-        if verbose:
-            print "=" * 40
-            print "get_rejection: Running with {}".format(feat)
-            print "\nPre-selection efficiency:"
-            print "  Signal:     {:4.1f}%".format(preselection[data['signal'] == 1].mean() * 100.)
-            print "  Background: {:4.1f}%".format(preselection[data['signal'] == 0].mean() * 100.)
-
-            print "\nSelection efficiency:"
-            print "  Signal:     {:4.1f}%".format(selection[data['signal'] == 1].mean() * 100.)
-            print "  Background: {:4.1f}%".format(selection[data['signal'] == 0].mean() * 100.)
-
-            print "\nSelection efficiency, given preselection:"
-            print "  Signal:     {:4.1f}%".format(selection[(data['signal'] == 1) & preselection].mean() * 100.)
-            print "  Background: {:4.1f}%".format(selection[(data['signal'] == 0) & preselection].mean() * 100.)
-            print "=" * 40
-            pass
-
-        # Perform pre-selection -- not accounted for in efficiency
-        selection = selection[preselection].copy()
-        data      = data     [preselection].copy()
-
-        # Compute efficiencies for sequential cuts on `feat`
-        eff_sig, eff_bkg, _ = roc_curve(data['signal'][selection], data[feat][selection],
-                                        sample_weight=data['weight'][selection])
-
-        # Compute selection efficiencies _after_ preselection
-        sel_eff_sig = selection[data['signal'] == 1].mean()
-        sel_eff_bkg = selection[data['signal'] == 0].mean()
-
-        # Account for selection efficiency for each class
-        eff_sig *= sel_eff_sig
-        eff_bkg *= sel_eff_bkg
-
-        # Compute background rejection at `target_tpr` signal efficiency
-        idx = np.argmin(np.abs(eff_sig - target_tpr))
-        rej = 1. / eff_bkg[idx]
-
-        return rej
-
-
-    for var in ['Tau21', 'D2']:
+    for feat in ['Tau21', 'D2']:
         
-        rej1 = get_rejection(data, var)
-        rej2 = get_rejection(data, var, preselection=preselection)
-        rej3 = get_rejection(data, var, selection=mass_window)
-        rej4 = get_rejection(data, var, preselection=preselection, selection=mass_window, verbose=True)
-        print "Background rejection for {}:".format(var)
+        eff_sig1, eff_bkg1, _ = get_efficiencies(data, feat)
+        eff_sig2, eff_bkg2, _ = get_efficiencies(data, feat, preselection=preselection)
+        eff_sig3, eff_bkg3, _ = get_efficiencies(data, feat, selection=mass_window)
+        eff_sig4, eff_bkg4, _ = get_efficiencies(data, feat, preselection=preselection, selection=mass_window)
+
+        target_tpr = 0.5
+        rej1 = get_rejection(data, feat, target_tpr=target_tpr)
+        rej2 = get_rejection(data, feat, target_tpr=target_tpr, preselection=preselection)
+        rej3 = get_rejection(data, feat, target_tpr=target_tpr, selection=mass_window)
+        rej4 = get_rejection(data, feat, target_tpr=target_tpr, preselection=preselection, selection=mass_window, verbose=True)
+
+        print "Background rejection for {}:".format(feat)
         print "  Inclusive sample:               {:4.1f}".format(rej1)
         print "  pT pre-selection:               {:4.1f}".format(rej2)
         print "  Inclusive sample + mass window: {:4.1f}".format(rej3)
         print "  pT pre-selection + mass window: {:4.1f}".format(rej4)
 
-        exit()
-
-        # Compute efficiencies
-        msk = mass_window & preselection
-        eff_sig, eff_bkg, thresholds = roc_curve(data['signal'][msk],
-                                                 data[var][msk],
-                                                 sample_weight=data['weight'][msk])
-
-        eff_sig_incl, eff_bkg_incl, _ = roc_curve(data['signal'][preselection],
-                                                  data[var][preselection],
-                                                  sample_weight=data['weight'][preselection])
-        
-        # Scale efficiencies
-        eff_sig_scaled = eff_sig * mass_window[signal]    .mean()
-        eff_bkg_scaled = eff_bkg * mass_window[background].mean()
-
-        # Get background rejection
-        target_tpr = 0.5
-        idx        = np.argmin(np.abs(eff_sig        - target_tpr))
-        idx_incl   = np.argmin(np.abs(eff_sig_incl   - target_tpr))
-        idx_scaled = np.argmin(np.abs(eff_sig_scaled - target_tpr))
-        rej        = 1. / eff_bkg       [idx]
-        rej_incl   = 1. / eff_bkg_incl  [idx_incl]
-        rej_scaled = 1. / eff_bkg_scaled[idx_scaled]
-        
-        print "    Background rejections for {:<6s} {:4.1f} (scaled: {:4.1f} | incl: {:4.1f})".format(var + ':', rej, rej_scaled, rej_incl)
-        
-        valid        = eff_bkg        > 0.
-        valid_incl   = eff_bkg_incl   > 0.
-        valid_scaled = eff_bkg_scaled > 0.
+        valid1 = eff_bkg1 > 0.
+        valid2 = eff_bkg2 > 0.
+        valid3 = eff_bkg3 > 0.
+        valid4 = eff_bkg4 > 0.
 
         xlim = 0.45, 0.90
         ylim = 0, 90
 
+        name = r"\tau_{21}" if feat == 'Tau21' else r"D_{2}"
+
         fig, ax = plt.subplots()
-        plt.plot(eff_sig       [valid],        1. / eff_bkg       [valid],        color='blue')
-        plt.plot(eff_sig_incl  [valid_incl],   1. / eff_bkg_incl  [valid_incl],   color='black')
-        plt.plot(eff_sig_scaled[valid_scaled], 1. / eff_bkg_scaled[valid_scaled], color='red')
+        plt.plot(eff_sig1[valid1], 1. / eff_bkg1[valid1], 'r-')
+        plt.plot(eff_sig2[valid2], 1. / eff_bkg2[valid2], 'b-')
+        plt.plot(eff_sig3[valid3], 1. / eff_bkg3[valid3], 'r:')
+        plt.plot(eff_sig4[valid4], 1. / eff_bkg4[valid4], 'b:')
 
-        plt.plot([target_tpr, target_tpr], [ylim[0], rej], color='blue', linestyle=':')
-        plt.plot([xlim[0],    target_tpr], [rej,     rej], color='blue', linestyle=':')
+        plt.plot([xlim[0]] * 2, [0,0], 'r-', label=r"No pre-selection")
+        plt.plot([xlim[0]] * 2, [0,0], 'b-', label=r"$p_{T} \in [500, 1000]$ GeV")
+        plt.plot([xlim[0]] * 2, [0,0], 'k-', label=r"$%s$" % name)
+        plt.plot([xlim[0]] * 2, [0,0], 'k:', label=r"$%s + m \in [60, 100]$ GeV" % name)
 
-        plt.plot([target_tpr, target_tpr], [ylim[0],  rej_incl], color='black', linestyle=':')
-        plt.plot([xlim[0],    target_tpr], [rej_incl, rej_incl], color='black', linestyle=':')
+        plt.plot([target_tpr], [rej1], 'r.')
+        plt.plot([target_tpr], [rej2], 'b.')
+        plt.plot([target_tpr], [rej3], 'r.')
+        plt.plot([target_tpr], [rej4], 'b.')
 
-        plt.plot([target_tpr, target_tpr], [ylim[0],    rej_scaled], color='red', linestyle=':')
-        plt.plot([xlim[0],    target_tpr], [rej_scaled, rej_scaled], color='red', linestyle=':')
-
+        plt.legend()
         plt.xlabel('Signal efficiency')
-        plt.ylabel('Background rejection ({})'.format(var))
+        plt.ylabel('Background rejection ({})'.format(feat))
         plt.xlim(*xlim)
         plt.ylim(*ylim)
         plt.show()
@@ -269,6 +174,98 @@ def main ():
     # ...
 
     return 0
+
+
+def get_efficiencies (data, feat, preselection=None, selection=None, verbose=False):
+    """
+    ...
+    
+    Arguments:
+    ...: ...
+    preselection: Boolean numpy array indicating any preselection to be             
+    performed before computing efficiencies and rejection factors.
+    selection: Boolean numpy array indicating any selection to be 
+    performed after the pre-selection, in conjunction with a cut on
+    `feat` (e.g. a jet mass window selection).
+    verbose: Whether to print information during call.
+    
+    Returns:
+    ...
+    """
+    
+    # Check(s)
+    if preselection is None:
+        preselection = np.ones((data.shape[0],)).astype(bool)
+        pass
+    
+    if selection is None:
+        selection = np.ones_like(preselection).astype(bool)
+        pass
+    
+    # (Opt.) Print information
+    if verbose:
+        print "=" * 40
+        print "get_rejection: Running with {}".format(feat)
+        print "\nPre-selection efficiency:"
+        print "  Signal:     {:4.1f}%".format(preselection[data['signal'] == 1].mean() * 100.)
+        print "  Background: {:4.1f}%".format(preselection[data['signal'] == 0].mean() * 100.)
+        
+        print "\nSelection efficiency:"
+        print "  Signal:     {:4.1f}%".format(selection[data['signal'] == 1].mean() * 100.)
+        print "  Background: {:4.1f}%".format(selection[data['signal'] == 0].mean() * 100.)
+        
+        print "\nSelection efficiency, given preselection:"
+        print "  Signal:     {:4.1f}%".format(selection[(data['signal'] == 1) & preselection].mean() * 100.)
+        print "  Background: {:4.1f}%".format(selection[(data['signal'] == 0) & preselection].mean() * 100.)
+        print "=" * 40
+        pass
+    
+    # Perform pre-selection -- not accounted for in efficiency
+    selection = selection[preselection].copy()
+    data      = data     [preselection].copy()
+    
+    # Compute efficiencies for sequential cuts on `feat`
+    eff_sig, eff_bkg, thresholds = roc_curve(data['signal'][selection], data[feat][selection],
+                                             sample_weight=data['weight'][selection])
+    
+    # Compute selection efficiencies _after_ preselection
+    sel_eff_sig = selection[data['signal'] == 1].mean()
+    sel_eff_bkg = selection[data['signal'] == 0].mean()
+    
+    # Account for selection efficiency for each class
+    eff_sig *= sel_eff_sig
+    eff_bkg *= sel_eff_bkg
+    
+    return eff_sig, eff_bkg, thresholds
+
+
+def get_rejection (data, feat, target_tpr=0.5, **kwargs):
+    """
+    Method to get background rejection at `target_tpr` signal efficiency.
+    
+    Arguments:
+    data: Numpy recarray holding the fields 'signal', 'weight', and 
+    `feat`.
+    feat: Name of feature in `data` for which to compute background 
+    rejection.
+    target_tpr: Signal efficiency at which to compute background 
+    rejection.
+    kwargs:
+    
+    Returns:
+    The background rejection factor, after pre-selection and accounting 
+    for any additional selection, computed at the specified signal 
+    efficiency.
+    """
+    
+    # Get ROC efficiencies
+    eff_sig, eff_bkg, _ = get_efficiencies(data, feat, **kwargs)
+    
+    # Compute background rejection at `target_tpr` signal efficiency
+    idx = np.argmin(np.abs(eff_sig - target_tpr))
+    rej = 1. / eff_bkg[idx]
+    
+    return rej
 
 
 # Main function call
