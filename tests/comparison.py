@@ -215,7 +215,6 @@ def main (args):
         studies.robustness(data, args, tagger_features, 'EventInfo_NPV', bins)
         pass
 
-    return  # @TEMP
 
     # Perform pT robustness study
     # --------------------------------------------------------------------------
