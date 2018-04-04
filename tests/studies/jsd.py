@@ -51,7 +51,7 @@ def jsd (data, args, features):
             pass
 
         # Ensure correct direction of cut
-        if not signal_high(feat):
+        if not signal_low(feat):
             cuts = list(reversed(cuts))
             pass
 
@@ -102,7 +102,7 @@ def plot (*argv):
     width = 0.18
     for is_simple in [True, False]:
         for ifeat, feat in enumerate(features):
-            if is_simple != signal_high(feat): continue
+            if is_simple != signal_low(feat): continue
             ifeat += 3 if ifeat > 3 else 0  # @TEMP
             colour = rp.colours[(ifeat // 2) % len(rp.colours)]
             linestyle   =  1 + (ifeat % 2)
@@ -113,6 +113,9 @@ def plot (*argv):
         c.legend(header=("Simple:" if is_simple else "MVA:"),
                  width=width, xmin=0.56 + (width + 0.02) * (is_simple), ymax=0.888)  # ymax=0.782)
         pass
+
+    # Redraw axes
+    c.pads()[0]._primitives[0].Draw('AXIS SAME')
 
     # Decorations
     c.xlabel("Background efficiency #varepsilon_{bkg.}")

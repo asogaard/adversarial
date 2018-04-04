@@ -60,6 +60,7 @@ def summary (data, args, tagger_features, scan_features):
             print "    Skipping (already encounted)"
             continue
 
+        """
         # scikit-learn assumes signal towards 1, background towards 0
         pred = data[feat].values.copy()
         if signal_high(feat):
@@ -76,13 +77,15 @@ def summary (data, args, tagger_features, scan_features):
         cut = thresholds[idx]
 
         # Get JSD(pass || fail) @ eff_sig. = 50%
-        msk_bkg  = data['signal'] == False
+        msk_bkg  = data['signal'] == 0
         msk_pass = pred > cut
 
         p, _ = np.histogram(data.loc[ msk_pass & msk_bkg, 'm'].values, bins=MASSBINS, weights=data.loc[ msk_pass & msk_bkg, 'weight'].values, density=True)
         f, _ = np.histogram(data.loc[~msk_pass & msk_bkg, 'm'].values, bins=MASSBINS, weights=data.loc[~msk_pass & msk_bkg, 'weight'].values, density=True)
 
         jsd = JSD(p, f)
+        """
+        rej, jsd = metrics(data, feat)
 
         # Add point to array
         points.append((rej, 1. / jsd, feat))
@@ -111,7 +114,7 @@ def summary (data, args, tagger_features, scan_features):
         for ipoint, feat in enumerate(tagger_features):
 
             # Select only appropriate taggers
-            if is_simple != signal_high(feat): continue
+            if is_simple != signal_low(feat): continue
 
             # Coordinates, label
             idx = map(lambda t: t[2], points).index(feat)

@@ -16,7 +16,6 @@ import root_numpy
 from array import array
 from scipy.stats import entropy
 from sklearn.metrics import roc_curve, roc_auc_score
-from sklearn.preprocessing import StandardScaler
 
 # Project import(s)
 from adversarial.utils import initialise_backend, wpercentile, latex, parse_args, initialise, load_data, mkdir
@@ -55,7 +54,7 @@ def main (args):
     # --------------------------------------------------------------------------
     data, features, _ = load_data(args.input + 'data.h5')
     data = data[data['train'] == 0]
-    #data = data.sample(frac=0.01)  # @TEMP!
+    #data = data.sample(frac=0.1)  # @TEMP!
 
 
     # Common definitions
@@ -69,8 +68,8 @@ def main (args):
     D2_kNN_var = 'D2-kNN({:d}%)'.format(kNN_eff)
     uboost_var = 'uBoost(#varepsilon={:d}%,#alpha={:.1f})'.format(uboost_eff, uboost_uni)
 
-    lambda_reg  = 60
-    lambda_regs = sorted([3, 10, 30, 60, 100])
+    lambda_reg  = 10
+    lambda_regs = sorted([0.1, 1, 10, 100, 1000])
     ann_vars    = list()
     lambda_strs = list()
     for lambda_reg_ in lambda_regs:
@@ -113,9 +112,11 @@ def main (args):
             data['Tau21DDT'] = pd.Series(data['Tau21'] - ddt.predict(data['rhoDDT'].as_matrix().reshape((-1,1))), index=data.index)
             pass
 
+
         # D2-kNN
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         with Profile("D2-kNN"):
+
             # Common, classifier-specific import(s)
             from run.knn.common import AXIS as knn_axis
             from run.knn.common import VAR  as knn_var
@@ -140,15 +141,18 @@ def main (args):
             data[D2_kNN_var] = pd.Series(data[knn_var] - kNN_percentile, index=data.index)
             pass
 
+
         # D2-CSS
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         with Profile("D2-CSS"):
+
             # Common, classifier-specific import(s)
             from run.css.common import AddCSS
 
             # Add necessary variables
             AddCSS("D2", data)
             pass
+
 
         # NN
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -158,10 +162,12 @@ def main (args):
             data['NN'] = pd.Series(classifier.predict(data[features].as_matrix().astype(K.floatx()), batch_size=2048 * 8).flatten().astype(K.floatx()), index=data.index)
             pass
 
+
         # ANN
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         with Profile("ANN"):
-            adversary = adversary_model(gmm_dimensions=1,
+            from run.reweight.common import DECORRELATION_VARIABLES
+            adversary = adversary_model(gmm_dimensions=len(DECORRELATION_VARIABLES),
                                         **cfg['adversary']['model'])
 
             combined = combined_model(classifier, adversary,
@@ -175,6 +181,7 @@ def main (args):
             print "== Done loading ANN models"
             pass
 
+
         # Adaboost
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         with Profile("Adaboost"):
@@ -185,6 +192,7 @@ def main (args):
                 pass
             data['Adaboost'] = pd.Series(adaboost.predict_proba(data)[:,1].flatten().astype(K.floatx()), index=data.index)
             pass
+
 
         # uBoost
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -200,6 +208,29 @@ def main (args):
         pass
 
 
+    # Perform pile-up robustness study
+    # --------------------------------------------------------------------------
+    with Profile("Study: Robustness (pile-up)"):
+        bins = [0, 9.5, 13.5, 16.5, 20.5, 30.5]
+        studies.robustness(data, args, tagger_features, 'EventInfo_NPV', bins)
+        pass
+
+
+    # Perform pT robustness study
+    # --------------------------------------------------------------------------
+    with Profile("Study: Robustness (pT)"):
+        bins = [200, 260, 330, 430, 560, 720, 930, 1200, 1550, 2000]
+        studies.robustness(data, args, tagger_features, 'pt', bins)
+        pass
+
+
+    # Perform jet mass distribution comparison study
+    # --------------------------------------------------------------------------
+    with Profile("Study: Jet mass comparison"):
+        studies.jetmasscomparison(data, args, tagger_features)
+        pass
+
+
     # Perform summary plot study
     # --------------------------------------------------------------------------
     with Profile("Study: Summary plot"):
@@ -212,6 +243,7 @@ def main (args):
         studies.summary(data, args, tagger_features, scan_features)
         pass
 
+
     # Perform distributions study
     # --------------------------------------------------------------------------
     with Profile("Study: Substructure tagger distributions"):
@@ -219,6 +251,7 @@ def main (args):
             studies.distribution(data, args, feat)
             pass
         pass
+
 
     # Perform jet mass distributions study
     # --------------------------------------------------------------------------
@@ -239,99 +272,8 @@ def main (args):
     # Perform efficiency study
     # --------------------------------------------------------------------------
     with Profile("Study: Efficiency"):
-
-        # Define common variables
-        msk  = data['signal'] == 0
-        effs = np.linspace(0, 100, 10, endpoint=False)[1:].astype(int)
-        ROOT.gStyle.SetTitleOffset(1.6, 'y')
-
-        # Loop tagger features
-        c = rp.canvas(batch=not args.show)
         for feat in tagger_features:
-
-            # Filter out NaNs (outside restricted phase-space)
-            valid = ~np.isnan(data[feat])
-
-            # Define cuts
-            cuts = list()
-            for eff in effs:
-                cut = wpercentile(data.loc[valid & msk, feat].as_matrix().flatten(), eff, weights=data.loc[valid & msk, 'weight'].as_matrix().flatten())
-                cuts.append(cut)
-                pass
-
-            # Ensure correct direction of cut
-            if not signal_high(feat):
-                cuts = list(reversed(cuts))
-                pass
-
-            # Define mass bins
-            bins = MASSBINS
-
-            # Compute cut efficiency vs. mass
-            profiles = list()
-            for cut, eff in zip(cuts, effs):
-                # Get correct pass-cut mask
-                msk_pass = data[feat] > cut
-                if signal_high(feat):
-                    msk_pass = ~msk_pass
-                    pass
-
-                # Fill efficiency profile  # @TODO TEfficiency?
-                profile = ROOT.TProfile('profile_{}_{}'.format(feat, cut), "",
-                                        len(bins) - 1, bins)
-
-                M = np.vstack((data.loc[valid & msk, 'm'].as_matrix().flatten(), msk_pass[valid & msk])).T
-                weights = data.loc[valid & msk, 'weight'].as_matrix().flatten()
-
-                root_numpy.fill_profile(profile, M, weights=weights)
-
-                # Add to list
-                profiles.append(profile)
-                pass
-
-            # Canvas
-            c = rp.canvas(batch=not args.show)
-
-            # Plots
-            for idx, (profile, cut, eff) in enumerate(zip(profiles, cuts, effs)):
-                colour = rp.colours[1]
-                linestyle = 1
-                c.hist(profile, linecolor=colour, linestyle=linestyle, option='HIST L')
-                c.hist(profile, fillcolor=colour, alpha=0.3, option='E3')
-                pass
-
-            # Text
-            for idx, (profile, cut, eff) in enumerate(zip(profiles, cuts, effs)):
-                if int(eff) in [10, 50, 90]:
-                    c.latex('#bar{#varepsilon}_{bkg.} = %d%%' % eff,
-                            260., profile.GetBinContent(np.argmin(np.abs(bins - 270.)) + 1) + 0.025,
-                            textsize=13,
-                            textcolor=ROOT.kGray + 2, align=11)
-                    pass
-                pass
-
-
-            # Decorations
-            c.xlabel("Large-#it{R} jet mass [GeV]")
-            c.ylabel("Background efficiency #varepsilon_{bkg.}")
-            c.text(["#sqrt{s} = 13 TeV,  QCD jets",
-                    "Testing dataset",
-                    "Baseline selection",
-                    "Sequential cuts on {}".format(latex(feat, ROOT=True)),
-                    ],
-                   qualifier=QUALIFIER)
-            c.ylim(0, 1.9)
-
-            # Save
-            if args.save:
-                mkdir('figures/')
-                c.save('figures/eff_{}.pdf'.format(standardise(feat)))
-                pass
-
-            # Show
-            if args.show:
-                c.show()
-                pass
+            studies.efficiency(data, args, feat)
             pass
         pass
 
@@ -339,110 +281,7 @@ def main (args):
     # Perform ROC study
     # --------------------------------------------------------------------------
     with Profile("Study: ROC"):
-
-        # Computing ROC curves
-        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-        with Profile("Computing ROC curves"):
-            ROCs = dict()
-            for feat in tagger_features:
-
-                # Filter out NaNs (outside restricted phase-space)
-                valid = ~np.isnan(data[feat])
-
-                sign = 1. if ('D2' in feat or 'Tau21' in feat or 'N2' in feat) else -1.
-
-                eff_sig, eff_bkg, thresholds = roc_curve(data.loc[valid & msk_mass, 'signal'].values,
-                                                         data.loc[valid & msk_mass, feat]    .values * sign,
-                                                         sample_weight=data.loc[valid & msk_mass, 'weight'].values)
-
-                #### eff_sig, eff_bkg = roc_efficiencies (data.loc[valid & msk_mass &  msk_sig, feat].as_matrix().flatten().astype(float),
-                ####                                      data.loc[valid & msk_mass & ~msk_sig, feat].as_matrix().flatten().astype(float),
-                ####                                      sig_weight=data.loc[valid & msk_mass &  msk_sig, 'weight'].as_matrix().flatten().astype(float),
-                ####                                      bkg_weight=data.loc[valid & msk_mass & ~msk_sig, 'weight'].as_matrix().flatten().astype(float))
-
-                # Filter, to advoid background rejection blowing up
-                indices = np.where((eff_bkg > 0) & (eff_sig > 0))
-                eff_sig = eff_sig[indices]
-                eff_bkg = eff_bkg[indices]
-
-                # Subsample to 1% steps
-                targets = np.linspace(0, 1, 100 + 1, endpoint=True)
-                indices = np.array([np.argmin(np.abs(eff_sig - t)) for t in targets])
-                eff_sig = eff_sig[indices]
-                eff_bkg = eff_bkg[indices]
-
-                # Store
-                ROCs[feat] = (eff_sig,eff_bkg)
-                pass
-            pass
-
-
-        # Computing ROC AUCs
-        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-        with Profile("Computing ROC AUCs"):
-            AUCs = dict()
-            for feat in tagger_features:
-                #AUCs[feat] = roc_auc (*ROCs[feat])
-                sign = 1. if ('D2' in feat or 'Tau21' in feat or 'N2' in feat) else -1.
-                AUCs[feat] = roc_auc_score(data.loc[valid & msk_mass, 'signal'].values,
-                                           data.loc[valid & msk_mass, feat]    .values * sign,
-                                           sample_weight=data.loc[valid & msk_mass, 'weight'].values)
-            pass
-
-
-        # Creating figure
-        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-        with Profile("Creating figure"):
-
-            # Canvas
-            c = rp.canvas(batch=not args.show)
-
-            # Plots
-            # -- Random guessing
-            c.graph(np.power(eff_sig, -1.), bins=eff_sig, linecolor=ROOT.kGray + 2, linewidth=1, option='AL')
-
-            # -- AUCs
-            categories = list()
-            for feat in tagger_features:
-                 line = "#scale[0.6]{#color[13]{AUC: %.3f}}" % AUCs[feat]
-                 categories += [(line, {'linestyle': 0, 'fillstyle': 0, 'markerstyle': 0, 'option': ''})]
-                 pass
-            c.legend(categories=categories, xmin=0.80, width=0.04)
-
-            # -- ROCs
-            for ifeat, feat in enumerate(tagger_features):
-                eff_sig, eff_bkg = ROCs[feat]
-                c.graph(np.power(eff_bkg, -1.), bins=eff_sig, linestyle=1 + (ifeat % 2), linecolor=rp.colours[(ifeat // 2) % len(rp.colours)], linewidth=2, label=latex(feat, ROOT=True), option='L')
-                pass
-            c.legend(xmin=0.58, width=0.22)
-
-            # Decorations
-            c.xlabel("Signal efficiency #varepsilon_{sig.}")
-            c.ylabel("Background rejection 1/#varepsilon_{bkg.}")
-            c.text(["#sqrt{s} = 13 TeV",
-                    "Testing dataset",
-                    "Baseline selection",
-                    "m #in  [60, 100] GeV",
-                    ],
-                qualifier=QUALIFIER)
-            c.latex("Random guessing", 0.3, 1./0.3 * 0.9, align=23, angle=-12, textsize=13, textcolor=ROOT.kGray + 2)
-            c.xlim(0., 1.)
-            c.ylim(1E+00, 1E+05)
-            c.logy()
-            c.legend()
-
-            # Save
-            if args.save:
-                mkdir('figures/')
-                c.save('figures/roc.pdf')
-                pass
-
-            # Show
-            if args.show:
-                c.show()
-                pass
-            pass
-
+        studies.roc(data, args, tagger_features)
         pass
 
     return 0
