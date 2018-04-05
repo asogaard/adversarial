@@ -4,16 +4,17 @@
 """Script for conveniently formatting and storing the W/top-tagging ntuples."""
 
 # Basic import(s)
-import os
 import h5py
+import glob
 
 # Get ROOT to stop hogging the command-line options
 import ROOT
 ROOT.PyConfig.IgnoreCommandLineOptions = True
+import root_numpy
 
 # Scientific import(s)
 import numpy as np
-import root_numpy
+from numpy.lib import recfunctions
 
 # Project import(s)
 from adversarial.utils import mkdir
@@ -28,36 +29,44 @@ parser.add_argument('--input', action='store', type=str,
                     default='/eos/atlas/atlascerngroupdisk/perf-jets/JSS/TopBosonTagAnalysis2016/FlatNtuplesR21/',
                     help='Input directory, from which to read input ROOT files.')
 parser.add_argument('--output', action='store', type=str,
-                    default='/eos/atlas/user/a/asogaard/adversarial/data/2018-03-30/',
+                    default='/eos/atlas/user/a/asogaard/adversarial/data/2018-04-04/',
                     help='Output directory, to which to write output files.')
+parser.add_argument('--tag', action='store', type=str,
+                    default='data_full',
+                    help='Unique tag, used for output file name.')
 
 # Global definition(s)
 SELECTION = {
-    'common': ("(fjet_truthJet_pt >  200E+03 && "
-               " fjet_truthJet_pt < 2000E+03 && "
-               " fjet_truthJet_eta > -2.0 && "
-               " fjet_truthJet_eta <  2.0 && "
-               " fjet_m >  50E+03 && "
-               " fjet_m < 300E+03 &&"
-               " fjet_numConstituents > 2)"),
+    'common': ["TMath::Abs(fjet_truthJet_eta) < 2.0",
+               "fjet_JetpTCorrByCombinedMass >  200E+03",
+               "fjet_JetpTCorrByCombinedMass < 2000E+03",
+               "fjet_CaloTACombinedMassUncorrelated >  50E+03",
+               "fjet_CaloTACombinedMassUncorrelated < 300E+03",
+               "fjet_numConstituents > 2",
+               ],
 
-    'sig': ("(W && "
-            " fjet_dRmatched_WZChild1_dR < 0.75 && "
-            " fjet_dRmatched_WZChild2_dR < 0.75 && "
-            " fjet_truth_dRmatched_particle_dR < 0.75)"),
+    'sig': ["TMath::Abs(fjet_truth_dRmatched_particle_flavor) == 24",  # W
+            "TMath::Abs(fjet_dRmatched_WZChild1_dR) < 0.75",
+            "TMath::Abs(fjet_dRmatched_WZChild2_dR) < 0.75",
+            "TMath::Abs(fjet_truth_dRmatched_particle_dR) < 0.75",
+            ],
 
-    'bkg': ("(!W && "
-            " !top)")
+    'bkg': ["TMath::Abs(fjet_truth_dRmatched_particle_flavor) != 24",  # W
+            "TMath::Abs(fjet_truth_dRmatched_particle_flavor) != 23",  # Z
+            "TMath::Abs(fjet_truth_dRmatched_particle_flavor) !=  6",  # top
+            ],
+
     }
 
 # -- Add `common` selection to all other keys
 common_selection = SELECTION.pop('common')
 for key in SELECTION.keys():
-    SELECTION[key] += " && " + common_selection
+    SELECTION[key] = " && ".join(SELECTION[key] + common_selection)
     pass
 
 # -- 'Wtop' indicates use for W-tagging DNN
 BRANCHES = [
+
     # Kinematics
     'fjet_CaloTACombinedMassUncorrelated', # Combined jet mass | Wtop
     'fjet_JetpTCorrByCombinedMass',        # Corrected jet pT  | Wtop
@@ -65,8 +74,13 @@ BRANCHES = [
     'fjet_eta', # Kept for control
 
     # Event-level info
-    'EventInfo_NPV',   # Kept for control
+    'EventInfo_NPV',
+    'EventInfo_eventNumber',  # Checking for duplicates
+    'EventInfo_runNumber',    # Checking for duplicates
     'fjet_nthLeading', # @TODO: Check. Only use == 1?
+
+    # Truth variables
+    'fjet_truthJet_pt',
 
     # Substructure variables.
     'fjet_Tau1_wta',
@@ -104,10 +118,6 @@ BRANCHES = [
 
     # Weights
     'fjet_testing_weight_pt',
-    'fjet_training_weight_pt_W',
-
-    # Signal flag
-    'W',
     ]
 
 
@@ -118,10 +128,12 @@ def rename (name):
     name = name.replace('fjet_', '')
     name = name.replace('_wta', '')
     name = name.replace('beta1', '')
+    name = name.replace('truthJet', 'truth')
     name = name.replace('CaloTACombinedMassUncorrelated', 'm')
     name = name.replace('JetpTCorrByCombinedMass', 'pt')
-    name = name.replace('training_weight_pt_W', 'weight_train')
     name = name.replace('testing_weight_pt', 'weight_test')
+    name = name.replace('EventInfo_NPV', 'npv')
+    name = name.replace('EventInfo_', '')
     return name
 
 
@@ -129,68 +141,99 @@ def rename (name):
 @profile
 def main ():
 
-    # Reading in NTuples
-    # --------------------------------------------------------------------------
-    with Profile("reading"):
+    # Parse command-line argument
+    args = parser.parse_args()
+    
+    # Modify input/output directory names to conform to convention
+    if not args.input .endswith('/'): args.input  += '/'
+    if not args.output.endswith('/'): args.output += '/'
 
-        # Parse command-line argument
-        args = parser.parse_args()
+    # Reading input ROOT files
+    with Profile("Reading input ROOT files"):
 
-        #  Modify input/output directory names to conform to convention
-        if not args.input .endswith('/'): args.input  += '/'
-        if not args.output.endswith('/'): args.output += '/'
-
-        # Relative paths to training- and test sets
-        train_file = 'Training/Wtagging_fullycontained/training_W_tagging_fully_contained.root'
-        test_file1 = 'Testing/Wtagging/testing_Wprime.root'
-        test_file2 = 'Testing/background/testing_dijet.root'
-        files = [train_file, test_file1, test_file2]
-
+        # Find datasets
         print "Reading input files from:\n  {}".format(args.input)
         print "Writing output files to: \n  {}".format(args.output)
-        print "Assuming the files:{}\n exist in the input directory.".format('\n  '.join([''] + files))
 
-        paths = [args.input + f for f in files]
+        path_pattern = args.input + 'submitDir-{}*/data-tree/*.root'
 
-        data = None
+        # Loop classes
+        data = dict(sig=None, bkg=None)
         for key in SELECTION.keys():
-            for path in paths:
-                f = ROOT.TFile(path, 'r')
+            print "\n== {}".format(key)
+
+            # Get ROOT ntuple paths for current class
+            paths = sorted(glob.glob(path_pattern.format('wprime' if key == 'sig' else 'JZ')))
+            print "   Found {} input data files.".format(len(paths))
+
+            # Loop all ROOT ntuple paths
+            for ipath, path in enumerate(paths):
+                print "   [{}/{}] {}".format(ipath + 1, len(paths), path.split('/')[-1])
+
+                # Get data tree
+                f = ROOT.TFile(path, 'READ')
                 t = f.Get('FlatSubstructureJetTree')
-                a = root_numpy.tree2array(t, branches=BRANCHES, selection=SELECTION[key])
-                a.dtype.names = map(rename, a.dtype.names)
-                data = a if (data is None) else np.concatenate((data, a))
+
+                # Guard against read error  @FIXME
+                try:
+                    # Read in data as a numpy recarray
+                    a = root_numpy.tree2array(t, branches=BRANCHES, selection=SELECTION[key])
+                    print "     Got {} samples".format(a.size)
+
+                    # Rename columns
+                    a.dtype.names = map(rename, a.dtype.names)
+
+                    # Check for duplicates
+                    a = recfunctions.append_fields(a, 'id', (a['eventNumber'] * 1E+07).astype(int) + \
+                                                            (a['runNumber']   * 1E+01).astype(int) + \
+                                                            (a['nthLeading']))
+                    if len(set(a['id'])) != len(a['id']):
+                        print "WARNING: Found {} duplicates.".format(len(a['id']) - len(set(a['id'])))
+
+                        from collections import Counter
+                        c = Counter(a['id'])
+                        mc = c.most_common(5)
+                        print mc
+                        tryid = mc[0][0]
+                        print "Trying id = {}:".format(tryid)
+                        for name in a.dtype.names:
+                            print "  {}: {}".format(name, a[name][a['id'] == tryid])
+                            pass
+                        exit()
+                        pass
+
+                    # Append to dataset
+                    data[key] = a if (data[key] is None) else np.concatenate((data[key], a))
+                except TypeError:
+                    # Reading error  @FIXME
+                    pass
                 pass
             pass
 
+        # Add `signal` column
+        for key in SELECTION.keys():
+            signal = (np.ones((data[key].shape[0],)) * (1 if key == 'sig' else 0)).astype(int)
+            data[key] = recfunctions.append_fields(data[key], 'signal', signal)
+            pass
+
+        # Concatenate to single dataset
+        data = np.concatenate(list(data.itervalues()))
+
         # Rescale MeV -> GeV
-        data['m']  /= 1000.
-        data['pt'] /= 1000.
+        data['m']        /= 1000.
+        data['pt']       /= 1000.
+        data['truth_pt'] /= 1000.
 
         print data.dtype.names
-
+        print data.shape
         pass
 
-
-    # Writing out HDF5 file(s)
-    # --------------------------------------------------------------------------
-    with Profile("writing"):
-
-        # Save as HDF5
+    # Writing output HDF5 file
+    with Profile("Writing output HDF5 file"):
         mkdir(args.output)
-        with h5py.File(args.output + 'data.h5', 'w') as hf:
-            hf.create_dataset('dataset',  data=data)
+        with h5py.File(args.output + '{}.h5'.format(args.tag), 'w') as hf:
+            hf.create_dataset('dataset',  data=data, compression="gzip")
             pass
-
-        pass
-
-    # Testing reading in HDF5 file(s)
-    # --------------------------------------------------------------------------
-    with Profile("reading test"):
-        with h5py.File(args.output + 'data.h5', 'r') as hf:
-            new_data = hf['dataset'][:]
-            pass
-        print "Read {} samples.".format(new_data.shape[0])
         pass
 
     return
