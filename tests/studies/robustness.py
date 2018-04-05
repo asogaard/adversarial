@@ -37,18 +37,20 @@ def robustness (data, args, features, var, bins, masscut=False, num_bootstrap=10
     # Scan `var`
     for bin in zip(bins[:-1], bins[1:]):
         # Perform selection
-        msk       = (data[var] >= bin[0]) & (data[var] < bin[1])
-        data_base = data[msk].copy()
-        msk_bkg  = data_base['signal'] == 0
+        msk_bin  = (data[var] >= bin[0]) & (data[var] < bin[1])
+        data_bin = data[msk_bin].copy()
+        msk_bkg  = data_bin['signal'] == 0
 
-        meanx.append(wmean(data_base.loc[msk_bkg, var], data_base.loc[msk_bkg, 'weight']))
+        # Compute weighted mean if x-axis variable
+        meanx.append(wmean(data_bin.loc[msk_bkg, var], data_bin.loc[msk_bkg, 'weight']))
 
+        # Compute metrics for all features
         for feat in features:
 
             # Compute metrics using bootstrapping
             bootstrap_rej, bootstrap_jsd = list(), list()
             for _ in range(num_bootstrap):
-                data_bootstrap = data_base.sample(frac=1.0, replace=True)
+                data_bootstrap = data_bin.sample(frac=1.0, replace=True)
                 rej, jsd = metrics(data_bootstrap, feat, masscut=masscut, verbose=False)
                 bootstrap_rej.append(rej)
                 bootstrap_jsd.append(1./jsd)
@@ -59,6 +61,9 @@ def robustness (data, args, features, var, bins, masscut=False, num_bootstrap=10
             jsds[feat].append((np.mean(bootstrap_jsd), np.std(bootstrap_jsd)))
             pass
         pass
+
+    # Format array
+    meanx = np.array(meanx).astype(float)
 
     # Perform plotting
     c = plot(data, args, features, bins, rejs, jsds, meanx, masscut, var)
@@ -77,26 +82,17 @@ def plot (*argv):
     # Unpack arguments
     data, args, features, bins, rejs, jsds, meanx, masscut, var = argv
 
-    meanx = np.array(meanx).astype(float)
-
     # Set styles
-    ref = dict()
-    ref['textsize'] = ROOT.gStyle.GetTextSize()
-    ref['legendtextsize'] = ROOT.gStyle.GetLegendTextSize()
-    for coord in ['x', 'y', 'z']:
-        ref[coord] = dict()
-        ref[coord]['labelsize'] = ROOT.gStyle.GetLabelSize(coord)
-        ref[coord]['titlesize'] = ROOT.gStyle.GetTitleSize(coord)
-        pass
-    pass
-
+    rstyle = ROOT.gROOT.GetStyle(map(lambda ts: ts.GetName(), ROOT.gROOT.GetListOfStyles())[-1])
+    style = ROOT.TStyle(rstyle)
     scale = 0.9
-    ROOT.gStyle.SetTextSize      (scale * ref['textsize'])
-    ROOT.gStyle.SetLegendTextSize(scale * ref['legendtextsize'])
+    style.SetTextSize      (scale * style.GetTextSize())
+    style.SetLegendTextSize(scale * style.GetLegendTextSize())
     for coord in ['x', 'y', 'z']:
-        ROOT.gStyle.SetLabelSize(scale * ref[coord]['labelsize'], coord)
-        ROOT.gStyle.SetTitleSize(scale * ref[coord]['titlesize'], coord)
+        style.SetLabelSize(scale * style.GetLabelSize(coord), coord)
+        style.SetTitleSize(scale * style.GetTitleSize(coord), coord)
         pass
+    style.cd()
 
     # Canvas
     c = rp.canvas(num_pads=2, fraction=0.55, size=(int(800 * 600 / 857.), 600), batch=not args.show)
@@ -158,8 +154,8 @@ def plot (*argv):
         pad._xaxis().SetNdivisions(504)
         pass
     c.xlabel(latex(var, ROOT=True))  # @TODO: Improve
-    c.pads()[0].ylabel("1/#varepsilon_{bkg.} @ #varepsilon_{sig.} = 50%")
-    c.pads()[1].ylabel("1/JSD @ #varepsilon_{sig.} = 50%")
+    c.pads()[0].ylabel("1/#varepsilon_{bkg} @ #varepsilon_{sig} = 50%")
+    c.pads()[1].ylabel("1/JSD @ #varepsilon_{sig} = 50%")
 
     c.text([], qualifier=QUALIFIER, xmin=0.15, ymax=0.93)
 
@@ -173,12 +169,7 @@ def plot (*argv):
     c.pads()[1].ylim(0.5, 5000)
     c.pads()[1].logy()
 
-    # Reset styles
-    ROOT.gStyle.SetTextSize      (ref['textsize'])
-    ROOT.gStyle.SetLegendTextSize(ref['legendtextsize'])
-    for coord in ['x', 'y', 'z']:
-        ROOT.gStyle.SetLabelSize(ref[coord]['labelsize'], coord)
-        ROOT.gStyle.SetTitleSize(ref[coord]['titlesize'], coord)
-        pass
+    # Reset style
+    rstyle.cd()
 
     return c
