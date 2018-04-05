@@ -38,6 +38,26 @@ ROOT.gStyle.SetHatchesLineWidth(3)
 ROOT.gStyle.SetTitleOffset(1.6, 'y')
 
 
+class TemporaryStyle ():
+    """
+    Context manager to temporarily modify global ROOT style settings.
+    """
+
+    def __init__ (self):
+        self.rstyle = ROOT.gROOT.GetStyle(map(lambda ts: ts.GetName(), ROOT.gROOT.GetListOfStyles())[-1])
+        return
+
+    def __enter__ (self):
+        style = ROOT.TStyle(self.rstyle)
+        style.cd()
+        return style
+
+    def __exit__ (self, *args):
+        self.rstyle.cd()
+        return
+    pass
+
+
 def showsave (f):
     """
     Method decorrator for all study method, to (optionally) show and save the
@@ -86,7 +106,7 @@ def JSD (P, Q, base=2):
     return 0.5 * (entropy(p, m, base=base) + entropy(q, m, base=base))
 
 
-def metrics (data, feat, target_tpr=0.5, masscut=False, verbose=True):
+def metrics (data, feat, target_tpr=0.5, masscut=False, verbose=False):
     """
     Compute the standard metrics (bkg. rejection and JSD) from a DataFrame.
     Assuming that any necessary selection has already been imposed.
@@ -109,6 +129,9 @@ def metrics (data, feat, target_tpr=0.5, masscut=False, verbose=True):
     # ------------------------------------------------------
 
     # (Opt.) mass cut mask
+    if masscut and verbose:
+        print "metrics: Applying mass cut."
+        pass
     msk  = (data['m'] > 60.) & (data['m'] < 100.) if masscut else np.ones_like(data['signal']).astype(bool)
 
     # scikit-learn assumes signal towards 1, background towards 0
@@ -150,7 +173,23 @@ def metrics (data, feat, target_tpr=0.5, masscut=False, verbose=True):
     jsd = JSD(p, f)
 
     # Return metrics
-    return rej, jsd
+    return rej, 1./jsd
+
+
+def bootstrap_metrics (data, feat, num_bootstrap=10, **kwargs):
+    """
+    ...
+    """
+    # Compute metrics using bootstrapping
+    bootstrap_rej, bootstrap_jsd = list(), list()
+    for _ in range(num_bootstrap):
+        data_bootstrap = data.sample(frac=1.0, replace=True)
+        rej, jsd = metrics(data_bootstrap, feat, **kwargs)
+        bootstrap_rej.append(rej)
+        bootstrap_jsd.append(jsd)
+        pass
+
+    return (np.mean(bootstrap_rej), np.std(bootstrap_rej)), (np.mean(bootstrap_jsd), np.std(bootstrap_jsd))
 
 
 def standardise (name):
