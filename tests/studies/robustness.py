@@ -37,28 +37,25 @@ def robustness (data, args, features, var, bins, masscut=False, num_bootstrap=10
     # Scan `var`
     for bin in zip(bins[:-1], bins[1:]):
         # Perform selection
-        msk       = (data[var] >= bin[0]) & (data[var] < bin[1])
-        data_base = data[msk].copy()
-        msk_bkg  = data_base['signal'] == 0
+        msk_bin  = (data[var] >= bin[0]) & (data[var] < bin[1])
+        data_bin = data[msk_bin].copy()
+        msk_bkg  = data_bin['signal'] == 0
 
-        meanx.append(wmean(data_base.loc[msk_bkg, var], data_base.loc[msk_bkg, 'weight']))
+        # Compute weighted mean if x-axis variable
+        meanx.append(wmean(data_bin.loc[msk_bkg, var], data_bin.loc[msk_bkg, 'weight']))
 
+        # Compute bootstrapped metrics for all features
         for feat in features:
-
-            # Compute metrics using bootstrapping
-            bootstrap_rej, bootstrap_jsd = list(), list()
-            for _ in range(num_bootstrap):
-                data_bootstrap = data_base.sample(frac=1.0, replace=True)
-                rej, jsd = metrics(data_bootstrap, feat, masscut=masscut, verbose=False)
-                bootstrap_rej.append(rej)
-                bootstrap_jsd.append(1./jsd)
-                pass
+            mean_std_rej, mean_std_jsd = bootstrap_metrics(data_bin, feat, num_bootstrap=num_bootstrap)
 
             # Store in output containers
-            rejs[feat].append((np.mean(bootstrap_rej), np.std(bootstrap_rej)))
-            jsds[feat].append((np.mean(bootstrap_jsd), np.std(bootstrap_jsd)))
+            rejs[feat].append(mean_std_rej)
+            jsds[feat].append(mean_std_jsd)
             pass
         pass
+
+    # Format array
+    meanx = np.array(meanx).astype(float)
 
     # Perform plotting
     c = plot(data, args, features, bins, rejs, jsds, meanx, masscut, var)
@@ -77,108 +74,90 @@ def plot (*argv):
     # Unpack arguments
     data, args, features, bins, rejs, jsds, meanx, masscut, var = argv
 
-    meanx = np.array(meanx).astype(float)
+    with TemporaryStyle() as style:
 
-    # Set styles
-    ref = dict()
-    ref['textsize'] = ROOT.gStyle.GetTextSize()
-    ref['legendtextsize'] = ROOT.gStyle.GetLegendTextSize()
-    for coord in ['x', 'y', 'z']:
-        ref[coord] = dict()
-        ref[coord]['labelsize'] = ROOT.gStyle.GetLabelSize(coord)
-        ref[coord]['titlesize'] = ROOT.gStyle.GetTitleSize(coord)
-        pass
-    pass
-
-    scale = 0.9
-    ROOT.gStyle.SetTextSize      (scale * ref['textsize'])
-    ROOT.gStyle.SetLegendTextSize(scale * ref['legendtextsize'])
-    for coord in ['x', 'y', 'z']:
-        ROOT.gStyle.SetLabelSize(scale * ref[coord]['labelsize'], coord)
-        ROOT.gStyle.SetTitleSize(scale * ref[coord]['titlesize'], coord)
-        pass
-
-    # Canvas
-    c = rp.canvas(num_pads=2, fraction=0.55, size=(int(800 * 600 / 857.), 600), batch=not args.show)
-    c.pads()[0]._bare().SetTopMargin(0.10)
-    c.pads()[0]._bare().SetRightMargin(0.23)
-    c.pads()[1]._bare().SetRightMargin(0.23)
-
-    # To fix 30.5 --> 30 for NPV
-    bins[-1] = np.floor(bins[-1])
-
-    # Plots
-    c.pads()[0].hist([0], bins=[bins[0], bins[-1]], linestyle=0, fillstyle=0)
-    c.pads()[1].hist([1], bins=[bins[0], bins[-1]], linecolor=ROOT.kGray + 2)
-    for is_simple in [True, False]:
-        for ifeat, feat in enumerate(features):
-            if is_simple != signal_low(feat): continue
-            if ifeat > 4: ifeat += 3
-            opts = dict(
-                linecolor   = rp.colours[(ifeat // 2)],
-                markercolor = rp.colours[(ifeat // 2)],
-                fillcolor   = rp.colours[(ifeat // 2)],
-                linestyle   = 1 + (ifeat % 2),
-                alpha       = 0.3,
-                option      = 'E2',
-            )
-
-            mean_rej, std_rej = map(np.array, zip(*rejs[feat]))
-            mean_jsd, std_jsd = map(np.array, zip(*jsds[feat]))
-
-            # Error boxes
-            x    = np.array(bins[:-1]) + 0.5 * np.diff(bins)
-            xerr = 0.5 * np.diff(bins)
-            graph_rej = ROOT.TGraphErrors(len(x), x, mean_rej, xerr, std_rej)
-            graph_jsd = ROOT.TGraphErrors(len(x), x, mean_jsd, xerr, std_jsd)
-
-            c.pads()[0].hist(graph_rej, **opts)
-            c.pads()[1].hist(graph_jsd, **opts)
-
-            # Markers and lines
-            opts['option']      = 'PE2L'
-            opts['markerstyle'] = 20 + 4 * (ifeat % 2)
-
-            graph_rej = ROOT.TGraph(len(x), meanx, mean_rej)
-            graph_jsd = ROOT.TGraph(len(x), meanx, mean_jsd)
-
-            c.pads()[0].hist(graph_rej, label=latex(feat, ROOT=True) if not is_simple else None, **opts)
-            c.pads()[1].hist(graph_jsd, label=latex(feat, ROOT=True) if     is_simple else None, **opts)
+        # Set styles
+        scale = 0.9
+        style.SetTextSize(scale * style.GetTextSize())
+        for coord in ['x', 'y', 'z']:
+            style.SetLabelSize(scale * style.GetLabelSize(coord), coord)
+            style.SetTitleSize(scale * style.GetTitleSize(coord), coord)
             pass
 
-        pass
+        # Canvas
+        c = rp.canvas(num_pads=2, fraction=0.55, size=(int(800 * 600 / 857.), 600), batch=not args.show)
+        c.pads()[0]._bare().SetTopMargin(0.10)
+        c.pads()[0]._bare().SetRightMargin(0.23)
+        c.pads()[1]._bare().SetRightMargin(0.23)
 
-    # Draw class-specific legend
-    width = 0.20
-    c.pads()[0].legend(header='MVA:',    width=width, xmin=0.79, ymax=0.92)
-    c.pads()[1].legend(header='Simple:', width=width, xmin=0.79, ymax=0.975)
+        # To fix 30.5 --> 30 for NPV
+        bins[-1] = np.floor(bins[-1])
 
-    # Decorations
-    for pad in c.pads():
-        pad._xaxis().SetNdivisions(504)
-        pass
-    c.xlabel(latex(var, ROOT=True))  # @TODO: Improve
-    c.pads()[0].ylabel("1/#varepsilon_{bkg.} @ #varepsilon_{sig.} = 50%")
-    c.pads()[1].ylabel("1/JSD @ #varepsilon_{sig.} = 50%")
+        # Plots
+        c.pads()[0].hist([0], bins=[bins[0], bins[-1]], linestyle=0, fillstyle=0)
+        c.pads()[1].hist([1], bins=[bins[0], bins[-1]], linecolor=ROOT.kGray + 2)
+        for is_simple in [True, False]:
+            for ifeat, feat in enumerate(features):
+                if is_simple != signal_low(feat): continue
+                if ifeat > 4: ifeat += 3
+                opts = dict(
+                    linecolor   = rp.colours[(ifeat // 2)],
+                    markercolor = rp.colours[(ifeat // 2)],
+                    fillcolor   = rp.colours[(ifeat // 2)],
+                    linestyle   = 1 + (ifeat % 2),
+                    alpha       = 0.3,
+                    option      = 'E2',
+                )
 
-    c.text([], qualifier=QUALIFIER, xmin=0.15, ymax=0.93)
+                mean_rej, std_rej = map(np.array, zip(*rejs[feat]))
+                mean_jsd, std_jsd = map(np.array, zip(*jsds[feat]))
 
-    c.text(["#sqrt{s} = 13 TeV,  QCD jets",
-            "Testing dataset",
-            "Baseline selection"] + \
-            (['m #in  [60, 100] GeV'] if masscut else []),
-             ATLAS=False, ymax=0.76)
+                # Error boxes
+                x    = np.array(bins[:-1]) + 0.5 * np.diff(bins)
+                xerr = 0.5 * np.diff(bins)
+                graph_rej = ROOT.TGraphErrors(len(x), x, mean_rej, xerr, std_rej)
+                graph_jsd = ROOT.TGraphErrors(len(x), x, mean_jsd, xerr, std_jsd)
 
-    c.pads()[0].padding(0.5)
-    c.pads()[1].ylim(0.5, 5000)
-    c.pads()[1].logy()
+                c.pads()[0].hist(graph_rej, **opts)
+                c.pads()[1].hist(graph_jsd, **opts)
 
-    # Reset styles
-    ROOT.gStyle.SetTextSize      (ref['textsize'])
-    ROOT.gStyle.SetLegendTextSize(ref['legendtextsize'])
-    for coord in ['x', 'y', 'z']:
-        ROOT.gStyle.SetLabelSize(ref[coord]['labelsize'], coord)
-        ROOT.gStyle.SetTitleSize(ref[coord]['titlesize'], coord)
-        pass
+                # Markers and lines
+                opts['option']      = 'PE2L'
+                opts['markerstyle'] = 20 + 4 * (ifeat % 2)
+
+                graph_rej = ROOT.TGraph(len(x), meanx, mean_rej)
+                graph_jsd = ROOT.TGraph(len(x), meanx, mean_jsd)
+
+                c.pads()[0].hist(graph_rej, label=latex(feat, ROOT=True) if not is_simple else None, **opts)
+                c.pads()[1].hist(graph_jsd, label=latex(feat, ROOT=True) if     is_simple else None, **opts)
+                pass
+
+            pass
+
+        # Draw class-specific legend
+        width = 0.20
+        c.pads()[0].legend(header='MVA:',    width=width, xmin=0.79, ymax=0.92)
+        c.pads()[1].legend(header='Simple:', width=width, xmin=0.79, ymax=0.975)
+
+        # Decorations
+        for pad in c.pads():
+            pad._xaxis().SetNdivisions(504)
+            pass
+        c.xlabel(latex(var, ROOT=True))  # @TODO: Improve
+        c.pads()[0].ylabel("1/#varepsilon_{bkg} @ #varepsilon_{sig} = 50%")
+        c.pads()[1].ylabel("1/JSD @ #varepsilon_{sig} = 50%")
+
+        c.text([], qualifier=QUALIFIER, xmin=0.15, ymax=0.93)
+
+        c.text(["#sqrt{s} = 13 TeV,  QCD jets",
+                "Testing dataset",
+                "Baseline selection"] + \
+                (['m #in  [60, 100] GeV'] if masscut else []),
+                 ATLAS=False, ymax=0.76)
+
+        c.pads()[0].padding(0.5)
+        c.pads()[1].ylim(0.5, 5000)
+        c.pads()[1].logy()
+        pass  # Temporary style scope
 
     return c

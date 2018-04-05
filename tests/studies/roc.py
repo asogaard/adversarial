@@ -121,6 +121,7 @@ def plot (*argv):
             "Baseline selection"] + \
             (["m #in  [60, 100] GeV"] if masscut else []),
         qualifier=QUALIFIER)
+        
     c.latex("Random guessing", 0.3, 1./0.3 * 0.9, align=23, angle=-12, textsize=13, textcolor=ROOT.kGray + 2)
     c.xlim(0., 1.)
     c.ylim(1E+00, 1E+05)
