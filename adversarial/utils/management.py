@@ -5,8 +5,72 @@
 
 # Basic import(s)
 import os
+import gc
 import json
+import gzip
+import pickle
 import subprocess
+
+def garbage_collect (f):
+    """
+    Function decorator to manually perform garbage collection after the call,
+    so as to avoid unecessarily large memory consumption.
+    """
+    def wrapper(*args, **kwargs):
+        ret = f(*args, **kwargs)
+        gc.collect()
+        return ret
+    return wrapper
+
+
+def loadclf (path, zip=True):
+    """
+    Load pickled classifier from file.
+    """
+
+    # Check file suffix
+    if path.endswith('.gz'):
+        zip = True
+        pass
+
+    # Determine operation
+    op = gzip.open if zip else open
+
+    # Load model
+    with op(path, 'r') as f:
+        clf = pickle.load(f)
+        pass
+
+    return clf
+
+
+def saveclf (clf, path, zip=True):
+    """
+    Save pickled classifier to file.
+    """
+
+    # Ensure model directory exists
+    basedir = '/'.join(path.split('/')[:-1])
+    if basedir:
+        mkdir(basedir)
+        pass
+
+    # Ensure correct suffix
+    if zip and not path.endswith('.gz'):
+        path += '.gz'
+    elif not zip and path.endswith('.gz'):
+        zip = True
+        pass
+
+    # Determine operation
+    op = gzip.open if zip else open
+
+    # Save classifier
+    with op(path, 'w') as f:
+        pickle.dump(clf, f)
+        pass
+
+    return
 
 
 def mkdir (path):

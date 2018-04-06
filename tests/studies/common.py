@@ -6,12 +6,11 @@ import numpy as np
 from scipy.stats import entropy
 from sklearn.metrics import roc_curve
 
-
 # ROOT import(s)
 import ROOT
 
 # Project imports
-from adversarial.utils import mkdir
+from adversarial.utils import mkdir, garbage_collect
 
 # Custom import(s)
 import rootplotting as rp
@@ -24,14 +23,18 @@ HISTSTYLE = {  # key = signal / passing
     True: {
         'fillcolor': rp.colours[5],
         'linecolor': rp.colours[5],
-        'fillstyle': 3454,
+        'fillstyle': 3354,
         },
     False: {
         'fillcolor': rp.colours[1],
         'linecolor': rp.colours[1],
-        'fillstyle': 3445,
+        'fillstyle': 1001,
+        'alpha': 0.5,
         }
-}
+    }
+
+TEXT = ["#sqrt{s} = 13 TeV",
+        "Baseline selection"]
 
 # Global ROOT TStyle settings
 ROOT.gStyle.SetHatchesLineWidth(3)
@@ -106,6 +109,7 @@ def JSD (P, Q, base=2):
     return 0.5 * (entropy(p, m, base=base) + entropy(q, m, base=base))
 
 
+@garbage_collect
 def metrics (data, feat, target_tpr=0.5, masscut=False, verbose=False):
     """
     Compute the standard metrics (bkg. rejection and JSD) from a DataFrame.
@@ -132,19 +136,21 @@ def metrics (data, feat, target_tpr=0.5, masscut=False, verbose=False):
     if masscut and verbose:
         print "metrics: Applying mass cut."
         pass
-    msk  = (data['m'] > 60.) & (data['m'] < 100.) if masscut else np.ones_like(data['signal']).astype(bool)
+    msk = (data['m'] > 60.) & (data['m'] < 100.) if masscut else np.ones_like(data['signal']).astype(bool)
 
     # scikit-learn assumes signal towards 1, background towards 0
     pred = data[feat].values.copy()
+    #sign = 1.
     if signal_low(feat):
         if verbose:
             print "metrics: Reversing cut direction for {}".format(feat)
             pass
+        #sign = -1.
         pred *= -1.
         pass
 
     # Compute ROC curve efficiencies
-    fpr, tpr, thresholds = roc_curve(data.loc[msk, 'signal'], pred[msk], sample_weight=data.loc[msk, 'weight'], pos_label=1)
+    fpr, tpr, thresholds = roc_curve(data.loc[msk, 'signal'], pred[msk], sample_weight=data.loc[msk, 'weight'])
 
     if masscut:
         tpr_mass = np.mean(msk[data['signal'] == 1])
@@ -154,7 +160,7 @@ def metrics (data, feat, target_tpr=0.5, masscut=False, verbose=False):
         fpr *= fpr_mass
         pass
 
-    # Get background rejection factor @ eff_sig. = 50%
+    # Get background rejection factor
     idx = np.argmin(np.abs(tpr - target_tpr))
     rej = 1. / fpr[idx]
     cut = thresholds[idx]
@@ -163,9 +169,9 @@ def metrics (data, feat, target_tpr=0.5, masscut=False, verbose=False):
     # JSD at `target_tpr` signal efficiency
     # -------------------------------------
 
-    # Get JSD(pass || fail) @ eff_sig. = 50%
+    # Get JSD(1/Npass dNpass/dm || 1/Nfail dNfail/dm)
     msk_pass = pred > cut
-    msk_bkg = data['signal'] == 0
+    msk_bkg  = data['signal'] == 0
 
     p, _ = np.histogram(data.loc[ msk_pass & msk_bkg, 'm'].values, bins=MASSBINS, weights=data.loc[ msk_pass & msk_bkg, 'weight'].values, density=True)
     f, _ = np.histogram(data.loc[~msk_pass & msk_bkg, 'm'].values, bins=MASSBINS, weights=data.loc[~msk_pass & msk_bkg, 'weight'].values, density=True)
@@ -176,6 +182,7 @@ def metrics (data, feat, target_tpr=0.5, masscut=False, verbose=False):
     return rej, 1./jsd
 
 
+@garbage_collect
 def bootstrap_metrics (data, feat, num_bootstrap=10, **kwargs):
     """
     ...
@@ -183,8 +190,10 @@ def bootstrap_metrics (data, feat, num_bootstrap=10, **kwargs):
     # Compute metrics using bootstrapping
     bootstrap_rej, bootstrap_jsd = list(), list()
     for _ in range(num_bootstrap):
-        data_bootstrap = data.sample(frac=1.0, replace=True)
-        rej, jsd = metrics(data_bootstrap, feat, **kwargs)
+        #data_bootstrap = data.sample(frac=1.0, replace=True)
+        #rej, jsd = metrics(data_bootstrap, feat, **kwargs)
+        idx = np.random.choice(data.shape[0], data.shape[0], replace=True)
+        rej, jsd = metrics(data.iloc[idx], feat, **kwargs)
         bootstrap_rej.append(rej)
         bootstrap_jsd.append(jsd)
         pass

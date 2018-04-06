@@ -68,8 +68,9 @@ def main (args):
     D2_kNN_var = 'D2-kNN({:d}%)'.format(kNN_eff)
     uboost_var = 'uBoost(#varepsilon={:d}%,#alpha={:.1f})'.format(uboost_eff, uboost_uni)
 
-    lambda_reg  = 10
-    lambda_regs = sorted([0.1, 1, 10, 100, 1000])
+    lambda_reg  = 100
+    #lambda_regs = sorted([0.1, 1, 10, 100, 1000])
+    lambda_regs = sorted([100, 1000])
     ann_vars    = list()
     lambda_strs = list()
     for lambda_reg_ in lambda_regs:
@@ -93,10 +94,6 @@ def main (args):
 
     tagger_features = ['Tau21','Tau21DDT', 'D2', D2_kNN_var, 'D2CSS', 'NN', ann_var, 'Adaboost', uboost_var]
 
-    # DDT variables
-    fit_range = (1.5, 4.0)
-    intercept, slope = 0.774633, -0.111879
-
 
     # Adding variables
     # --------------------------------------------------------------------------
@@ -105,51 +102,23 @@ def main (args):
         # Tau21DDT
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         with Profile("Tau21DDT"):
-            with gzip.open('models/ddt/ddt.pkl.gz', 'r') as f:
-                ddt = pickle.load(f)
-                pass
-            data['rhoDDT']   = pd.Series(np.log(np.square(data['m'])/(data['pt'] * 1.)), index=data.index)
-            data['Tau21DDT'] = pd.Series(data['Tau21'] - ddt.predict(data['rhoDDT'].as_matrix().reshape((-1,1))), index=data.index)
+            from run.ddt.common import add_ddt
+            add_ddt(data, path='models/ddt/ddt.pkl.gz')
             pass
 
 
         # D2-kNN
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         with Profile("D2-kNN"):
-
-            # Common, classifier-specific import(s)
-            from run.knn.common import AXIS as knn_axis
-            from run.knn.common import VAR  as knn_var
-            from run.knn.common import VARX as knn_varx
-            from run.knn.common import VARY as knn_vary
-            from run.knn.common import add_variables as knn_add_variables
-
-            # Add necessary variables
-            knn_add_variables(data)
-
-            X = data[[knn_varx, knn_vary]].as_matrix().astype(np.float)
-            X[:,0] -= knn_axis[knn_varx][1]
-            X[:,0] /= knn_axis[knn_varx][2] - knn_axis[knn_varx][1]
-            X[:,1] -= knn_axis[knn_vary][1]
-            X[:,1] /= knn_axis[knn_vary][2]  - knn_axis[knn_vary][1]
-
-            with gzip.open('models/knn/knn_{}_{}.pkl.gz'.format(knn_var, kNN_eff), 'r') as f:
-                knn = pickle.load(f)
-                pass
-
-            kNN_percentile = knn.predict(X).flatten()
-            data[D2_kNN_var] = pd.Series(data[knn_var] - kNN_percentile, index=data.index)
+            from run.knn.common import add_knn, VAR as knn_var
+            add_knn(data, newfeat=D2_kNN_var, path='models/knn/knn_{}_{}.pkl.gz'.format(knn_var, kNN_eff))
             pass
 
 
         # D2-CSS
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         with Profile("D2-CSS"):
-
-            # Common, classifier-specific import(s)
             from run.css.common import AddCSS
-
-            # Add necessary variables
             AddCSS("D2", data)
             pass
 
@@ -208,6 +177,7 @@ def main (args):
         pass
 
 
+    """
     # Perform pile-up robustness study
     # --------------------------------------------------------------------------
     with Profile("Study: Robustness (pile-up)"):
@@ -227,9 +197,11 @@ def main (args):
     # Perform jet mass distribution comparison study
     # --------------------------------------------------------------------------
     with Profile("Study: Jet mass comparison"):
-        studies.jetmasscomparison(data, args, tagger_features)
+        for simple_features in [True, False]:
+            studies.jetmasscomparison(data, args, tagger_features, simple_features)
+            pass
         pass
-
+    """
 
     # Perform summary plot study
     # --------------------------------------------------------------------------
@@ -243,6 +215,8 @@ def main (args):
         studies.summary(data, args, tagger_features, scan_features)
         pass
 
+
+    return
 
     # Perform distributions study
     # --------------------------------------------------------------------------

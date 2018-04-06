@@ -13,7 +13,7 @@ from sklearn.neighbors import KNeighborsRegressor
 from sklearn.metrics import roc_curve
 
 # Project import(s)
-from adversarial.utils import parse_args, initialise, load_data, mkdir
+from adversarial.utils import parse_args, initialise, load_data, mkdir, saveclf
 from adversarial.profile import profile, Profile
 from adversarial.constants import *
 
@@ -75,14 +75,7 @@ def main (args):
     # Saving KNN classifier
     # --------------------------------------------------------------------------
     with Profile("Saving KNN classifier"):
-
-        # Ensure model directory exists
-        mkdir('models/knn/')
-
-        # Save classifier
-        with gzip.open('models/knn/knn_{:s}_{:.0f}.pkl.gz'.format(VAR, EFF), 'w') as f:
-            pickle.dump(knn, f)
-            pass
+        saveclf(knn, 'models/knn/knn_{:s}_{:.0f}.pkl.gz'.format(VAR, EFF))
         pass
 
     return 0

@@ -17,7 +17,7 @@ import rootplotting as rp
 
 
 @showsave
-def summary (data, args, features, scan_features, target_tpr=0.5):
+def summary (data, args, features, scan_features, target_tpr=0.5, num_bootstrap=5):
     """
     Perform study of combined classification- and decorrelation performance.
 
@@ -38,6 +38,7 @@ def summary (data, args, features, scan_features, target_tpr=0.5):
                                  'Adaboost': ...,
                                  }
         target_tpr: ...
+        num_bootstrap: ...
     """
 
     # Check(s)
@@ -56,9 +57,11 @@ def summary (data, args, features, scan_features, target_tpr=0.5):
 
         # Compute metrics
         rej, jsd = metrics(data, feat)
+        #mean_std_rej, mean_std_jsd = bootstrap_metrics(data, feat, num_bootstrap=num_bootstrap)
 
         # Add point to array
         points.append((rej, jsd, feat))
+        #points.append((mean_std_rej, mean_std_jsd, feat))
         pass
 
     # Perform plotting
@@ -102,10 +105,7 @@ def plot (*argv):
         # Markers
         for is_simple in [True, False]:
             # Split the legend into simple- and MVA taggers
-            for ipoint, feat in enumerate(features):
-
-                # Select only appropriate taggers
-                if is_simple != signal_low(feat): continue
+            for ifeat, feat in filter(lambda t: is_simple == signal_low(t[1]), enumerate(features)):
 
                 # Coordinates, label
                 idx = map(lambda t: t[2], points).index(feat)
@@ -116,10 +116,10 @@ def plot (*argv):
                 # @TODO: uBoost
 
                 # Style
-                ipoint += 3 if ipoint > 3 else 0  # @TEMP
+                ifeat += 3 if ifeat > 3 else 0  # @TEMP
 
-                colour      = rp.colours[(ipoint // 2) % len(rp.colours)]
-                markerstyle = 20 + (ipoint % 2) * 4
+                colour      = rp.colours[(ifeat // 2) % len(rp.colours)]
+                markerstyle = 20 + (ifeat % 2) * 4
 
                 # Draw
                 c.graph([y], bins=[x], markercolor=colour, markerstyle=markerstyle, label=latex(label, ROOT=True), option='P')
@@ -134,12 +134,12 @@ def plot (*argv):
         # Markers, parametrised decorrelation
         for base_feat, group in scan_features.iteritems():
             # Get index in list of features
-            ipoint = features.index(base_feat)
-            ipoint += 3 if ipoint > 3 else 0  # @TEMP
+            ifeat = features.index(base_feat)
+            ifeat += 3 if ifeat > 3 else 0  # @TEMP
 
             # Style
-            colour      = rp.colours[(ipoint // 2) % len(rp.colours)]
-            markerstyle = 20 + (ipoint % 2) * 4
+            colour      = rp.colours[(ifeat // 2) % len(rp.colours)]
+            markerstyle = 24  # 20 + (ifeat % 2) * 4
 
             for feat, label in group:
                 idx = map(lambda t: t[2], points).index(feat)
@@ -198,10 +198,7 @@ def plot (*argv):
         c.latex("    Less sculpting #rightarrow",    1.1, midpointy,  angle=90, align=23,**opts_text)
         c.latex("    Greater separtion #rightarrow", midpointx, 1.1,  angle= 0, align=21,**opts_text)
 
-        c.text(["#sqrt{s} = 13 TeV",
-                "Testing dataset",
-                "Baseline selection",
-                ],
+        c.text(TEXT,
             xmin=0.24,
             qualifier=QUALIFIER)
         pass

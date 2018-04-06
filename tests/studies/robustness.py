@@ -14,7 +14,7 @@ import rootplotting as rp
 
 
 @showsave
-def robustness (data, args, features, var, bins, masscut=False, num_bootstrap=10):
+def robustness (data, args, features, var, bins, masscut=False, num_bootstrap=5):
     """
     Perform study of robustness wrt. `var`.
 
@@ -38,15 +38,17 @@ def robustness (data, args, features, var, bins, masscut=False, num_bootstrap=10
     for bin in zip(bins[:-1], bins[1:]):
         # Perform selection
         msk_bin  = (data[var] >= bin[0]) & (data[var] < bin[1])
-        data_bin = data[msk_bin].copy()
-        msk_bkg  = data_bin['signal'] == 0
+        #data_bin = data[msk_bin].copy()
+        #msk_bkg  = data_bin['signal'] == 0
+        msk_bkg  = data['signal'] == 0
 
         # Compute weighted mean if x-axis variable
-        meanx.append(wmean(data_bin.loc[msk_bkg, var], data_bin.loc[msk_bkg, 'weight']))
+        #meanx.append(wmean(data_bin.loc[msk_bkg, var], data_bin.loc[msk_bkg, 'weight']))
+        meanx.append(wmean(data.loc[msk_bin & msk_bkg, var], data.loc[msk_bin & msk_bkg, 'weight']))
 
         # Compute bootstrapped metrics for all features
         for feat in features:
-            mean_std_rej, mean_std_jsd = bootstrap_metrics(data_bin, feat, num_bootstrap=num_bootstrap)
+            mean_std_rej, mean_std_jsd = bootstrap_metrics(data.iloc[msk_bin], feat, num_bootstrap=num_bootstrap)
 
             # Store in output containers
             rejs[feat].append(mean_std_rej)
@@ -97,8 +99,7 @@ def plot (*argv):
         c.pads()[0].hist([0], bins=[bins[0], bins[-1]], linestyle=0, fillstyle=0)
         c.pads()[1].hist([1], bins=[bins[0], bins[-1]], linecolor=ROOT.kGray + 2)
         for is_simple in [True, False]:
-            for ifeat, feat in enumerate(features):
-                if is_simple != signal_low(feat): continue
+            for ifeat, feat in filter(lambda t: is_simple == signal_low(t[1]), enumerate(features)):
                 if ifeat > 4: ifeat += 3
                 opts = dict(
                     linecolor   = rp.colours[(ifeat // 2)],

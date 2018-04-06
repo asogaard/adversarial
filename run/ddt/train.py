@@ -14,7 +14,7 @@ import numpy as np
 from sklearn.linear_model import LinearRegression
 
 # Project import(s)
-from adversarial.utils import parse_args, initialise, load_data, mkdir
+from adversarial.utils import parse_args, initialise, load_data, mkdir, saveclf
 from adversarial.profile import profile, Profile
 from adversarial.constants import *
 
@@ -52,31 +52,25 @@ def main (args):
     with Profile("Fitting profile"):
         fit = ROOT.TF1('fit', 'pol1', *FIT_RANGE)
         profile.Fit('fit', 'RQ0')
-        intercept, coef = fit.GetParameter(0), fit.GetParameter(1)
+        intercept_val, coef_val = fit.GetParameter(0), fit.GetParameter(1)
+        intercept_err, coef_err = fit.GetParError(0),  fit.GetParError(1)
 
         # Create scikit-learn transform
         ddt = LinearRegression()
-        ddt.coef_      = np.array([ coef])
-        ddt.intercept_ = np.array([-coef * FIT_RANGE[0]])
-        ddt.offset_    = np.array([ coef * FIT_RANGE[0] + intercept])
+        ddt.coef_      = np.array([ coef_val])
+        ddt.intercept_ = np.array([-coef_val * FIT_RANGE[0]])
+        ddt.offset_    = np.array([ coef_val * FIT_RANGE[0] + intercept_val])
 
         print "Fitted function:"
-        print "  intercept: {:f}".format(intercept)
-        print "  coef:      {:f}".format(coef)
+        print "  intercept: {:7.4f} ± {:7.4f}".format(intercept_val, intercept_err)
+        print "  coef:      {:7.4f} ± {:7.4f}".format(coef_val, coef_err)
         pass
 
 
     # Saving DDT transform
     # --------------------------------------------------------------------------
     with Profile("Saving DDT transform"):
-
-        # Ensure model directory exists
-        mkdir('models/ddt/')
-
-        # Save classifier
-        with gzip.open('models/ddt/ddt.pkl.gz', 'w') as f:
-            pickle.dump(ddt, f)
-            pass
+        saveclf(ddt, 'models/ddt/ddt.pkl.gz')
         pass
 
     return 0

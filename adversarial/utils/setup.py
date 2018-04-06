@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 
 # Project import(s)
-from .management import mkdir
+from .management import mkdir, garbage_collect
 from ..profile import profile
 
 # Global variable definition(s)
@@ -173,6 +173,17 @@ def initialise (args):
     with open(args.config, 'r') as f:
         cfg = json.load(f)
         pass
+
+    # Validate learning rates and decays
+    # If e.g. `lr = -3`, then let `lr -> 10^(lr) = 1E-03`
+    for mdl in cfg.keys():
+        for key in ['lr', 'decay']:
+            if key in cfg[mdl]['compile'] and cfg[mdl]['compile'][key] < 0:
+                cfg[mdl]['compile'][key] = np.power(10, cfg[mdl]['compile'][key])
+                pass
+            pass
+        pass
+
 
     # Apply patches
     args.patches = args.patches or []
@@ -328,6 +339,7 @@ def initialise_backend (args):
     return
 
 
+@garbage_collect
 @profile
 def load_data (path, name='dataset', train_fraction=0.8):
     """General script to load data, common to all run scripts.
@@ -377,6 +389,7 @@ def load_data (path, name='dataset', train_fraction=0.8):
     data = data.sample(frac=1, random_state=RNG).reset_index(drop=True)  # For reproducibility
 
     # Split into training- and test dataset
+    # @TODO: Make obsolete
     num_sig = int((data['signal'] == 1).sum())
     num_bkg = int((data['signal'] == 0).sum())
     num_train = int(num_sig * train_fraction)

@@ -14,11 +14,6 @@ from adversarial.constants import *
 import rootplotting as rp
 
 
-# Global variable definition(s)
-HISTSTYLE[True] ['label'] = "Passing cut"
-HISTSTYLE[False]['label'] = "Failing cut"
-
-
 @showsave
 def jetmass (data, args, feat, eff_sig=50):
     """
@@ -62,6 +57,10 @@ def plot (*argv):
     # Unpack arguments
     data, args, feat, msk_pass, msk_bkg, eff_sig = argv
 
+    # Global variable override(s)
+    HISTSTYLE[True] ['label'] = "Passing cut"
+    HISTSTYLE[False]['label'] = "Failing cut"
+
     # Canvas
     c = rp.canvas(num_pads=2, size=(int(800 * 600 / 857.), 600), batch=not args.show)
 
@@ -90,7 +89,7 @@ def plot (*argv):
     c.text(["#sqrt{s} = 13 TeV,  QCD jets",
             "Testing dataset",
             "Baseline selection",
-            "Fixed #varepsilon_{sig.} = %d%% cut on %s" % (eff_sig, latex(feat, ROOT=True)),
+            "Fixed #varepsilon_{sig} = %d%% cut on %s" % (eff_sig, latex(feat, ROOT=True)),
             ], qualifier=QUALIFIER)
 
     c.ylim(2E-04, 2E+02)
