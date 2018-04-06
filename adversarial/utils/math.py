@@ -5,6 +5,7 @@
 
 # Basic import(s)
 import numpy as np
+import pandas as pd
 
 # Project import(s)
 from .misc import belongs_to
@@ -18,6 +19,10 @@ def wmean (x, w):
     # Numpy array-type
     if belongs_to(x, np):
         return np.sum(x * w) / np.sum(w)
+
+    # Pandas DataFrame-type
+    if belongs_to(x, pd):
+        return wmean(x.values, w)
 
     # Tensorflow type
     else:
