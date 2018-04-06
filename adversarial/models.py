@@ -8,9 +8,11 @@ Adapted from https://github.com/asogaard/AdversarialSubstructure/blob/master/mod
 
 # Basic import(s)
 import re
+import numpy as np
 
 # Keras import(s)
 import keras
+from keras import regularizers
 from keras.models import Model
 from keras.layers import Dense, Input, Dropout, Concatenate, Lambda
 from keras.engine.topology import InputLayer
@@ -19,6 +21,9 @@ from keras.layers.normalization import BatchNormalization
 # Project import(s)
 from .layers import *
 from .utils import snake_case
+
+# Global variable definition(s)
+RNG = np.random.RandomState(21)  # For reproducibility
 
 
 # Utility methods for naming layers
@@ -78,6 +83,8 @@ def stack_layers (input_layer, architecture, default, scope=None):
         # Extract non-standard keyword arguments
         batchnorm = opts.pop('batchnorm', False)
         dropout   = opts.pop('dropout',   None)
+        l1reg     = opts.pop('l1reg',     None)
+        l2reg     = opts.pop('l2reg',     None)
 
         # 1: (Opt.) Add batch normalisation layer before dense layer
         if batchnorm:
@@ -85,11 +92,14 @@ def stack_layers (input_layer, architecture, default, scope=None):
             pass
 
         # 2: Add dense layer according to specifications
-        l = Dense(name=keras_layer_name('Dense'), **opts)(l)
+        l = Dense(name=keras_layer_name('Dense'),
+                  activity_regularizer=regularizers.l1(l1reg) if l1reg else None,
+                  kernel_regularizer  =regularizers.l2(l2reg) if l2reg else None,
+                  **opts)(l)
 
         # 3: (Opt.) Add dropout regularisation layer after dense layer
         if dropout:
-            l = Dropout(dropout, name=keras_layer_name('Dropout'))(l)
+            l = Dropout(dropout, seed=RNG.randint(np.iinfo(np.int).max), name=keras_layer_name('Dropout'))(l)
             pass
 
         pass
