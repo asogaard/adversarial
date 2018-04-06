@@ -177,7 +177,6 @@ def main (args):
         pass
 
 
-    """
     # Perform pile-up robustness study
     # --------------------------------------------------------------------------
     with Profile("Study: Robustness (pile-up)"):
@@ -201,7 +200,7 @@ def main (args):
             studies.jetmasscomparison(data, args, tagger_features, simple_features)
             pass
         pass
-    """
+
 
     # Perform summary plot study
     # --------------------------------------------------------------------------
@@ -215,8 +214,6 @@ def main (args):
         studies.summary(data, args, tagger_features, scan_features)
         pass
 
-
-    return
 
     # Perform distributions study
     # --------------------------------------------------------------------------
