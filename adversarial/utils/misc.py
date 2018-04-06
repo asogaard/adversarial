@@ -37,6 +37,7 @@ def latex (variable_name, ROOT=True):
     name = name.replace('rho', '\\rho')
     name = name.replace('tau21', '\\tau_{21}')
     name = name.replace('ddt', '^{DDT}')
+    name = name.replace('css', '^{CSS}')
     name = re.sub('\_([0-9]+)$', '^{(\\1)}', name)
     name = re.sub('-knn(.*)$', '^{kNN\\1}', name)
 
