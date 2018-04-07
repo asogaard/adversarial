@@ -4,7 +4,7 @@
 """Script for conveniently formatting and storing the W/top-tagging ntuples."""
 
 # Basic import(s)
-import h5py
+import gc
 import glob
 
 # Get ROOT to stop hogging the command-line options
@@ -19,6 +19,7 @@ from numpy.lib import recfunctions
 # Project import(s)
 from adversarial.utils import mkdir
 from adversarial.profile import Profile, profile
+from .common import load_hdf5, save_hdf5
 
 # Command-line arguments parser
 import argparse
@@ -29,11 +30,8 @@ parser.add_argument('--input', action='store', type=str,
                     default='/eos/atlas/atlascerngroupdisk/perf-jets/JSS/TopBosonTagAnalysis2016/FlatNtuplesR21/',
                     help='Input directory, from which to read input ROOT files.')
 parser.add_argument('--output', action='store', type=str,
-                    default='/eos/atlas/user/a/asogaard/adversarial/data/2018-04-04/',
+                    default='/eos/atlas/user/a/asogaard/adversarial/data/2018-04-07/',
                     help='Output directory, to which to write output files.')
-parser.add_argument('--tag', action='store', type=str,
-                    default='data_full',
-                    help='Unique tag, used for output file name.')
 
 # Global definition(s)
 SELECTION = {
@@ -61,7 +59,7 @@ SELECTION = {
 # -- Add `common` selection to all other keys
 common_selection = SELECTION.pop('common')
 for key in SELECTION.keys():
-    SELECTION[key] = " && ".join(SELECTION[key] + common_selection)
+    SELECTION[key] = "({})".format(" && ".join(SELECTION[key] + common_selection))
     pass
 
 # -- 'Wtop' indicates use for W-tagging DNN
@@ -77,7 +75,7 @@ BRANCHES = [
     'EventInfo_NPV',
     'EventInfo_eventNumber',  # Checking for duplicates
     'EventInfo_runNumber',    # Checking for duplicates
-    'fjet_nthLeading', # @TODO: Check. Only use == 1?
+    'fjet_nthLeading',
 
     # Truth variables
     'fjet_truthJet_pt',
@@ -170,69 +168,32 @@ def main ():
             for ipath, path in enumerate(paths):
                 print "   [{}/{}] {}".format(ipath + 1, len(paths), path.split('/')[-1])
 
+                # Manual garbage collection
+                gc.collect()
+
                 # Get data tree
                 f = ROOT.TFile(path, 'READ')
                 t = f.Get('FlatSubstructureJetTree')
 
-                # Guard against read error  @FIXME
-                try:
-                    # Read in data as a numpy recarray
-                    a = root_numpy.tree2array(t, branches=BRANCHES, selection=SELECTION[key])
-                    print "     Got {} samples".format(a.size)
+                # Read in data as a numpy recarray
+                a = root_numpy.tree2array(t, branches=BRANCHES, selection=SELECTION[key])
+                print "     Got {} samples".format(a.size)
 
-                    # Rename columns
-                    a.dtype.names = map(rename, a.dtype.names)
+                # Rename columns
+                a.dtype.names = map(rename, a.dtype.names)
 
-                    # Check for duplicates
-                    a = recfunctions.append_fields(a, 'id', (a['eventNumber'] * 1E+07).astype(int) + \
-                                                            (a['runNumber']   * 1E+01).astype(int) + \
-                                                            (a['nthLeading']))
-                    if len(set(a['id'])) != len(a['id']):
-                        print "WARNING: Found {} duplicates.".format(len(a['id']) - len(set(a['id'])))
+                # Rescale MeV -> GeV
+                a['m']        /= 1000.
+                a['pt']       /= 1000.
+                a['truth_pt'] /= 1000.
 
-                        from collections import Counter
-                        c = Counter(a['id'])
-                        mc = c.most_common(5)
-                        print mc
-                        tryid = mc[0][0]
-                        print "Trying id = {}:".format(tryid)
-                        for name in a.dtype.names:
-                            print "  {}: {}".format(name, a[name][a['id'] == tryid])
-                            pass
-                        exit()
-                        pass
-
-                    # Append to dataset
-                    data[key] = a if (data[key] is None) else np.concatenate((data[key], a))
-                except TypeError:
-                    # Reading error  @FIXME
-                    pass
+                # Add `signal` column
+                signal = (np.ones((a.shape[0],)) * (1 if key == 'sig' else 0)).astype(int)
+                a = recfunctions.append_fields(a, 'signal', signal)
+                
+                # Writing output HDF5 file
+                save_hdf5(data, path.replace('.root', '') + '_full.h5')
                 pass
-            pass
-
-        # Add `signal` column
-        for key in SELECTION.keys():
-            signal = (np.ones((data[key].shape[0],)) * (1 if key == 'sig' else 0)).astype(int)
-            data[key] = recfunctions.append_fields(data[key], 'signal', signal)
-            pass
-
-        # Concatenate to single dataset
-        data = np.concatenate(list(data.itervalues()))
-
-        # Rescale MeV -> GeV
-        data['m']        /= 1000.
-        data['pt']       /= 1000.
-        data['truth_pt'] /= 1000.
-
-        print data.dtype.names
-        print data.shape
-        pass
-
-    # Writing output HDF5 file
-    with Profile("Writing output HDF5 file"):
-        mkdir(args.output)
-        with h5py.File(args.output + '{}.h5'.format(args.tag), 'w') as hf:
-            hf.create_dataset('dataset',  data=data, compression="gzip")
             pass
         pass
 
