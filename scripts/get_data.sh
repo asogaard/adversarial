@@ -8,7 +8,7 @@ source scripts/utils.sh
 usertarget="" # Default
 username="" # Default
 target=data
-source=/eos/atlas/user/a/asogaard/adversarial/data
+source=/eos/atlas/user/a/asogaard/adversarial/data/2018-04-07/
 filename=data.h5
 
 # Make sure target directory exists
