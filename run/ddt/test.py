@@ -100,12 +100,21 @@ def main (args):
     # --------------------------------------------------------------------------
     with Profile("Creating figure"):
 
+        # Style
+        ROOT.gStyle.SetTitleOffset(1.4, 'x')
+
         # Canvas
         c = rp.canvas(batch=True)
 
+        # Setup
+        pad = c.pads()[0]._bare()
+        pad.cd()
+        pad.SetTopMargin(0.10)
+        pad.SetTopMargin(0.10)
+
         # Profiles
-        c.graph(graphs['Tau21'],    label="Original, #tau_{21}",          linecolor=rp.colours[5], markercolor=rp.colours[5])
-        c.graph(graphs['Tau21DDT'], label="Transformed, #tau_{21}^{DDT}", linecolor=rp.colours[1], markercolor=rp.colours[1], markerstyle=21)
+        c.graph(graphs['Tau21'],    label="Original, #tau_{21}",          linecolor=rp.colours[5], markercolor=rp.colours[5], markerstyle=24, legend_option='PE')
+        c.graph(graphs['Tau21DDT'], label="Transformed, #tau_{21}^{DDT}", linecolor=rp.colours[1], markercolor=rp.colours[1], markerstyle=20, legend_option='PE')
 
         # Fit
         x1, x2 = min(arr_x), max(arr_x)
@@ -117,15 +126,15 @@ def main (args):
         # Decorations
         c.xlabel("Large-#it{R} jet #rho^{DDT} = log(m^{2}/ p_{T} / 1 GeV)")
         c.ylabel("#LT#tau_{21}#GT, #LT#tau_{21}^{DDT}#GT")
-        c.text(["#sqrt{s} = 13 TeV,  QCD jets",
-                "Training dataset",
-                "Baseline selection",
-                ],
-               qualifier=QUALIFIER)
-        c.legend()
+
+        lines = ["#sqrt{s} = 13 TeV,  QCD jets"]
+        c.text(["#sqrt{s} = 13 TeV,  QCD jets"], qualifier=QUALIFIER)
+        c.legend(width=0.25, xmin=0.57, ymax=None if "Internal" in QUALIFIER else 0.85)
+        
         c.ylim(0, 1.4)
-        c.xline(FIT_RANGE[0], text='Fit range', ymax=0.82, text_align='BR')
-        c.xline(FIT_RANGE[1], text='Fit range', ymax=0.82, text_align='BL')
+        c.latex("Fit range", sum(FIT_RANGE) / 2., 0.08, textsize=13, textcolor=ROOT.kGray + 2)
+        c.xline(FIT_RANGE[0], ymax=0.82, text_align='BR', linecolor=ROOT.kGray + 2)
+        c.xline(FIT_RANGE[1], ymax=0.82, text_align='BL', linecolor=ROOT.kGray + 2)
 
         # Save
         mkdir('figures/')
