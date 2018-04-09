@@ -7,7 +7,7 @@
 from keras.callbacks import Callback
 
 # Project import(s)
-from adversarial.plots import plot_profiles, plot_posterior
+# ...
 
 
 class LossCallback (Callback):
@@ -44,8 +44,8 @@ class LossCallback (Callback):
 
 
 # @TODO:
-# - Update `plot_*` scripts to accommodate Pandas.DataFrame inputs.
-
+# - Implement `plot_*` methods, accommodating Pandas.DataFrame inputs.
+"""
 class PosteriorCallback (Callback):
     """Plot adversary posterior p.d.f. during training."""
     def __init__ (self, data, args, adversary):
@@ -76,3 +76,4 @@ class ProfilesCallback (Callback):
         plot_profiles(name='profiles_epoch_{:03d}'.format(epoch + 1), title="Epoch {}".format(epoch + 1), **self.opts)
         return
     pass
+"""
