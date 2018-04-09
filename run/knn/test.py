@@ -10,9 +10,10 @@ import pickle
 # Scientific import(s)
 import ROOT
 import numpy as np
+import root_numpy
 
 # Project import(s)
-from adversarial.utils import latex, parse_args, initialise, load_data, mkdir
+from adversarial.utils import latex, parse_args, initialise, load_data, mkdir, loadclf
 from adversarial.profile import profile, Profile
 from adversarial.constants import *
 
@@ -41,10 +42,10 @@ def main (args):
     # Common definitions
     # --------------------------------------------------------------------------
     bounds = [
-        ROOT.TF1('bounds_0', "TMath::Sqrt( TMath::Power( 40, 2) * TMath::Exp(-x) )", AXIS[VARX][1], AXIS[VARX][2]),
+        ROOT.TF1('bounds_0', "TMath::Sqrt( TMath::Power( 50, 2) * TMath::Exp(-x) )", AXIS[VARX][1], AXIS[VARX][2]),
         ROOT.TF1('bounds_1', "TMath::Sqrt( TMath::Power(300, 2) * TMath::Exp(-x) )", AXIS[VARX][1], AXIS[VARX][2])
         ]
-    #ROOT.gStyle.SetPalette(53)
+
     nb_contour = 13 * 16
 
     # Shout out to Cynthia Brewer and Mark Harrower
@@ -70,9 +71,10 @@ def main (args):
     for bound in bounds:
         bound.SetLineColor(ROOT.kGray + 3)
         bound.SetLineWidth(1)
+        bound.SetLineStyle(2)
         pass
 
-    zrange = (0.0, 2.0)
+    zrange = (0.0, 2.5)
 
 
     # Adding variable(s)
@@ -80,146 +82,106 @@ def main (args):
     add_variables(data)
 
 
-    # Filling profile
+    # Filling measured profile
     # --------------------------------------------------------------------------
     profile_meas, _ = fill_profile(data)
-
-
-    # Plotting profile
-    # --------------------------------------------------------------------------
-    with Profile("Plotting profile"):
-
-        # rootplotting
-        c = rp.canvas(batch=True)
-        pad = c.pads()[0]._bare()
-        pad.cd()
-        pad.SetRightMargin(0.20)
-        pad.SetLeftMargin(0.15)
-        pad.SetTopMargin(0.10)
-
-        # Styling
-        profile_meas.GetXaxis().SetTitle("Large-#it{R} jet " + latex(VARX, ROOT=True) + " = log(m^{2}/p_{T}^{2})")
-        profile_meas.GetYaxis().SetTitle("Large-#it{R} jet " + latex(VARY, ROOT=True) + " [GeV]")
-        #profile_meas.GetZaxis().SetTitle("Measured, weighted {}-percentile of
-        #{}".format(EFF, latex(VAR, ROOT=True)))
-        profile_meas.GetZaxis().SetTitle("Measured %s^{(%s%%)}" % (latex(VAR, ROOT=True), EFF))
-        profile_meas.GetYaxis().SetTitleOffset(1.6)
-        profile_meas.GetZaxis().SetTitleOffset(1.4)
-        if zrange:
-            profile_meas.GetZaxis().SetRangeUser(*zrange)
-            pass
-        profile_meas.SetContour(nb_contour)
-
-        # Draw
-        profile_meas.Draw('COLZ')
-        bounds[0].DrawCopy("SAME")
-        bounds[1].DrawCopy("SAME")
-        c.latex("m > 40 GeV",  -4.5, bounds[0].Eval(-4.5) + 30, align=21, angle=-20, textsize=13, textcolor=ROOT.kGray + 3)
-        c.latex("m < 300 GeV", -3.2, bounds[1].Eval(-3.2) - 30, align=23, angle=-53, textsize=13, textcolor=ROOT.kGray + 3)
-
-        # Decorations
-        c.text(qualifier=QUALIFIER,
-               ymax=0.92,
-               xmin=0.15)
-        c.text(["#sqrt{s} = 13 TeV,  QCD jets",
-                "Training dataset",
-                "Baseline selection",
-                ],
-            ATLAS=False,
-            ymax=0.83,
-            xmin=0.18,
-            textcolor=ROOT.kWhite)
-
-        # Save
-        mkdir('figures/')
-        c.save('figures/knn_profile_{:s}_{:.0f}.pdf'.format(VAR, EFF))
-        pass
 
 
     # Loading KNN classifier
     # --------------------------------------------------------------------------
     with Profile("Loading KNN classifier"):
-        with gzip.open('models/knn/knn_{:s}_{:.0f}.pkl.gz'.format(VAR, EFF), 'r') as f:
-            knn = pickle.load(f)
-            pass
+        knn = loadclf('models/knn/knn_{:s}_{:.0f}.pkl.gz'.format(VAR, EFF))
         pass
 
 
-    # Plotting fit
+    # Filling fitted profile
     # --------------------------------------------------------------------------
-    with Profile("Plotting fit"):
-        rebin = 10
-        binsx_fine = np.interp(np.linspace(0, AXIS[VARX][0], AXIS[VARX][0] * rebin + 1, endpoint=True), range(AXIS[VARX][0] + 1), np.linspace(AXIS[VARX][1], AXIS[VARX][2], AXIS[VARX][0] + 1, endpoint=True))
-        binsy_fine = np.interp(np.linspace(0, AXIS[VARY][1], AXIS[VARY][1] * rebin + 1, endpoint=True), range(AXIS[VARY][0] + 1), np.linspace(AXIS[VARY][1], AXIS[VARY][2], AXIS[VARY][0] + 1, endpoint=True))
+    with Profile("Filling fitted profile"):
+        rebin = 8
+        edges, centres = dict(), dict()
+        for ax, var in zip(['x', 'y'], [VARX, VARY]):
 
-        gx, gy = np.meshgrid(binsx_fine, binsy_fine)
-        gx -= AXIS[VARX][1]
-        gx /= AXIS[VARX][2] - AXIS[VARX][1]
-        gy -= AXIS[VARY][1]
-        gy /= AXIS[VARY][2] - AXIS[VARY][1]
-        X_fine = np.vstack((gx.flatten(), gy.flatten())).T
-        fit = knn.predict(X_fine).reshape(gx.shape).T
+            # Short-hands
+            vbins, vmin, vmax = AXIS[var]
+            
+            # Re-binned bin edges  @TODO: Make standardised right away?
+            edges[ax] = np.interp(np.linspace(0,    vbins, vbins * rebin + 1, endpoint=True),
+                                  range(vbins + 1),
+                                  np.linspace(vmin, vmax,  vbins + 1,         endpoint=True))
+
+            # Re-binned bin centres
+            centres[ax] = edges[ax][:-1] + 0.5 * np.diff(edges[ax])
+            pass
+
+
+        # Get predictions evaluated at re-binned bin centres
+        g = dict()
+        g['x'], g['y'] = np.meshgrid(centres['x'], centres['y'])
+        for ax, var in zip(['x', 'y'], [VARX, VARY]):
+            g[ax] -= AXIS[var][1]
+            g[ax] /= AXIS[var][2] - AXIS[var][1]
+            pass
+
+        X = np.vstack((g['x'].flatten(), g['y'].flatten())).T
+        fit = knn.predict(X).reshape(g['x'].shape).T
 
         # Fill ROOT "profile"
-        profile_fit = ROOT.TH2F('profile_fit', "", len(binsx_fine) - 1, binsx_fine.flatten('C'), len(binsy_fine) - 1, binsy_fine.flatten('C'))
-        for i,j in itertools.product(*map(range, map(len,[binsx_fine, binsy_fine]))):
-            x,y = binsx_fine[i], binsy_fine[j]
-            x -= AXIS[VARX][1]
-            x /= AXIS[VARX][2] - AXIS[VARX][1]
-            y -= AXIS[VARY][1]
-            y /= AXIS[VARY][2] - AXIS[VARY][1]
-            pred = knn.predict([[x,y]])
-            profile_fit.SetBinContent(i + 1, j + 1, pred)
-            pass
-
-        # rootplotting
-        c = rp.canvas(batch=True)
-        pad = c.pads()[0]._bare()
-        pad.cd()
-        pad.SetRightMargin(0.20)
-        pad.SetLeftMargin(0.15)
-        pad.SetTopMargin(0.10)
-
-        # Styling
-        profile_fit.GetXaxis().SetTitle("Large-#it{R} jet " + latex(VARX, ROOT=True) + " = log(m^{2}/p_{T}^{2})")  # @TODO: Improve...
-        profile_fit.GetYaxis().SetTitle("Large-#it{R} jet " + latex(VARY, ROOT=True) + " [GeV]")
-        #profile_fit.GetZaxis().SetTitle("kNN-fitted, weighted {}-percentile of
-        #{}".format(EFF, latex(VAR, ROOT=True)))
-        profile_fit.GetZaxis().SetTitle("kNN-fitted %s^{(%s%%)}" % (latex(VAR, ROOT=True), EFF))
-        profile_fit.GetYaxis().SetTitleOffset(1.6)
-        profile_fit.GetZaxis().SetTitleOffset(1.4)
-        if zrange:
-            profile_fit.GetZaxis().SetRangeUser(*zrange)
-            pass
-        profile_fit.SetContour(nb_contour)
-
-        # Draw
-        profile_fit.Draw('COLZ')
-        bounds[0].DrawCopy("SAME")
-        bounds[1].DrawCopy("SAME")
-        c.latex("m > 40 GeV",  -4.5, bounds[0].Eval(-4.5) + 30, align=21, angle=-20, textsize=13, textcolor=ROOT.kGray + 3)
-        c.latex("m < 300 GeV", -3.2, bounds[1].Eval(-3.2) - 30, align=23, angle=-53, textsize=13, textcolor=ROOT.kGray + 3)
-
-        # Decorations
-        c.text(qualifier=QUALIFIER,
-               ymax=0.92,
-               xmin=0.15)
-        c.text(["#sqrt{s} = 13 TeV,  QCD jets",
-                "Training dataset",
-                "Baseline selection",
-                ],
-            ATLAS=False,
-            ymax=0.83,
-            xmin=0.18,
-            textcolor=ROOT.kWhite)
-
-        # Save
-        mkdir('figures/')
-        c.save('figures/knn_fit_{:s}_{:.0f}.pdf'.format(VAR, EFF))
+        profile_fit = ROOT.TH2F('profile_fit', "", len(edges['x']) - 1, edges['x'].flatten('C'),
+                                                   len(edges['y']) - 1, edges['y'].flatten('C'))
+        root_numpy.array2hist(fit, profile_fit)
         pass
+    
+        
+    # Plotting profile
+    # --------------------------------------------------------------------------
+    for fit in [False, True]:
+        with Profile("Plotting {}".format('fit' if fit else 'profile')):
 
-    return 0
+            # Select correct profile
+            profile = profile_fit if fit else profile_meas 
 
+            # rootplotting
+            c = rp.canvas(batch=True)
+            pad = c.pads()[0]._bare()
+            pad.cd()
+            pad.SetRightMargin(0.20)
+            pad.SetLeftMargin(0.15)
+            pad.SetTopMargin(0.10)
+
+            # Styling
+            profile.GetXaxis().SetTitle("Large-#it{R} jet " + latex(VARX, ROOT=True) + " = log(m^{2}/p_{T}^{2})")
+            profile.GetYaxis().SetTitle("Large-#it{R} jet " + latex(VARY, ROOT=True) + " [GeV]")
+            profile.GetZaxis().SetTitle("%s %s^{(%s%%)}" % ("#it{k}-NN#minusfitted" if fit else "Measured", latex(VAR, ROOT=True), EFF))
+
+            profile.GetYaxis().SetNdivisions(505)
+            profile.GetXaxis().SetTitleOffset(1.4)
+            profile.GetYaxis().SetTitleOffset(1.8)
+            profile.GetZaxis().SetTitleOffset(1.3)
+            if zrange:
+                profile.GetZaxis().SetRangeUser(*zrange)
+                pass
+            profile.SetContour(nb_contour)
+
+            # Draw
+            profile.Draw('COLZ')
+            bounds[0].DrawCopy("SAME")
+            bounds[1].DrawCopy("SAME")
+            c.latex("m > 50 GeV",  -4.5, bounds[0].Eval(-4.5) + 30, align=21, angle=-37, textsize=13, textcolor=ROOT.kGray + 3)
+            c.latex("m < 300 GeV", -2.5, bounds[1].Eval(-2.5) - 30, align=23, angle=-57, textsize=13, textcolor=ROOT.kGray + 3)
+
+            # Decorations
+            c.text(qualifier=QUALIFIER, ymax=0.92, xmin=0.15)
+            c.text(["#sqrt{s} = 13 TeV", "QCD jets"], ATLAS=False, textcolor=ROOT.kWhite)
+
+            # Save
+            mkdir('figures/')
+            c.save('figures/knn_{}_{:s}_{:.0f}.pdf'.format('fit' if fit else 'profile', VAR, EFF))
+            pass
+        
+        pass  # end: fit/profile
+
+    return
+        
 
 # Main function call
 if __name__ == '__main__':

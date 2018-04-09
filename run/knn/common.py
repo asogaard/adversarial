@@ -105,8 +105,8 @@ def fill_profile (data):
         # Percentile
         perc = np.nan
         if np.sum(msk) > 20:  # Ensure sufficient statistics for meaningful percentile
-            perc = wpercentile(data=   data.loc[msk, VAR]     .as_matrix().astype(np.float).flatten(), percents=EFF,
-                               weights=data.loc[msk, 'weight'].as_matrix().astype(np.float).flatten())
+            perc = wpercentile(data=   data.loc[msk, VAR]     .values, percents=EFF,
+                               weights=data.loc[msk, 'weight'].values)
             pass
         x[i,j] = (xmin + xmax) * 0.5
         y[i,j] = (ymin + ymax) * 0.5
