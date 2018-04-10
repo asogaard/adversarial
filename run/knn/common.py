@@ -16,7 +16,7 @@ from adversarial.utils import wpercentile, loadclf
 from adversarial.profile import profile
 
 # Common definition(s)
-VAR  = 'D2'   # Substructure variable to decorrelate
+VAR  = 'N2'   # Substructure variable to decorrelate
 EFF  = 10     # Fixed backround efficiency at which to perform decorrelation
 VARX = 'rho'  # X-axis variable from which to decorrelate
 VARY = 'pt'   # Y-axis variable from which to decorrelate
@@ -44,9 +44,6 @@ def add_knn (data, feat=VAR, newfeat=None, path=None):
         newfeat = '{}kNN'.format(feat)
         pass
 
-    # Add necessary variables
-    add_variables(data)
-
     # Prepare data array
     X = data[[VARX, VARY]].values.astype(np.float)
     X[:,0] -= AXIS[VARX][1]
@@ -61,17 +58,6 @@ def add_knn (data, feat=VAR, newfeat=None, path=None):
     data[newfeat] = pd.Series(data[feat] - knn.predict(X).flatten(), index=data.index)
     return
 
-
-@profile
-def add_variables (data):
-    """Add necessary variable(s).
-    Modify data container in-place."""
-
-    # rho
-    if 'rho' not in list(data):
-        data['rho'] = pd.Series(np.log(np.square(data['m']) / np.square(data['pt'])), index=data.index)
-        pass
-    return
 
 
 @profile
@@ -106,7 +92,7 @@ def fill_profile (data):
         perc = np.nan
         if np.sum(msk) > 20:  # Ensure sufficient statistics for meaningful percentile
             perc = wpercentile(data=   data.loc[msk, VAR]     .values, percents=EFF,
-                               weights=data.loc[msk, 'weight'].values)
+                               weights=data.loc[msk, 'weight_test'].values)
             pass
         x[i,j] = (xmin + xmax) * 0.5
         y[i,j] = (ymin + ymax) * 0.5

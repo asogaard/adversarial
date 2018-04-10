@@ -25,58 +25,34 @@ from .common import *
 @profile
 def main (args):
 
-    # Initialising
-    # --------------------------------------------------------------------------
+    # Initialise
     args, cfg = initialise(args)
 
-
-    # Loading data
-    # --------------------------------------------------------------------------
+    # Load data
     data, _, _ = load_data(args.input + 'data.h5')
     data = data[(data['train'] == 1)]
 
-
-    # Adding variable(s)
-    # --------------------------------------------------------------------------
-    add_variables(data)
-
-
     # Compute background efficiency at sig. eff. = 50%
-    # --------------------------------------------------------------------------
     eff_sig = 0.5
-    fpr, tpr, thresholds = roc_curve(data['signal'], data[VAR], sample_weight=data['weight'])
+    fpr, tpr, thresholds = roc_curve(data['signal'], data[VAR], sample_weight=data['weight_test'])
     idx = np.argmin(np.abs(tpr - eff_sig))
     print "Background acceptance @ {:.2f}% sig. eff.: {:.2f}% ({} < {:.2f})".format(eff_sig * 100., (1 - fpr[idx]) * 100., VAR, thresholds[idx])
     print "Chosen target efficiency: {:.2f}%".format(EFF)
 
-
     # Filling profile
-    # --------------------------------------------------------------------------
     data = data[data['signal'] == 0]
     profile_meas, (x,y,z) = fill_profile(data)
 
+    # Format arrays
+    X = np.vstack((x.flatten(), y.flatten())).T
+    Y = z.flatten()
 
-    # Fit KNN classifier
-    # --------------------------------------------------------------------------
-    with Profile("Fitting KNN classifier"):
-        # Format arrays
-        X = np.vstack((x.flatten(), y.flatten())).T
-        Y = z.flatten()
+    # Fit KNN regressor
+    knn = KNeighborsRegressor(weights='distance')
+    knn.fit(X, Y)
 
-        # Remove NaN's
-        msk_nan = np.isnan(Y)
-
-        # Fit KNN regressor
-        knn = KNeighborsRegressor(weights='distance')
-        knn.fit(X[~msk_nan,:], Y[~msk_nan])
-        pass
-
-
-    # Saving KNN classifier
-    # --------------------------------------------------------------------------
-    with Profile("Saving KNN classifier"):
-        saveclf(knn, 'models/knn/knn_{:s}_{:.0f}.pkl.gz'.format(VAR, EFF))
-        pass
+    # Save KNN classifier
+    saveclf(knn, 'models/knn/knn_{:s}_{:.0f}.pkl.gz'.format(VAR, EFF))
 
     return 0
 
