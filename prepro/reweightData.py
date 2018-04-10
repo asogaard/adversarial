@@ -56,10 +56,10 @@ def main ():
 
         # Run batched conversion in parallel
         queue = multiprocessing.Queue()
-        parts = run_batched(FileLoader, paths, queue=queue, max_processes=args.max_processes)
+        parts = run_batched(FileLoader, list(enumerate(paths)), queue=queue, max_processes=args.max_processes)
 
-        # Concatenate data
-        data = np.concatenate(parts)
+        # Concatenate data in sorted order, for reproducibility
+        data = np.concatenate(zip(*sorted(parts, key=lambda t: t[0]))[1])
         pass
 
 
@@ -153,18 +153,23 @@ def main ():
 
 class FileLoader (multiprocessing.Process):
 
-    def __init__ (self, path):
+    def __init__ (self, vargs):
         """
         Process for loading W/top HDF5 files.
 
         Arguments:
             path: Path to the HDF5 file to be loaded.
+            idx: Index of the process; for reproducibility.
         """
+
+        # Unpack input arguments
+        idx, path = vargs
 
         # Base class constructor
         super(FileLoader, self).__init__()
 
         # Member variable(s)
+        self.__idx   = idx
         self.__path  = path
         self.queue   = None  # Set by the runner script.
         return
@@ -176,7 +181,7 @@ class FileLoader (multiprocessing.Process):
         data = load_hdf5(self.__path)
 
         # Store in return dict
-        self.queue.put(data)
+        self.queue.put((self.__idx, data))
         return
 
     pass
