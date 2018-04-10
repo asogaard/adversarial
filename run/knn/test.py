@@ -75,7 +75,7 @@ def main (args):
         bound.SetLineStyle(2)
         pass
 
-    zrange = (0.1, 0.3)
+    zrange = (0.125, 0.325)
 
 
     # Filling measured profile
@@ -171,8 +171,8 @@ def main (args):
             c.text(["#sqrt{s} = 13 TeV", "QCD jets"], ATLAS=False, textcolor=ROOT.kWhite)
 
             # Save
-            mkdir('figures/')
-            c.save('figures/knn_{}_{:s}_{:.0f}.pdf'.format('fit' if fit else 'profile', VAR, EFF))
+            mkdir('figures/knn/')
+            c.save('figures/knn/knn_{}_{:s}_{:.0f}.pdf'.format('fit' if fit else 'profile', VAR, EFF))
             pass
 
         pass  # end: fit/profile

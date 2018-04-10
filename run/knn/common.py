@@ -17,7 +17,7 @@ from adversarial.profile import profile
 
 # Common definition(s)
 VAR  = 'N2'   # Substructure variable to decorrelate
-EFF  = 10     # Fixed backround efficiency at which to perform decorrelation
+EFF  = 19     # Fixed backround efficiency at which to perform decorrelation
 VARX = 'rho'  # X-axis variable from which to decorrelate
 VARY = 'pt'   # Y-axis variable from which to decorrelate
 AXIS = {      # Dict holding (num_bins, axis_min, axis_max) for axis variables
@@ -94,6 +94,7 @@ def fill_profile (data):
             perc = wpercentile(data=   data.loc[msk, VAR]          .values, percents=EFF,
                                weights=data.loc[msk, 'weight_test'].values)
             pass
+            
         x[i,j] = (xmin + xmax) * 0.5
         y[i,j] = (ymin + ymax) * 0.5
         z[i,j] = perc
