@@ -91,7 +91,7 @@ def fill_profile (data):
         # Percentile
         perc = np.nan
         if np.sum(msk) > 20:  # Ensure sufficient statistics for meaningful percentile
-            perc = wpercentile(data=   data.loc[msk, VAR]     .values, percents=EFF,
+            perc = wpercentile(data=   data.loc[msk, VAR]          .values, percents=EFF,
                                weights=data.loc[msk, 'weight_test'].values)
             pass
         x[i,j] = (xmin + xmax) * 0.5
@@ -99,7 +99,7 @@ def fill_profile (data):
         z[i,j] = perc
 
         # Set non-zero bin content
-        if perc == perc:
+        if perc != np.nan:
             profile.SetBinContent(i + 1, j + 1, perc)
             pass
         pass
@@ -109,5 +109,11 @@ def fill_profile (data):
     x /= AXIS[VARX][2] - AXIS[VARX][1]
     y -= AXIS[VARY][1]
     y /= AXIS[VARY][2] - AXIS[VARY][1]
+
+    # Filter out NaNs
+    msk = ~np.isnan(z)
+    x = x[msk]
+    y = y[msk]
+    z = z[msk]
 
     return profile, (x,y,z)

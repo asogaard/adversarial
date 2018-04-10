@@ -68,18 +68,14 @@ def main (args):
 
     ROOT.TColor.CreateGradientColorTable(nb_cols, stops, red, green, blue, nb_contour)
 
+    bounds[0].SetLineColor(ROOT.kGray + 0)
+    bounds[1].SetLineColor(ROOT.kGray + 3)
     for bound in bounds:
-        bound.SetLineColor(ROOT.kGray + 3)
         bound.SetLineWidth(1)
         bound.SetLineStyle(2)
         pass
 
-    zrange = (0.0, 2.5)
-
-
-    # Adding variable(s)
-    # --------------------------------------------------------------------------
-    add_variables(data)
+    zrange = (0.1, 0.3)
 
 
     # Filling measured profile
@@ -103,7 +99,7 @@ def main (args):
 
             # Short-hands
             vbins, vmin, vmax = AXIS[var]
-            
+
             # Re-binned bin edges  @TODO: Make standardised right away?
             edges[ax] = np.interp(np.linspace(0,    vbins, vbins * rebin + 1, endpoint=True),
                                   range(vbins + 1),
@@ -130,15 +126,15 @@ def main (args):
                                                    len(edges['y']) - 1, edges['y'].flatten('C'))
         root_numpy.array2hist(fit, profile_fit)
         pass
-    
-        
+
+
     # Plotting profile
     # --------------------------------------------------------------------------
     for fit in [False, True]:
         with Profile("Plotting {}".format('fit' if fit else 'profile')):
 
             # Select correct profile
-            profile = profile_fit if fit else profile_meas 
+            profile = profile_fit if fit else profile_meas
 
             # rootplotting
             c = rp.canvas(batch=True)
@@ -154,6 +150,7 @@ def main (args):
             profile.GetZaxis().SetTitle("%s %s^{(%s%%)}" % ("#it{k}-NN#minusfitted" if fit else "Measured", latex(VAR, ROOT=True), EFF))
 
             profile.GetYaxis().SetNdivisions(505)
+            profile.GetZaxis().SetNdivisions(505)
             profile.GetXaxis().SetTitleOffset(1.4)
             profile.GetYaxis().SetTitleOffset(1.8)
             profile.GetZaxis().SetTitleOffset(1.3)
@@ -166,7 +163,7 @@ def main (args):
             profile.Draw('COLZ')
             bounds[0].DrawCopy("SAME")
             bounds[1].DrawCopy("SAME")
-            c.latex("m > 50 GeV",  -4.5, bounds[0].Eval(-4.5) + 30, align=21, angle=-37, textsize=13, textcolor=ROOT.kGray + 3)
+            c.latex("m > 50 GeV",  -4.5, bounds[0].Eval(-4.5) + 30, align=21, angle=-37, textsize=13, textcolor=ROOT.kGray + 0)
             c.latex("m < 300 GeV", -2.5, bounds[1].Eval(-2.5) - 30, align=23, angle=-57, textsize=13, textcolor=ROOT.kGray + 3)
 
             # Decorations
@@ -177,11 +174,11 @@ def main (args):
             mkdir('figures/')
             c.save('figures/knn_{}_{:s}_{:.0f}.pdf'.format('fit' if fit else 'profile', VAR, EFF))
             pass
-        
+
         pass  # end: fit/profile
 
     return
-        
+
 
 # Main function call
 if __name__ == '__main__':
