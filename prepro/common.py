@@ -11,7 +11,7 @@ from adversarial.utils import mkdir
 from adversarial.utils import garbage_collect
 
 
-def run_batched (process, args, max_processes):
+def run_batched (process, args, max_processes, queue=None):
     """
     Generic method to run `process` in parallel on batches of `args`.
 
@@ -30,20 +30,34 @@ def run_batched (process, args, max_processes):
     batches = map(list, np.array_split(args, np.ceil(len(args) / float(max_processes))))
 
     # Loop batches of args
+    results = list()
     for ibatch, batch in enumerate(batches):
         print "   Batch {}/{} | Contains {} arguments".format(ibatch + 1, len(batches), len(batch))
 
         # Convert files using multiprocessing
         processes = map(process, batch)
 
+        # Add queue
+        if queue is not None:
+            for p in processes:
+                p.queue = queue
+                pass
+            pass
+
         # Start processes
         for p in processes: p.start()
+
+        # (Opt.) Get results
+        # @TODO: Make more elegant; shouldn't have to specify queue two places
+        if queue is not None:
+            results += [queue.get() for _ in processes]
+            pass
 
         # Wait for conversion processes to finish
         for p in processes: p.join()
         pass
 
-    return
+    return results
 
 
 def get_parser (**kwargs):

@@ -11,7 +11,7 @@ Script for reweighting HDF5 files from W/top tagging ntuples.
 
 # Basic import(s)
 import glob
-import datetime
+import multiprocessing
 
 # Get ROOT to stop hogging the command-line options
 import ROOT
@@ -23,11 +23,12 @@ from numpy.lib.recfunctions import append_fields
 from hep_ml.reweight import BinsReweighter
 
 # Project import(s)
+from adversarial.utils import garbage_collect
 from adversarial.profile import Profile, profile
-from .common import load_hdf5, save_hdf5, get_parser
+from .common import load_hdf5, save_hdf5, get_parser, run_batched
 
 # Command-line arguments parser
-parser = get_parser(size=True, dir=True)
+parser = get_parser(size=True, dir=True, max_processes=True)
 parser.description = "Re-weight HDF5 file to flat pT-spectrum."
 
 # Main function definition
@@ -52,13 +53,13 @@ def main ():
     # Reading input HDF5 file(s)
     data = None
     with Profile("Reading input HDF5 file(s)"):
-        for ipath, path in enumerate(paths):
-            print "[{}/{}] {}".format(ipath + 1, len(paths), path)
-            part = load_hdf5(path)
 
-            print "  Read {} samples.".format(part.shape[0])
-            data = part if data is None else np.concatenate((data, part))
-            pass
+        # Run batched conversion in parallel
+        queue = multiprocessing.Queue()
+        parts = run_batched(FileLoader, paths, queue=queue, max_processes=args.max_processes)
+
+        # Concatenate data
+        data = np.concatenate(parts)
         pass
 
 
@@ -148,6 +149,37 @@ def main ():
         pass
 
     return
+
+
+class FileLoader (multiprocessing.Process):
+
+    def __init__ (self, path):
+        """
+        Process for loading W/top HDF5 files.
+
+        Arguments:
+            path: Path to the HDF5 file to be loaded.
+        """
+
+        # Base class constructor
+        super(FileLoader, self).__init__()
+
+        # Member variable(s)
+        self.__path  = path
+        self.queue   = None  # Set by the runner script.
+        return
+
+    @garbage_collect
+    def run (self):
+
+        # Load data
+        data = load_hdf5(self.__path)
+
+        # Store in return dict
+        self.queue.put(data)
+        return
+
+    pass
 
 
 # Main function call
