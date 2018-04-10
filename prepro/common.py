@@ -37,18 +37,15 @@ def run_batched (process, args, max_processes, queue=None):
         # Convert files using multiprocessing
         processes = map(process, batch)
 
-        # Add queue
-        if queue is not None:
-            for p in processes:
-                p.queue = queue
-                pass
+        # Add queue (possibly `None`)
+        for p in processes:
+            p.queue = queue
             pass
 
         # Start processes
         for p in processes: p.start()
 
         # (Opt.) Get results
-        # @TODO: Make more elegant; shouldn't have to specify queue two places
         if queue is not None:
             results += [queue.get() for _ in processes]
             pass
