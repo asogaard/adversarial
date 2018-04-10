@@ -26,52 +26,36 @@ from .common import *
 @profile
 def main (args):
 
-    # Initialising
-    # --------------------------------------------------------------------------
+    # Initialise
     args, cfg = initialise(args)
 
-
-    # Loading data
-    # --------------------------------------------------------------------------
+    # Load data
     data, features, _ = load_data(args.input + 'data.h5')
     data = data[(data['train'] == 1) & (data['signal'] == 0)]
 
 
-    # Adding variable(s)
-    # --------------------------------------------------------------------------
-    add_variables(data)
-
-
-    # Filling Tau21 profile
-    # --------------------------------------------------------------------------
+    # Fill Tau21 profile
     profile = fill_profile(data, 'Tau21')
 
 
-    # Fitting profile
-    # --------------------------------------------------------------------------
-    with Profile("Fitting profile"):
-        fit = ROOT.TF1('fit', 'pol1', *FIT_RANGE)
-        profile.Fit('fit', 'RQ0')
-        intercept_val, coef_val = fit.GetParameter(0), fit.GetParameter(1)
-        intercept_err, coef_err = fit.GetParError(0),  fit.GetParError(1)
+    # Fit profile
+    fit = ROOT.TF1('fit', 'pol1', *FIT_RANGE)
+    profile.Fit('fit', 'RQ0')
+    intercept_val, coef_val = fit.GetParameter(0), fit.GetParameter(1)
+    intercept_err, coef_err = fit.GetParError(0),  fit.GetParError(1)
 
-        # Create scikit-learn transform
-        ddt = LinearRegression()
-        ddt.coef_      = np.array([ coef_val])
-        ddt.intercept_ = np.array([-coef_val * FIT_RANGE[0]])
-        ddt.offset_    = np.array([ coef_val * FIT_RANGE[0] + intercept_val])
+    # Create scikit-learn transform
+    ddt = LinearRegression()
+    ddt.coef_      = np.array([ coef_val])
+    ddt.intercept_ = np.array([-coef_val * FIT_RANGE[0]])
+    ddt.offset_    = np.array([ coef_val * FIT_RANGE[0] + intercept_val])
 
-        print "Fitted function:"
-        print "  intercept: {:7.4f} ± {:7.4f}".format(intercept_val, intercept_err)
-        print "  coef:      {:7.4f} ± {:7.4f}".format(coef_val, coef_err)
-        pass
+    print "Fitted function:"
+    print "  intercept: {:7.4f} ± {:7.4f}".format(intercept_val, intercept_err)
+    print "  coef:      {:7.4f} ± {:7.4f}".format(coef_val, coef_err)
 
-
-    # Saving DDT transform
-    # --------------------------------------------------------------------------
-    with Profile("Saving DDT transform"):
-        saveclf(ddt, 'models/ddt/ddt.pkl.gz')
-        pass
+    # Save DDT transform
+    saveclf(ddt, 'models/ddt/ddt.pkl.gz')
 
     return 0
 

@@ -24,16 +24,19 @@ FIT_RANGE = (1.5, 4.0) # Range in rhoDDT to be fitted
 @profile
 def add_ddt (data, feat='Tau21', newfeat=None, path='models/ddt/ddt.pkl.gz'):
     """
-    ...
+    Add DDT-transformed `feat` to `data`. Modifies `data` in-place.
+
+    Arguments:
+        data: Pandas DataFrame to which to add the DDT-transformed variable.
+        feat: Substructure variable to be decorrelated.
+        newfeat: Name of output featur. By default, `{feat}DDT`.
+        path: Path to trained DDT transform model
     """
 
     # Check(s)
     if newfeat is None:
         newfeat = '{}DDT'.format(feat)
         pass
-
-    # Add necessary variables
-    add_variables(data)
 
     # Load model
     ddt = loadclf(path)
@@ -44,24 +47,11 @@ def add_ddt (data, feat='Tau21', newfeat=None, path='models/ddt/ddt.pkl.gz'):
 
 
 @profile
-def add_variables (data):
-    """
-    Add necessary variable(s). Modifies data container in-place.
-    """
-
-    # rhoDDT
-    if 'rhoDDT' not in list(data):
-        data['rhoDDT'] = pd.Series(np.log(np.square(data['m'])/(data['pt'] * 1.)), index=data.index)
-        pass
-    return
-
-
-@profile
 def fill_profile (data, var):
     """
     Fill ROOT.TProfile with the average `var` as a function of rhoDDT.
     """
 
     profile = ROOT.TProfile('profile_{}'.format(var), "", len(BINS) - 1, BINS)
-    root_numpy.fill_profile(profile, data[['rhoDDT', var]].as_matrix(), weights=data['weight'].as_matrix().flatten())
+    root_numpy.fill_profile(profile, data[['rhoDDT', var]].values, weights=data['weight_test'].values)
     return profile
