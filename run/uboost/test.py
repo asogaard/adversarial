@@ -93,7 +93,7 @@ def test (data, title, name):
         with Profile("Adding classifier variable"):
             data[name] = pd.Series(clf.predict_proba(data)[:,1], index=data.index)
             x = data[name]    .as_matrix().flatten()
-            w = data['weight'].as_matrix().flatten()
+            w = data['weight_train'].as_matrix().flatten()
 
             # Rescale to have weighted mean and RMS of 1/2 and 1/3, resp.
             N = float(x.size)
@@ -125,16 +125,16 @@ def test (data, title, name):
 
             y_train = data.loc[idx_train, 'signal'].values
             y_test  = data.loc[idx_test,  'signal'].values
-            w_train = data.loc[idx_train, 'weight'].values
-            w_test  = data.loc[idx_test,  'weight'].values
+            w_train = data.loc[idx_train, 'weight_train'].values
+            w_test  = data.loc[idx_test,  'weight_train'].values
 
             #staged_pred_train = list(clf.staged_predict_proba(data[data['train'] == 1]))
             #staged_pred_test  = list(clf.staged_predict_proba(data[data['train'] == 0]))
 
             #y_train = data.loc[data['train'] == 1, 'signal'].values
             #y_test  = data.loc[data['train'] == 0, 'signal'].values
-            #w_train = data.loc[data['train'] == 1, 'weight'].values
-            #w_test  = data.loc[data['train'] == 0, 'weight'].values
+            #w_train = data.loc[data['train'] == 1, 'weight_train'].values
+            #w_test  = data.loc[data['train'] == 0, 'weight_train'].values
 
             ll_train, ll_test = list(), list()
             auc_train, auc_test = list(), list()
@@ -186,8 +186,8 @@ def test (data, title, name):
             pred_test  = clf.predict_proba(data[data['train'] == 0])[:,1]
             pred_train = clf.predict_proba(data[data['train'] == 1])[:,1]
 
-            fpr_test, tpr_test, thresholds_test = roc_curve(y_test,  p_test,  sample_weight=w_test)
-            fpr_train, tpr_train, thresholds_train  = roc_curve(y_train,  p_train,  sample_weight=w_train)
+            fpr_test,  tpr_test,  thresholds_test  = roc_curve(y_test,  p_test,  sample_weight=w_test)
+            fpr_train, tpr_train, thresholds_train = roc_curve(y_train, p_train, sample_weight=w_train)
 
             # TPR vs FPR
             fig, ax = plt.subplots()
@@ -208,8 +208,8 @@ def test (data, title, name):
         with Profile("Plotting distributions"):
             bins = np.linspace(-0.5, 1.5, 100 + 1, endpoint=True)
             fig, ax = plt.subplots()
-            plt.hist(data.loc[data['signal'] == 1, name], bins=bins, weights=data.loc[data['signal'] == 1, 'weight'], alpha=0.5, label='Signal')
-            plt.hist(data.loc[data['signal'] == 0, name], bins=bins, weights=data.loc[data['signal'] == 0, 'weight'], alpha=0.5, label='Background')
+            plt.hist(data.loc[data['signal'] == 1, name], bins=bins, weights=data.loc[data['signal'] == 1, 'weight_test'], alpha=0.5, label='Signal')
+            plt.hist(data.loc[data['signal'] == 0, name], bins=bins, weights=data.loc[data['signal'] == 0, 'weight_test'], alpha=0.5, label='Background')
             plt.legend()
             plt.xlabel("uBoost classifier variable")
             plt.ylabel("Events")
@@ -240,12 +240,12 @@ def test (data, title, name):
                 for icut, eff in enumerate(effs):
 
                     # Cut mask
-                    cut = wpercentile(np.array(data.loc[msk_bkg, name]).flatten(), 100 - eff, weights=np.array(data.loc[msk_bkg, 'weight']).flatten())
+                    cut = wpercentile(np.array(data.loc[msk_bkg, name]).flatten(), 100 - eff, weights=np.array(data.loc[msk_bkg, 'weight_train']).flatten())
                     msk_cut = data[name] > cut
 
                     # Compute numerator/denominator histograms
-                    num, _   = np.histogram(data.loc[msk_bkg & msk_cut, 'm'], bins=bins, weights=data.loc[msk_bkg & msk_cut, 'weight'])
-                    denom, _ = np.histogram(data.loc[msk_bkg,           'm'], bins=bins, weights=data.loc[msk_bkg,           'weight'])
+                    num, _   = np.histogram(data.loc[msk_bkg & msk_cut, 'm'], bins=bins, weights=data.loc[msk_bkg & msk_cut, 'weight_test'])
+                    denom, _ = np.histogram(data.loc[msk_bkg,           'm'], bins=bins, weights=data.loc[msk_bkg,           'weight_test'])
 
                     # Cast
                     num   = num  .astype(np.float)

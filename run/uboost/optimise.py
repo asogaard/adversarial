@@ -78,7 +78,7 @@ def main (args):
 
     # Arrays
     X = data
-    w = np.array(data['weight']).flatten()
+    w = np.array(data['weight_train']).flatten()
     y = np.array(data['signal']).flatten()
 
     #AdaBoost optimization parameters
@@ -147,7 +147,7 @@ def main (args):
         #clf = GridSearchCV(adaboost, param_grid,scoring='roc_auc',cv=2,verbose=1, refit=True, n_jobs=4)
         clf = GridSearchCV(pipe, param_grid,scoring='roc_auc',cv=2,verbose=1, refit=True, n_jobs=10)
         #clf.fit(X, y,sample_weight=w)
-        clf.fit(X, y,**{'ada__sample_weight': w})
+        clf.fit(X, y,**{'ada__sample_weight_train': w})
 
         print("Best parameters set found on development set: ")
         print(clf.best_params_)

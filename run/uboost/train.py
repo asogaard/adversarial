@@ -39,7 +39,7 @@ def main (args):
     data = data[data['train'] == 1]
 
     # Reduce size of data
-    drop_features = [feat for feat in list(data) if feat not in features + ['m', 'signal', 'weight']]
+    drop_features = [feat for feat in list(data) if feat not in features + ['m', 'signal', 'weight_train']]
     data.drop(drop_features, axis=1)
 
 
@@ -80,7 +80,7 @@ def main (args):
 
     # Arrays
     X = data
-    w = np.array(data['weight']).flatten()
+    w = np.array(data['weight_train']).flatten()
     y = np.array(data['signal']).flatten()
 
 
