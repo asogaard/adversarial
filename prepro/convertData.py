@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-"""Script for converting W/top tagging ntuples to HDF5 files.
+"""
+Script for converting W/top tagging ntuples to HDF5 files.
 
 > 1. Convert
   2. Slim

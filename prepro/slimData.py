@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-"""Script for slimming HDF5 files from W/top tagging ntuples.
+"""
+Script for slimming HDF5 files from W/top tagging ntuples.
 
   1. Convert
 > 2. Slim
