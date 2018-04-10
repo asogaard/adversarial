@@ -23,20 +23,11 @@ from hep_ml.reweight import BinsReweighter
 
 # Project import(s)
 from adversarial.profile import Profile, profile
-from .common import load_hdf5, save_hdf5
+from .common import load_hdf5, save_hdf5, get_parser
 
 # Command-line arguments parser
-import argparse
-
-parser = argparse.ArgumentParser(description="Re-weight HDF5 file to flat pT-spectrum.")
-
-parser.add_argument('--dir', action='store', type=str,
-                    default='/eos/atlas/user/a/asogaard/adversarial/data/{:s}/'.format(str(datetime.date.today())),
-                    help='Directory in which to read and write HDF5 files.')
-
-parser.add_argument('--size', action='store', type=int, required=True,
-                    help='Size of dataset for each (train/test x class) in millions of events.')
-
+parser = get_parser(size=True, dir=True)
+parser.description = "Re-weight HDF5 file to flat pT-spectrum."
 
 # Main function definition
 @profile

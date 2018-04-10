@@ -29,18 +29,8 @@ from adversarial.profile import Profile, profile
 from .common import load_hdf5, save_hdf5
 
 # Command-line arguments parser
-import argparse
-
-parser = argparse.ArgumentParser(description="Convert ntuples to HDF5.")
-
-parser.add_argument('--input', action='store', type=str,
-                    default='/eos/atlas/atlascerngroupdisk/perf-jets/JSS/TopBosonTagAnalysis2016/FlatNtuplesR21/',
-                    help='Input directory, from which to read input ROOT files.')
-parser.add_argument('--output', action='store', type=str,
-                    default='/eos/atlas/user/a/asogaard/adversarial/data/{:s}/'.format(str(datetime.date.today())),
-                    help='Output directory, to which to write output files.')
-parser.add_argument('--max-processes', action='store', default=5, type=int,
-                    help='Maximum number of concurrent processes to use.')
+parser = get_parser(input=True, output=True, max_processes=True)
+parser.description = "Convert ntuples to HDF5."
 
 # Global definition(s)
 SELECTION = {

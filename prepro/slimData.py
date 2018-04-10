@@ -26,14 +26,8 @@ from adversarial.profile import Profile, profile
 from .common import load_hdf5, save_hdf5
 
 # Command-line arguments parser
-import argparse
-
-parser = argparse.ArgumentParser(description="Slim HDF5 file.")
-
-parser.add_argument('--dir', action='store', type=str,
-                    default='/eos/atlas/user/a/asogaard/adversarial/data/{:s}/'.format(str(datetime.date.today())),
-                    help='Directory in which to read and write HDF5 files.')
-
+parser = get_parser(dir=True)
+parser.description = "Slim HDF5 file."
 
 # Global variable definition(s)
 BRANCHES = [
@@ -66,6 +60,8 @@ BRANCHES = [
     'signal',
     ]
 
+
+# @TODO: Parallelise
 
 # Main function definition
 @profile
