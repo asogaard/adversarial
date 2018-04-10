@@ -205,7 +205,7 @@ class FileConverter (multiprocessing.Process):
 
         # Read in data as a numpy recarray
         data = root_numpy.tree2array(t, branches=BRANCHES, selection=SELECTION[self.__key])
-        print "     Got {}/{} samples ({})".format(data.size, t.GetEntries(), identifier)
+        print "     Got {:8d}/{:8d} samples ({})".format(data.size, t.GetEntries(), identifier)
 
         # Rename columns
         data.dtype.names = map(rename, data.dtype.names)

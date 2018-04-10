@@ -110,7 +110,7 @@ class FileSlimmer (multiprocessing.Process):
 
         # Load data
         data = load_hdf5(self.__path)
-        print "  Read {:7d} samples ({}).".format(data.shape[0], identifier)
+        print "     Read {:8d} samples ({}).".format(data.shape[0], identifier)
 
         # Perform slimming
         missing = [branch for branch in BRANCHES if branch not in data.dtype.names]
