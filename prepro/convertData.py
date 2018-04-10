@@ -250,7 +250,6 @@ class FileConverter (multiprocessing.Process):
         filename = self.__path.split('/')[-1].replace('.root', '') + '_full.h5'
         save_hdf5(data, self.__args.output + self.__key + '/' + filename)
         return
-
     pass
 
 

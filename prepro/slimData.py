@@ -9,8 +9,10 @@
 """
 
 # Basic import(s)
+import re
 import glob
 import datetime
+import multiprocessing
 
 # Get ROOT to stop hogging the command-line options
 import ROOT
@@ -22,12 +24,13 @@ import numpy as np
 from numpy.lib.recfunctions import append_fields
 
 # Project import(s)
+from adversarial.utils import garbage_collect
 from adversarial.profile import Profile, profile
 from .common import load_hdf5, save_hdf5, get_parser
 
 # Command-line arguments parser
-parser = get_parser(dir=True)
-parser.description = "Slim HDF5 file."
+parser = get_parser(dir=True, max_processes=True)
+parser.description = "Slim, decorate HDF5 file."
 
 # Global variable definition(s)
 BRANCHES = [
@@ -73,18 +76,60 @@ def main ():
     # Modify directory name to conform to convention
     if not args.dir.endswith('/'): args.dir += '/'
 
-    print "Reading and slimming, adding to files in:\n  {}".format(args.dir)
+    print "Reading and slimming, decorating files in:\n  {}".format(args.dir)
 
     paths = sorted(glob.glob(args.dir + '*/*_full.h5'))
     print "Found {} files.".format(len(paths))
 
-    for ipath, path in enumerate(paths):
+    # Batch the paths to be converted so as to never occupy more than
+    # `max_processes`.
+    path_batches = map(list, np.array_split(paths, np.ceil(len(paths) / float(args.max_processes))))
 
-        # Reading input HDF5 file
-        print "[{}/{}] {}".format(ipath + 1, len(paths), path)
-        data = load_hdf5(path)
+    # Loop batches of paths
+    for ibatch, path_batch in enumerate(path_batches):
+        print "   Batch {}/{} | Contains {} files".format(ibatch + 1, len(path_batches), len(path_batch))
 
-        print "  Read {} samples.".format(data.shape[0])
+        # Convert files using multiprocessing
+        processes = map(FileSlimmer, path_batch)
+
+        # Start processes
+        for p in processes: p.start()
+
+        # Wait for conversion processes to finish
+        for p in processes: p.join()
+
+        pass
+
+    return
+
+
+class FileSlimmer (multiprocessing.Process):
+
+    def __init__ (self, path):
+        """
+        Process for slimming, decorating W/top HDF5 files.
+
+        Arguments:
+            path: Path to the HDF5 file to be slimmed, decorated.
+        """
+
+        # Base class constructor
+        super(FileSlimmer, self).__init__()
+
+        # Member variable(s)
+        self.__path = path
+        return
+
+
+    @garbage_collect
+    def run (self):
+
+        # Get unique file identifier
+        identifier = re.search("(WZqqqq_m[\d]+|JZ[\d]+W)\.", self.__path).groups(1)[0]
+
+        # Load data
+        data = load_hdf5(self.__path)
+        print "  Read {:7d} samples ({}).".format(data.shape[0], identifier)
 
         # Perform slimming
         missing = [branch for branch in BRANCHES if branch not in data.dtype.names]
@@ -93,7 +138,7 @@ def main ():
             for name in missing:
                 print "  {}".format(name)
                 pass
-            return 1
+            raise IOError()
 
         data = data[BRANCHES].copy()
 
@@ -102,10 +147,9 @@ def main ():
         data = append_fields(data, 'rhoDDT', np.log(np.square(data['m']) / data['pt'] / 1.))
 
         # Writing output HDF5 file
-        save_hdf5(data, path.replace('_full', '_slim'))
-        pass
-
-    return
+        save_hdf5(data, self.__path.replace('_full', '_slim'))
+        return
+    pass
 
 
 # Main function call
