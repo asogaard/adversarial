@@ -15,12 +15,12 @@ import rootplotting.rootplotting as rp
 # Command-line arguments parser
 import argparse
 
-def get_parser(**kwargs):#input=False, output=False, dir=False, max_processes=False, size=False):
+def get_parser(**kwargs):
     """
     General method to get argument parser for preprocessing scripts.
 
     Arguments:
-        ...
+        kwargs: Flags indicating which arguments should be used.
     """
 
     # Argument defaults
@@ -31,19 +31,15 @@ def get_parser(**kwargs):#input=False, output=False, dir=False, max_processes=Fa
     arguments = {'input': \
                      dict(action='store', type=str, default=default_input,
                           help='Input directory, from which to read input ROOT files.'),
-
                  'output': \
                      dict(action='store', type=str, default=default_dir,
                           help='Output directory, to which to write output files.'),
-
                  'dir': \
                      dict(action='store', type=str, default=default_dir,
                           help='Directory in which to read and write HDF5 files.'),
-
                  'max-processes': \
                      dict(action='store', type=int, default=5, 
                           help='Maximum number of concurrent processes to use.'),
-
                  'size': \
                      dict(action='store', type=int, required=True,
                           help='Size of datasets in millions of events.')}
@@ -53,14 +49,9 @@ def get_parser(**kwargs):#input=False, output=False, dir=False, max_processes=Fa
     for k in set(kwargs) - set(arguments):
         raise IOError("get_parser: [ERROR] Keyword {} is not supported.".format(k))
 
-    # Default values
-    for k in set(arguments) - set(kwargs):
-        kwargs[k] = False
-        pass
-        
     # Check(s)
-    assert kwargs['input'] == kwargs['output']
-    assert kwargs['input'] != kwargs['dir']
+    assert kwargs.get('input', False) == kwargs.get('output', False)
+    assert kwargs.get('input', False) != kwargs.get('dir',    False)
 
     # Construct parser
     parser = argparse.ArgumentParser(description="[Generic] Perform preprocessing of ntuples to HDF5 files.")
