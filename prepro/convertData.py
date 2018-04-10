@@ -12,7 +12,6 @@ Script for converting W/top tagging ntuples to HDF5 files.
 # Basic import(s)
 import re
 import glob
-import datetime
 import multiprocessing
 
 # Get ROOT to stop hogging the command-line options

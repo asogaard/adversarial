@@ -12,7 +12,6 @@ Script for slimming HDF5 files from W/top tagging ntuples.
 # Basic import(s)
 import re
 import glob
-import datetime
 import multiprocessing
 
 # Get ROOT to stop hogging the command-line options
