@@ -26,7 +26,7 @@ from numpy.lib.recfunctions import append_fields
 # Project import(s)
 from adversarial.utils import garbage_collect
 from adversarial.profile import Profile, profile
-from .common import load_hdf5, save_hdf5, get_parser
+from .common import load_hdf5, save_hdf5, get_parser, run_batched
 
 # Command-line arguments parser
 parser = get_parser(dir=True, max_processes=True)
@@ -64,8 +64,6 @@ BRANCHES = [
     ]
 
 
-# @TODO: Parallelise
-
 # Main function definition
 @profile
 def main ():
@@ -81,25 +79,8 @@ def main ():
     paths = sorted(glob.glob(args.dir + '*/*_full.h5'))
     print "Found {} files.".format(len(paths))
 
-    # Batch the paths to be converted so as to never occupy more than
-    # `max_processes`.
-    path_batches = map(list, np.array_split(paths, np.ceil(len(paths) / float(args.max_processes))))
-
-    # Loop batches of paths
-    for ibatch, path_batch in enumerate(path_batches):
-        print "   Batch {}/{} | Contains {} files".format(ibatch + 1, len(path_batches), len(path_batch))
-
-        # Convert files using multiprocessing
-        processes = map(FileSlimmer, path_batch)
-
-        # Start processes
-        for p in processes: p.start()
-
-        # Wait for conversion processes to finish
-        for p in processes: p.join()
-
-        pass
-
+    # Run batched slimming in parallel
+    run_batched(FileSlimmer, paths, max_processes=args.max_processes)
     return
 
 

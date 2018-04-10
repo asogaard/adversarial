@@ -26,7 +26,7 @@ from numpy.lib import recfunctions
 # Project import(s)
 from adversarial.utils import garbage_collect
 from adversarial.profile import Profile, profile
-from .common import load_hdf5, save_hdf5, get_parser
+from .common import load_hdf5, save_hdf5, get_parser, run_batched
 
 # Command-line arguments parser
 parser = get_parser(input=True, output=True, max_processes=True)
@@ -160,6 +160,10 @@ def main ():
         paths = sorted(glob.glob(path_pattern.format('wprime' if key == 'sig' else 'JZ')))
         print "   Found {} input data files.".format(len(paths))
 
+        # Run batched conversion in parallel
+        run_batched(FileConverter, [(path, key, args) for path in paths], max_processes=args.max_processes)
+
+        '''
         # Batch the paths to be converted so as to never occupy more than
         # `max_processes`.
         path_batches = map(list, np.array_split(paths, np.ceil(len(paths) / float(args.max_processes))))
@@ -178,6 +182,7 @@ def main ():
             for p in processes: p.join()
 
             pass
+            '''
         pass
 
     return
@@ -185,7 +190,7 @@ def main ():
 
 class FileConverter (multiprocessing.Process):
 
-    def __init__ (self, path, key, args):
+    def __init__ (self, vargs):
         """
         Process for converting standard-format W/top tagging ROOT file to HDF5.
 
@@ -195,6 +200,9 @@ class FileConverter (multiprocessing.Process):
             args: Namespace containing command-line arguments, to configure the
                 reading and writing of files.
         """
+
+        # Unpack input arguments
+        path, key, args = vargs
 
         # Base class constructor
         super(FileConverter, self).__init__()

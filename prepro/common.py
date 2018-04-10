@@ -2,17 +2,51 @@
 
 # Basic import(s)
 import h5py
+import numpy as np
 import datetime
+import argparse
 
 # Project import(s)
 from adversarial.utils import mkdir
 from adversarial.utils import garbage_collect
 
-# Command-line arguments parser
-import argparse
+
+def run_batched (process, args, max_processes):
+    """
+    Generic method to run `process` in parallel on batches of `args`.
+
+    Arguments:
+        process: The process to batch, parallelise. Assumed to inherit from
+            `multiprocessing.Process`
+        args: List of arguments to be batch, each item passed to `process`.
+        max_processes: Maximal number of concurrent processes to run.
+    """
+
+    # Check(s)
+    assert isinstance(args, (list, tuple))
+    assert len(args)
+
+    # Batch the function `args` as to never occupy more than `max_processes`.
+    batches = map(list, np.array_split(args, np.ceil(len(args) / float(max_processes))))
+
+    # Loop batches of args
+    for ibatch, batch in enumerate(batches):
+        print "   Batch {}/{} | Contains {} arguments".format(ibatch + 1, len(batches), len(batch))
+
+        # Convert files using multiprocessing
+        processes = map(process, batch)
+
+        # Start processes
+        for p in processes: p.start()
+
+        # Wait for conversion processes to finish
+        for p in processes: p.join()
+        pass
+
+    return
 
 
-def get_parser(**kwargs):
+def get_parser (**kwargs):
     """
     General method to get argument parser for preprocessing scripts.
 
@@ -35,12 +69,12 @@ def get_parser(**kwargs):
                      dict(action='store', type=str, default=default_dir,
                           help='Directory in which to read and write HDF5 files.'),
                  'max-processes': \
-                     dict(action='store', type=int, default=5, 
+                     dict(action='store', type=int, default=5,
                           help='Maximum number of concurrent processes to use.'),
                  'size': \
                      dict(action='store', type=int, required=True,
                           help='Size of datasets in millions of events.')}
-    
+
     # Validate
     kwargs = {k.replace('_','-'): v for (k,v) in kwargs.iteritems()}
     for k in set(kwargs) - set(arguments):
@@ -56,7 +90,7 @@ def get_parser(**kwargs):
     for k in filter(lambda k: kwargs[k], kwargs):
         parser.add_argument('--' + k, **arguments[k])
         pass
-        
+
     return parser
 
 
