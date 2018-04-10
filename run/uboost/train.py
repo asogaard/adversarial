@@ -34,8 +34,8 @@ def main (args):
 
     # Loading data
     # --------------------------------------------------------------------------
-    data, features, _ = load_data(args.input + 'data.h5')
-    #data = data.sample(frac=0.1, random_state=32)  # @TEMP
+    data, features, _ = load_data(args.input + 'data_4M.h5')
+    data = data.sample(frac=0.001, random_state=32)  # @TEMP
     data = data[data['train'] == 1]
 
     # Reduce size of data
@@ -80,6 +80,8 @@ def main (args):
 
     # Arrays
     X = data
+    print(X.head(5))
+
     w = np.array(data['weight_train']).flatten()
     y = np.array(data['signal']).flatten()
 
@@ -127,7 +129,8 @@ def main (args):
 
             return uboost
 
-        uniforming_rates = [0.0, 0.01, 0.1, 0.3, 1.0, 3.0, 10.0, 30.0, 100.0]
+        #uniforming_rates = [0.0, 0.01, 0.1, 0.3, 1.0, 3.0, 10.0, 30.0, 100.0]
+        uniforming_rates = [0.0]
         n_jobs = min(2, len(uniforming_rates))  # ...(10, ...
 
         jobs = [delayed(train_uBoost, check_pickle=False)(X, y, w, opts, uniforming_rate) for uniforming_rate in uniforming_rates]
@@ -144,7 +147,7 @@ def main (args):
             # Ensure model directory exists
             mkdir('models/uboost/')
 
-            suffix_ur = "ur_{:s}".format(("%.1f" % uniforming_rate).replace('.', 'p'))
+            suffix_ur = "ur_{:s}".format(("%.2f" % uniforming_rate).replace('.', 'p'))
             suffix_te = "te_{:d}".format(int(opts['uBoost']['target_efficiency'] * 100))
 
             # Save uBoost classifier

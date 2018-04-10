@@ -32,21 +32,21 @@ def main (args):
 
     # Loading data
     # --------------------------------------------------------------------------
-    data, features, _ = load_data(args.input + 'data.h5')
-    #data = data.sample(frac=0.1, random_state=32)   # @TEMP
+    data, features, _ = load_data(args.input + 'data_4M.h5')
+    data = data.sample(frac=0.001, random_state=32)   # @TEMP
 
 
     # Test classifiers in parallel
     # --------------------------------------------------------------------------
     classifiers = [
         #('Adaboost', 'adaboost'),
-        ('uBoost (ur= 0.0, te=0.92)', 'uboost_ur_0p0_te_92'),
-        ('uBoost (ur= 0.1, te=0.92)', 'uboost_ur_0p1_te_92'),
-        ('uBoost (ur= 0.3, te=0.92)', 'uboost_ur_0p3_te_92'),
-        ('uBoost (ur= 1.0, te=0.92)', 'uboost_ur_1p0_te_92'),
-        ('uBoost (ur= 3.0, te=0.92)', 'uboost_ur_3p0_te_92'),
-        ('uBoost (ur= 5.0, te=0.92)', 'uboost_ur_5p0_te_92'),
-        ('uBoost (ur=10.0, te=0.92)', 'uboost_ur_10p0_te_92'),
+        ('uBoost (ur= 0.0, te=0.92)', 'uboost_ur_0p00_te_92'),
+     #   ('uBoost (ur= 0.1, te=0.92)', 'uboost_ur_0p1_te_92'),
+     #   ('uBoost (ur= 0.3, te=0.92)', 'uboost_ur_0p3_te_92'),
+     #   ('uBoost (ur= 1.0, te=0.92)', 'uboost_ur_1p0_te_92'),
+     #   ('uBoost (ur= 3.0, te=0.92)', 'uboost_ur_3p0_te_92'),
+     #   ('uBoost (ur= 5.0, te=0.92)', 'uboost_ur_5p0_te_92'),
+     #   ('uBoost (ur=10.0, te=0.92)', 'uboost_ur_10p0_te_92'),
     ]
 
     njobs = min(10, len(classifiers))
@@ -117,16 +117,20 @@ def test (data, title, name):
             idx_train = np.where(data['train'] == 1)[0]
             idx_test  = np.where(data['train'] == 0)[0]
 
+
             idx_train = np.random.choice(idx_train, int(0.05 * idx_train.size), replace=False)
             idx_test  = np.random.choice(idx_test , int(0.05 * idx_test .size), replace=False)
 
-            staged_pred_train = list(clf.staged_predict_proba(data.loc[idx_train]))
-            staged_pred_test  = list(clf.staged_predict_proba(data.loc[idx_test]))
+            #staged_pred_train = list(clf.staged_predict_proba(data.loc[idx_train]))
+            #staged_pred_test  = list(clf.staged_predict_proba(data.loc[idx_test]))
+            
+	    staged_pred_train = list(clf.staged_predict_proba(data.loc[data.index.get_values()[idx_train]]))
+            staged_pred_test  = list(clf.staged_predict_proba(data.loc[data.index.get_values()[idx_test]]))
 
-            y_train = data.loc[idx_train, 'signal'].values
-            y_test  = data.loc[idx_test,  'signal'].values
-            w_train = data.loc[idx_train, 'weight_train'].values
-            w_test  = data.loc[idx_test,  'weight_train'].values
+            y_train = data.loc[data.index.get_values()[idx_train],'signal']
+            y_test  = data.loc[data.index.get_values()[idx_test],'signal']
+            w_train = data.loc[data.index.get_values()[idx_train],'weight_train']
+	    w_test = data.loc[data.index.get_values()[idx_test],'weight_test']
 
             #staged_pred_train = list(clf.staged_predict_proba(data[data['train'] == 1]))
             #staged_pred_test  = list(clf.staged_predict_proba(data[data['train'] == 0]))
@@ -182,9 +186,6 @@ def test (data, title, name):
         # Plotting ROC curves
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         with Profile("Plotting ROCs"):
-            # Get predictions
-            pred_test  = clf.predict_proba(data[data['train'] == 0])[:,1]
-            pred_train = clf.predict_proba(data[data['train'] == 1])[:,1]
 
             fpr_test,  tpr_test,  thresholds_test  = roc_curve(y_test,  p_test,  sample_weight=w_test)
             fpr_train, tpr_train, thresholds_train = roc_curve(y_train, p_train, sample_weight=w_train)
@@ -255,7 +256,6 @@ def test (data, title, name):
                     plt.plot(bins[:-1] + 0.5 * np.diff(bins), num/denom, color='b' if is_train else 'r', alpha=(100 - eff) / 100., label='{} > {:.2f} (bkg. eff. = {:.0f}%)'.format("uB", cut, eff) if is_train else None)   # ...format(title, cut, eff) ...
                     pass
                 pass
-
             # Decorations
             plt.legend()
             plt.xlabel("Large-radius jet mass [GeV]")
