@@ -394,11 +394,13 @@ def load_data (path, name='dataset'):
     # Define feature collections to use
     features_input         = ['Tau21', 'C2', 'D2', 'Angularity', 'Aplanarity', 'FoxWolfram20', 'KtDR', 'PlanarFlow', 'Split12', 'ZCut12']
     features_decorrelation = DECORRELATION_VARIABLES
-    features_auxiliary     = ['signal', 'train', 'weight_train', 'weight_test', 'N2', 'm', 'pt', 'truth_pt', 'npv']
+    features_auxiliary     = ['signal', 'train', 'weight_train', 'weight_test', 'N2', 'm', 'pt', 'rho', 'rhoDDT', 'truth_pt', 'npv']
 
     # Remove duplicates
     for feat in features_decorrelation:
-        features_auxiliary.pop(feat, None)
+        for _ in range(features_auxiliary.count(feat)):
+            features_auxiliary.remove(feat)
+            pass
         pass
 
     # Select features from DataFrame
