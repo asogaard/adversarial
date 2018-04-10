@@ -32,8 +32,8 @@ def distribution (data, args, feat):
     """
 
     # Define bins
-    xmin = wpercentile (data[feat].values,  1, weights=data['weight'].values)
-    xmax = wpercentile (data[feat].values, 99, weights=data['weight'].values)
+    xmin = wpercentile (data[feat].values,  1, weights=data['weight_test'].values)
+    xmax = wpercentile (data[feat].values, 99, weights=data['weight_test'].values)
 
     snap = 0.5  # Snap to nearest multiple in appropriate direction
     xmin = np.floor(xmin / snap) * snap
@@ -68,16 +68,13 @@ def plot (*argv):
     for signal in [0, 1]:
         msk = (data['signal'] == signal)
         HISTSTYLE[signal].update(base)
-        c.hist(data.loc[msk, feat].values, weights=data.loc[msk, 'weight'].values, **HISTSTYLE[signal])
+        c.hist(data.loc[msk, feat].values, weights=data.loc[msk, 'weight_test'].values, **HISTSTYLE[signal])
         pass
 
     # Decorations
     c.xlabel("Large-#it{R} jet " + latex(feat, ROOT=True))
     c.ylabel("Fraction of jets")
-    c.text(["#sqrt{s} = 13 TeV",
-            "Testing dataset",
-            "Baseline selection",
-            ], qualifier=QUALIFIER)
+    c.text(TEXT + ["#it{W} jet tagging"], qualifier=QUALIFIER)
     c.ylim(2E-03, 2E+00)
     c.logy()
     c.legend()

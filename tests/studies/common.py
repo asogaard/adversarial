@@ -34,7 +34,8 @@ HISTSTYLE = {  # key = signal / passing
     }
 
 TEXT = ["#sqrt{s} = 13 TeV",
-        "Baseline selection"]
+        #"Baseline selection",
+        ]
 
 # Global ROOT TStyle settings
 ROOT.gStyle.SetHatchesLineWidth(3)
@@ -133,24 +134,22 @@ def metrics (data, feat, target_tpr=0.5, masscut=False, verbose=False):
     # ------------------------------------------------------
 
     # (Opt.) mass cut mask
-    if masscut and verbose:
+    if masscut:
         print "metrics: Applying mass cut."
         pass
     msk = (data['m'] > 60.) & (data['m'] < 100.) if masscut else np.ones_like(data['signal']).astype(bool)
 
     # scikit-learn assumes signal towards 1, background towards 0
     pred = data[feat].values.copy()
-    #sign = 1.
     if signal_low(feat):
         if verbose:
             print "metrics: Reversing cut direction for {}".format(feat)
             pass
-        #sign = -1.
         pred *= -1.
         pass
 
     # Compute ROC curve efficiencies
-    fpr, tpr, thresholds = roc_curve(data.loc[msk, 'signal'], pred[msk], sample_weight=data.loc[msk, 'weight'])
+    fpr, tpr, thresholds = roc_curve(data.loc[msk, 'signal'], pred[msk], sample_weight=data.loc[msk, 'weight_test'])
 
     if masscut:
         tpr_mass = np.mean(msk[data['signal'] == 1])
@@ -173,8 +172,8 @@ def metrics (data, feat, target_tpr=0.5, masscut=False, verbose=False):
     msk_pass = pred > cut
     msk_bkg  = data['signal'] == 0
 
-    p, _ = np.histogram(data.loc[ msk_pass & msk_bkg, 'm'].values, bins=MASSBINS, weights=data.loc[ msk_pass & msk_bkg, 'weight'].values, density=True)
-    f, _ = np.histogram(data.loc[~msk_pass & msk_bkg, 'm'].values, bins=MASSBINS, weights=data.loc[~msk_pass & msk_bkg, 'weight'].values, density=True)
+    p, _ = np.histogram(data.loc[ msk_pass & msk_bkg, 'm'].values, bins=MASSBINS, weights=data.loc[ msk_pass & msk_bkg, 'weight_test'].values, density=True)
+    f, _ = np.histogram(data.loc[~msk_pass & msk_bkg, 'm'].values, bins=MASSBINS, weights=data.loc[~msk_pass & msk_bkg, 'weight_test'].values, density=True)
 
     jsd = JSD(p, f)
 

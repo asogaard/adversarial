@@ -32,7 +32,7 @@ def jetmass (data, args, feat, eff_sig=50):
     msk_sig = data['signal'] == 1
     msk_bkg = ~msk_sig
     eff_cut = eff_sig if signal_low(feat) else 100 - eff_sig
-    cut = wpercentile(data.loc[msk_sig, feat].values, eff_cut, weights=data.loc[msk_sig, 'weight'].values)
+    cut = wpercentile(data.loc[msk_sig, feat].values, eff_cut, weights=data.loc[msk_sig, 'weight_test'].values)
     msk_pass = data[feat] > cut
 
     # Ensure correct cut direction
@@ -70,7 +70,7 @@ def plot (*argv):
     for passing, name in zip([False, True], ['fail', 'pass']):
         msk = msk_bkg & (msk_pass if passing else ~msk_pass)
         HISTSTYLE[passing].update(base)
-        hist[name] = c.hist(data.loc[msk, 'm'].values, weights=data.loc[msk, 'weight'].values, **HISTSTYLE[passing])
+        hist[name] = c.hist(data.loc[msk, 'm'].values, weights=data.loc[msk, 'weight_test'].values, **HISTSTYLE[passing])
         pass
 
     # Ratio plots

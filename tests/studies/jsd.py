@@ -46,7 +46,7 @@ def jsd (data, args, features):
         # Define cuts
         cuts = list()
         for eff in effs:
-            cut = wpercentile(data.loc[msk, feat].values, eff, weights=data.loc[msk, 'weight'].values)
+            cut = wpercentile(data.loc[msk, feat].values, eff, weights=data.loc[msk, 'weight_test'].values)
             cuts.append(cut)
             pass
 
@@ -60,8 +60,8 @@ def jsd (data, args, features):
 
             # Create ROOT histograms
             msk_pass = data[feat] > cut
-            h_pass = c.hist(data.loc[ msk_pass & msk, 'm'].values, bins=MASSBINS, weights=data.loc[ msk_pass & msk, 'weight'].values, normalise=True, display=False)
-            h_fail = c.hist(data.loc[~msk_pass & msk, 'm'].values, bins=MASSBINS, weights=data.loc[~msk_pass & msk, 'weight'].values, normalise=True, display=False)
+            h_pass = c.hist(data.loc[ msk_pass & msk, 'm'].values, bins=MASSBINS, weights=data.loc[ msk_pass & msk, 'weight_test'].values, normalise=True, display=False)
+            h_fail = c.hist(data.loc[~msk_pass & msk, 'm'].values, bins=MASSBINS, weights=data.loc[~msk_pass & msk, 'weight_test'].values, normalise=True, display=False)
 
             # Convert to numpy arrays
             p = root_numpy.hist2array(h_pass)
@@ -121,15 +121,9 @@ def plot (*argv):
     c.xlabel("Background efficiency #varepsilon_{bkg.}")
     c.ylabel("Mass correlation, JSD")
     c.text([], xmin=0.15, ymax = 0.96, qualifier=QUALIFIER)
-    c.text(["#sqrt{s} = 13 TeV,  QCD jets",
-            "Testing dataset",
-            "Baseline selection",
-            ], ymax=0.85, ATLAS=None)
+    c.text(["#sqrt{s} = 13 TeV,  QCD jets"],
+           ymax=0.85, ATLAS=None)
 
-    """c.text(["#sqrt{s} = 13 TeV,  QCD jets",
-            "Testing dataset",
-            "Baseline selection",
-            ], qualifier=QUALIFIER)"""
     c.latex("Maximal sculpting", 0.065, 1.2, align=11, textsize=11, textcolor=ROOT.kGray + 2)
     c.xlim(0, 1)
     c.ymin(5E-05)

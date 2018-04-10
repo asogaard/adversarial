@@ -36,7 +36,7 @@ def jetmasscomparison (data, args, features, simple_features, eff_sig=50):
     cuts, msks_pass = dict(), dict()
     for feat in features:
         eff_cut = eff_sig if signal_low(feat) else 100 - eff_sig
-        cut = wpercentile(data.loc[msk_sig, feat].values, eff_cut, weights=data.loc[msk_sig, 'weight'].values)
+        cut = wpercentile(data.loc[msk_sig, feat].values, eff_cut, weights=data.loc[msk_sig, 'weight_test'].values)
         msks_pass[feat] = data[feat] > cut
 
         # Ensure correct cut direction
@@ -63,8 +63,8 @@ def plot (*argv):
     data, args, features, simple_features, msks_pass, eff_sig = argv
 
     # Global variable override(s)
-    HISTSTYLE[True] ['label'] = "#it{W} jets"
-    HISTSTYLE[False]['label'] = "QCD jets"
+    HISTSTYLE[True] ['label'] = " #it{W} jets"
+    HISTSTYLE[False]['label'] = " QCD jets"
 
     #HISTSTYLE[True] ['linecolor'] = ROOT.kPink + 1
     #HISTSTYLE[True] ['fillcolor'] = ROOT.kPink + 1
@@ -85,9 +85,9 @@ def plot (*argv):
     for signal, name in zip([False, True], ['bkg', 'sig']):
         msk = data['signal'] == signal
         HISTSTYLE[signal].update(base)
-        hist[name] = c.hist(data.loc[msk, 'm'].values, weights=data.loc[msk, 'weight'].values, **HISTSTYLE[signal])
+        hist[name] = c.hist(data.loc[msk, 'm'].values, weights=data.loc[msk, 'weight_test'].values, **HISTSTYLE[signal])
         pass
-    c.legend(header="Baseline selection:", ymax=0.8875, **opts_legend)
+    c.legend(header=" Baseline selection:", ymax=0.8875, **opts_legend)
 
     # -- Tagged
     base['linewidth'] = 2
@@ -102,10 +102,10 @@ def plot (*argv):
         cfg = dict(**base)
         cfg.update(opts)
         msk = (data['signal'] == 0) & msks_pass[feat]
-        hist[feat] = c.hist(data.loc[msk, 'm'].values, weights=data.loc[msk, 'weight'].values, label=latex(feat, ROOT=True), **cfg)
+        hist[feat] = c.hist(data.loc[msk, 'm'].values, weights=data.loc[msk, 'weight_test'].values, label=" " + latex(feat, ROOT=True), **cfg)
         pass
 
-    c.legend(header="Tagged QCD jets:", ymax=0.70, **opts_legend)
+    c.legend(header=" Tagged QCD jets:", ymax=0.70, **opts_legend)
 
     # Re-draw axes
     c.pads()[0]._primitives[0].Draw('AXIS SAME')
@@ -115,8 +115,8 @@ def plot (*argv):
     c.ylabel("Fraction of jets")
 
     c.text([], qualifier=QUALIFIER, ymax=0.96, xmin=0.15)
-    c.text(["#sqrt{s} = 13 TeV,  QCD jets",
-            "Testing dataset",
+    c.text(["#sqrt{s} = 13 TeV",
+            "#it{W} jet tagging",
             "{} taggers".format("Simple" if simple_features else "MVA"),
             "Tagging at #varepsilon_{sig} = %.0f%%" % eff_sig,
             ], ATLAS=False)

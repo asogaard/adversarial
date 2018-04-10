@@ -40,12 +40,11 @@ def roc (data, args, features, masscut=False):
     ROCs = dict()
     for feat in features:
 
-        sign = 1. if signal_low(feat) else -1.
+        sign = -1. if signal_low(feat) else 1.
 
-        eff_sig, eff_bkg, thresholds = roc_curve(data['signal'].values,
+        eff_bkg, eff_sig, thresholds = roc_curve(data['signal'].values,
                                                  data[feat]    .values * sign,
-                                                 sample_weight=data['weight'].values,
-                                                 pos_label=1)
+                                                 sample_weight=data['weight_test'].values)
 
         # Filter, to advoid background rejection blowing up
         indices = np.where((eff_bkg > 0) & (eff_sig > 0))
@@ -59,16 +58,16 @@ def roc (data, args, features, masscut=False):
         eff_bkg = eff_bkg[indices]
 
         # Store
-        ROCs[feat] = (eff_sig,eff_bkg)
+        ROCs[feat] = (eff_sig, eff_bkg)
         pass
 
     # Computing ROC AUCs
     AUCs = dict()
     for feat in features:
-        sign = 1. if signal_low(feat) else -1.
-        AUCs[feat] = 1. - roc_auc_score(data['signal'].values,
-                                        data[feat]    .values * sign,
-                                        sample_weight=data['weight'].values)
+        sign = -1. if signal_low(feat) else 1.
+        AUCs[feat] = roc_auc_score(data['signal'].values,
+                                   data[feat]    .values * sign,
+                                   sample_weight=data['weight_test'].values)
         pass
 
     # Perform plotting
@@ -114,17 +113,17 @@ def plot (*argv):
     c.legend(xmin=0.58, width=0.22)
 
     # Decorations
-    c.xlabel("Signal efficiency #varepsilon_{sig.}")
-    c.ylabel("Background rejection 1/#varepsilon_{bkg.}")
+    c.xlabel("Signal efficiency #varepsilon_{sig}")
+    c.ylabel("Background rejection 1/#varepsilon_{bkg}")
     c.text(["#sqrt{s} = 13 TeV",
-            "Testing dataset",
-            "Baseline selection"] + \
+            "#it{W} jet tagging"] + \
             (["m #in  [60, 100] GeV"] if masscut else []),
-        qualifier=QUALIFIER)
-        
+           qualifier=QUALIFIER)
+
     c.latex("Random guessing", 0.3, 1./0.3 * 0.9, align=23, angle=-12, textsize=13, textcolor=ROOT.kGray + 2)
-    c.xlim(0., 1.)
-    c.ylim(1E+00, 1E+05)
+    #c.xlim(0., 1.)
+    c.xlim(0.2, 1.)
+    c.ylim(1E+00, 1E+03)
     c.logy()
     c.legend()
 

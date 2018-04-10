@@ -35,7 +35,7 @@ def efficiency (data, args, feat):
     # Define cuts
     cuts = list()
     for eff in effs:
-        cut = wpercentile(data.loc[msk, feat].values, eff, weights=data.loc[msk, 'weight'].values)
+        cut = wpercentile(data.loc[msk, feat].values, eff, weights=data.loc[msk, 'weight_test'].values)
         cuts.append(cut)
         pass
 
@@ -59,7 +59,7 @@ def efficiency (data, args, feat):
                                 len(MASSBINS) - 1, MASSBINS)
 
         M = np.vstack((data.loc[msk, 'm'].values, msk_pass[msk])).T
-        weights = data.loc[msk, 'weight'].values
+        weights = data.loc[msk, 'weight_test'].values
 
         root_numpy.fill_profile(profile, M, weights=weights)
 
@@ -105,7 +105,7 @@ def plot (*argv):
     # Text
     for idx, (profile, cut, eff) in enumerate(zip(profiles, cuts, effs)):
         if int(eff) in [10, 50, 90]:
-            c.latex('#bar{#varepsilon}_{bkg.} = %d%%' % eff,
+            c.latex('#bar{#varepsilon}_{bkg} = %d%%' % eff,
                     260., profile.GetBinContent(np.argmin(np.abs(MASSBINS - 270.)) + 1) + 0.025,
                     textsize=13,
                     textcolor=ROOT.kGray + 2, align=11)
@@ -114,13 +114,12 @@ def plot (*argv):
 
     # Decorations
     c.xlabel("Large-#it{R} jet mass [GeV]")
-    c.ylabel("Background efficiency, #varepsilon_{bkg.}")
+    c.ylabel("Background efficiency, #varepsilon_{bkg}")
     c.text(["#sqrt{s} = 13 TeV,  QCD jets",
-            "Testing dataset",
-            "Baseline selection",
+            "#it{W} jet tagging",
             "Sequential cuts on {}".format(latex(feat, ROOT=True)),
             ],
            qualifier=QUALIFIER)
-    c.ylim(0, 1.9)
+    c.ylim(0, 1.8)
 
     return c

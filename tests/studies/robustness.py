@@ -43,12 +43,12 @@ def robustness (data, args, features, var, bins, masscut=False, num_bootstrap=5)
         msk_bkg  = data['signal'] == 0
 
         # Compute weighted mean if x-axis variable
-        #meanx.append(wmean(data_bin.loc[msk_bkg, var], data_bin.loc[msk_bkg, 'weight']))
-        meanx.append(wmean(data.loc[msk_bin & msk_bkg, var], data.loc[msk_bin & msk_bkg, 'weight']))
+        #meanx.append(wmean(data_bin.loc[msk_bkg, var], data_bin.loc[msk_bkg, 'weight_test']))
+        meanx.append(wmean(data.loc[msk_bin & msk_bkg, var], data.loc[msk_bin & msk_bkg, 'weight_test']))
 
         # Compute bootstrapped metrics for all features
         for feat in features:
-            mean_std_rej, mean_std_jsd = bootstrap_metrics(data.iloc[msk_bin], feat, num_bootstrap=num_bootstrap)
+            mean_std_rej, mean_std_jsd = bootstrap_metrics(data[msk_bin], feat, num_bootstrap=num_bootstrap)
 
             # Store in output containers
             rejs[feat].append(mean_std_rej)
@@ -150,14 +150,16 @@ def plot (*argv):
 
         c.text([], qualifier=QUALIFIER, xmin=0.15, ymax=0.93)
 
-        c.text(["#sqrt{s} = 13 TeV,  QCD jets",
-                "Testing dataset",
-                "Baseline selection"] + \
+        c.text(["#sqrt{s} = 13 TeV",
+                "#it{W} jet tagging"] + \
                 (['m #in  [60, 100] GeV'] if masscut else []),
                  ATLAS=False, ymax=0.76)
 
-        c.pads()[0].padding(0.5)
+        c.pads()[1].text(["QCD jets"], ATLAS=False)
+
+        #c.pads()[0].padding(0.5)
         c.pads()[1].ylim(0.5, 5000)
+        c.pads()[0].logy()
         c.pads()[1].logy()
         pass  # Temporary style scope
 

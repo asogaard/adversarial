@@ -173,12 +173,16 @@ def plot (*argv):
             pass
 
         # Boxes
+        print "({}, {}, {}, {})".format(aminx, aminy, 1, amaxy)
         box1 = ROOT.TBox(aminx, aminy, 1, amaxy)
-        box1.SetFillColorAlpha(ROOT.kBlack, 0.05)
+        #box1.SetFillColorAlpha(ROOT.kBlack, 0.05)
+        box1.SetFillColor(ROOT.kGray)
         box1.Draw("SAME")
 
+        print "({}, {}, {}, {})".format(1, aminy, amaxx, 1)
         box2 = ROOT.TBox(1, aminy, amaxx, 1)
-        box2.SetFillColorAlpha(ROOT.kBlack, 0.05)
+        #box2.SetFillColorAlpha(ROOT.kBlack, 0.05)
+        box2.SetFillColor(ROOT.kGray)
         box2.Draw("SAME")
         c.pads()[0]._primitives[0].Draw('AXIS SAME')
 
@@ -198,9 +202,7 @@ def plot (*argv):
         c.latex("    Less sculpting #rightarrow",    1.1, midpointy,  angle=90, align=23,**opts_text)
         c.latex("    Greater separtion #rightarrow", midpointx, 1.1,  angle= 0, align=21,**opts_text)
 
-        c.text(TEXT,
-            xmin=0.24,
-            qualifier=QUALIFIER)
+        c.text(TEXT + ["#it{W} jet tagging"], xmin=0.24, qualifier=QUALIFIER)
         pass
 
     return c
