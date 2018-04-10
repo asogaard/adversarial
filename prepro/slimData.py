@@ -23,7 +23,7 @@ from numpy.lib.recfunctions import append_fields
 
 # Project import(s)
 from adversarial.profile import Profile, profile
-from .common import load_hdf5, save_hdf5
+from .common import load_hdf5, save_hdf5, get_parser
 
 # Command-line arguments parser
 parser = get_parser(dir=True)

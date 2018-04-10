@@ -26,7 +26,7 @@ from numpy.lib import recfunctions
 # Project import(s)
 from adversarial.utils import garbage_collect
 from adversarial.profile import Profile, profile
-from .common import load_hdf5, save_hdf5
+from .common import load_hdf5, save_hdf5, get_parser
 
 # Command-line arguments parser
 parser = get_parser(input=True, output=True, max_processes=True)
