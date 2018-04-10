@@ -162,27 +162,6 @@ def main ():
 
         # Run batched conversion in parallel
         run_batched(FileConverter, [(path, key, args) for path in paths], max_processes=args.max_processes)
-
-        '''
-        # Batch the paths to be converted so as to never occupy more than
-        # `max_processes`.
-        path_batches = map(list, np.array_split(paths, np.ceil(len(paths) / float(args.max_processes))))
-
-        # Loop batches of paths
-        for ibatch, path_batch in enumerate(path_batches):
-            print "   Batch {}/{} | Contains {} files".format(ibatch + 1, len(path_batches), len(path_batch))
-
-            # Convert files using multiprocessing
-            processes = [FileConverter(path, key, args) for path in path_batch]
-
-            # Start processes
-            for p in processes: p.start()
-
-            # Wait for conversion processes to finish
-            for p in processes: p.join()
-
-            pass
-            '''
         pass
 
     return
