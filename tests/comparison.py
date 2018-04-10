@@ -7,8 +7,11 @@
 import re
 import gzip
 
-# Scientific import(s)
+# Get ROOT to stop hogging the command-line options
 import ROOT
+ROOT.PyConfig.IgnoreCommandLineOptions = True
+
+# Scientific import(s)
 import numpy as np
 import pandas as pd
 import pickle
@@ -54,7 +57,7 @@ def main (args):
     # --------------------------------------------------------------------------
     data, features, _ = load_data(args.input + 'data.h5')
     data = data[data['train'] == 0]
-    #data = data.sample(frac=0.1)  # @TEMP!
+    #data = data.sample(frac=0.01)  # @TEMP!
 
 
     # Common definitions
@@ -63,14 +66,12 @@ def main (args):
     msk_mass = (data['m'] > 60.) & (data['m'] < 100.)  # W mass window
     msk_sig  = data['signal'] == 1
     kNN_eff = 10
-    uboost_eff = 20
-    uboost_uni = 1.0
     D2_kNN_var = 'D2-kNN({:d}%)'.format(kNN_eff)
-    uboost_var = 'uBoost(#varepsilon={:d}%,#alpha={:.1f})'.format(uboost_eff, uboost_uni)
 
-    lambda_reg  = 100
-    #lambda_regs = sorted([0.1, 1, 10, 100, 1000])
-    lambda_regs = sorted([100, 1000])
+    # -- Adversarial neural network (ANN) scan
+    lambda_reg  = 20.
+    #lambda_regs = sorted([0.1, 1, 10, 100])
+    lambda_regs = sorted([0.02, 0.2, 2., 20., 200.])
     ann_vars    = list()
     lambda_strs = list()
     for lambda_reg_ in lambda_regs:
@@ -84,6 +85,16 @@ def main (args):
 
     ann_var = ann_vars[lambda_regs.index(lambda_reg)]
 
+    # -- uBoost scan
+    uboost_eff = 92
+    uboost_ur  = 0.1
+    uboost_urs = sorted([0., 0.01, 0.1, 0.3])
+    #uboost_urs = sorted([0., 0.1])
+    uboost_var  =  'uBoost(#alpha={:.2f})'.format(uboost_ur)
+    uboost_vars = ['uBoost(#alpha={:.2f})'.format(ur) for ur in uboost_urs]
+    uboost_pattern = 'uboost_05TotStat_ur_{{:4.2f}}_te_{:.0f}_WTopnote_hypsel_500est'.format(uboost_eff)
+
+    '''
     nn_mass_var = "NN(m-weight)"
     nn_linear_vars = list()
     for lambda_reg_ in lambda_regs:
@@ -91,7 +102,9 @@ def main (args):
         nn_linear_vars.append(nn_linear_var_)
         pass
     nn_linear_var = nn_linear_vars[lambda_regs.index(lambda_reg)]
+    '''
 
+    # -- Tagger feature collection
     tagger_features = ['Tau21','Tau21DDT', 'D2', D2_kNN_var, 'D2CSS', 'NN', ann_var, 'Adaboost', uboost_var]
 
 
@@ -135,7 +148,7 @@ def main (args):
         # ANN
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         with Profile("ANN"):
-            from run.reweight.common import DECORRELATION_VARIABLES
+            from adversarial.utils import DECORRELATION_VARIABLES
             adversary = adversary_model(gmm_dimensions=len(DECORRELATION_VARIABLES),
                                         **cfg['adversary']['model'])
 
@@ -151,29 +164,46 @@ def main (args):
             pass
 
 
-        # Adaboost
+        # Adaboost/uBoost
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-        with Profile("Adaboost"):
-            # @TODO:
-            #  - gzip
-            with open('models/uboost/adaboost.pkl', 'r') as f:
-                adaboost = pickle.load(f)
+        from sklearn.externals.joblib.parallel import cpu_count, Parallel, delayed
+
+        def _predict(estimator, X, method, start, stop):
+            return getattr(estimator, method)(X[start:stop])
+
+        def parallel_predict(estimator, X, n_jobs=1, method='predict', batches_per_job=3):
+            n_jobs = max(cpu_count() + 1 + n_jobs, 1)  # XXX: this should really be done by joblib
+            n_batches = batches_per_job * n_jobs
+            n_samples = len(X)
+            batch_size = int(np.ceil(n_samples / n_batches))
+            parallel = Parallel(n_jobs=n_jobs, backend="threading")
+            results = parallel(delayed(_predict, check_pickle=False)(estimator, X, method, i, i + batch_size)
+                               for i in range(0, n_samples, batch_size))
+            return np.concatenate(results)
+
+        with Profile("Adaboost/uBoost"):
+
+            for var, ur in zip(uboost_vars, uboost_urs):
+                print "== Loading model for {}".format(var)
+                with gzip.open('models/uboost/' + uboost_pattern.format(ur).replace('.', 'p') + '.pkl.gz', 'r') as f:
+                    clf = pickle.load(f)
+                    pass
+
+                # You parallelisation to speed-up prediction
+                result = parallel_predict(clf, data, n_jobs=16, method='predict_proba')
+
+                var = ('Adaboost' if ur == 0 else var)
+                #data[var] =
+                #pd.Series(clf.predict_proba(data)[:,1].flatten().astype(K.floatx()),
+                #index=data.index)
+                data[var] = pd.Series(result[:,1].flatten().astype(K.floatx()), index=data.index)
                 pass
-            data['Adaboost'] = pd.Series(adaboost.predict_proba(data)[:,1].flatten().astype(K.floatx()), index=data.index)
+
+            # Remove `Adaboost` from scan list
+            uboost_vars.pop(0)
+
+            print "== Done loading Ababoost/uBoost models"
             pass
-
-
-        # uBoost
-        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-        with Profile("uBoost"):
-            # @TODO: Add uniforming rate, `uboost_uni`
-            # @TODO: gzip
-            with open('models/uboost/uboost_{:d}.pkl'.format(100 - uboost_eff), 'r') as f:
-                uboost = pickle.load(f)
-                pass
-            data[uboost_var] = pd.Series(uboost.predict_proba(data)[:,1].flatten().astype(K.floatx()), index=data.index)
-            pass
-
         pass
 
 
@@ -209,7 +239,7 @@ def main (args):
         regex_ub = re.compile('\#alpha=[\d\.]+')
 
         scan_features = {'NN': map(lambda feat: (feat, regex_nn.search(feat).group(0)), ann_vars),
-                         'Adaboost': [(uboost_var, regex_ub.search(uboost_var).group(0))]}
+                         'Adaboost': map(lambda feat: (feat, regex_ub.search(feat).group(0)), uboost_vars)}
 
         studies.summary(data, args, tagger_features, scan_features)
         pass
@@ -233,12 +263,18 @@ def main (args):
         pass
 
 
-    # Perform robustness study
+    # Perform ROC study
     # --------------------------------------------------------------------------
-    with Profile("Study: Robustness"):
-        studies.jsd(data, args, tagger_features)
+    with Profile("Study: ROC"):
+        studies.roc(data, args, tagger_features)
         pass
 
+
+    # Perform JSD study
+    # --------------------------------------------------------------------------
+    with Profile("Study: JSD"):
+        studies.jsd(data, args, tagger_features)
+        pass
 
     # Perform efficiency study
     # --------------------------------------------------------------------------
@@ -246,13 +282,6 @@ def main (args):
         for feat in tagger_features:
             studies.efficiency(data, args, feat)
             pass
-        pass
-
-
-    # Perform ROC study
-    # --------------------------------------------------------------------------
-    with Profile("Study: ROC"):
-        studies.roc(data, args, tagger_features)
         pass
 
     return 0

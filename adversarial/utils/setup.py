@@ -43,7 +43,7 @@ def parse_args (cmdline_args=sys.argv[1:], backend=False, adversarial=False, plo
 
     # Inputs
     parser.add_argument('--input',  action='store', type=str,
-                        default='./data/', help='Input directory, from which to read HDF5 data file.')
+                        default='./input/', help='Input directory, from which to read HDF5 data file.')
     parser.add_argument('--output', action='store', type=str,
                         default='./output/', help='Output directory, to which to write results.')
     parser.add_argument('--config', action='store', type=str,
@@ -81,8 +81,6 @@ def parse_args (cmdline_args=sys.argv[1:], backend=False, adversarial=False, plo
                             help='Perform classifier pre-training')
         parser.add_argument('--train-adversarial', action='store_true',
                             help='Perform adversarial training')
-        parser.add_argument('--train-aux', action='store_true',
-                            help='Train auxiliary mass-decorrelation methods')
 
         group_optimise = parser.add_mutually_exclusive_group()
         group_optimise.add_argument('--optimise-classifier',  dest='optimise_classifier',  action='store_true',
@@ -339,87 +337,73 @@ def initialise_backend (args):
     return
 
 
+# Common definition(s)
+# @NOTE: This is the crucial point: If the target is flat in, say, (m, pt) the
+# re-weighted background _won't_ be flat in (log m, log pt), and vice versa. It
+# should go without saying, but draw target samples from a uniform prior on the
+# coordinates which are used for the decorrelation.
+DECORRELATION_VARIABLES = ['m', 'pt']
+
 @garbage_collect
 @profile
-def load_data (path, name='dataset', train_fraction=0.8):
-    """General script to load data, common to all run scripts.
-    The loaded data is shuffled, re-indexed, and augmented with additional
-    column(s), e.g. `train`. The weights for the signal and background sets are
-    normalised to the same sum, such that the average signal sample weight is 1.
-    A pre-selection, common to all run scripts, is applied to the set of samples.
+def get_decorrelation_variables (data):
+    """
+    Get array of standardised decorrelation variables.
+
+    Arguments:
+        data: Pandas DataFrame from which variables should be read.
+
+    Returns:
+        Numpy array with decorrelation variables scaled to [0,1].
+    """
+    # Initialise and fill coordinate original arrays
+    decorrelation = data[DECORRELATION_VARIABLES].values
+
+    # Scale coordinates to range [0,1]
+    decorrelation -= np.min(decorrelation, axis=0)
+    decorrelation /= np.max(decorrelation, axis=0)
+
+    return decorrelation
+
+
+@garbage_collect
+@profile
+def load_data (path, name='dataset'):
+    """
+    General script to load data, common to all run scripts.
 
     Arguments:
         path: The path to the HDF5 file, from which data should be loaded.
         name: Name of the dataset, as stored in the HDF5 file.
-        train_fraction: The fraction of loaded, valid samples to be used for
-            training, the remained used for testing.
 
     Returns:
-        Tuple of pandas.DataFrame containing the loaded, augmented dataset; list
-        of loaded features to be used for training; and list of features to be
-        used for de-correlation.
+        Tuple of pandas.DataFrame containing the loaded; list of loaded features
+        to be used for training; and list of features to be used for mass-
+        decorrelation.
 
     Raises:
-        AssertionError: If any manual checks of the function arguments fails.
         IOError: If no HDF5 file exists at the specified `path`.
         KeyError: If the HDF5 does not contained a dataset named `name`.
         KeyError: If any of the necessary features are not present in the loaded
             dataset.
     """
 
-    # Check(s)
-    assert train_fraction > 0 and train_fraction <= 1, \
-        "Training fraction {} is not valid".format(train_fraction)
-
     # Read data from HDF5 file
     data = pd.read_hdf(path, name)
 
-    # Perform selection
-    msk  = (data['m']  >  50.) & (data['m']  <  300.)
-    msk &= (data['pt'] > 200.) & (data['pt'] < 2000.)
-    data = data[msk]
-
-    # Select featues
+    # Define feature collections to use
     features_input         = ['Tau21', 'C2', 'D2', 'Angularity', 'Aplanarity', 'FoxWolfram20', 'KtDR', 'PlanarFlow', 'Split12', 'ZCut12']
-    features_decorrelation = ['m']
-    features_auxiliary     = ['signal', 'weight', 'weight_flat', 'pt', 'EventInfo_NPV']
-    data = data[features_input + features_decorrelation + features_auxiliary]
+    features_decorrelation = DECORRELATION_VARIABLES
+    features_auxiliary     = ['signal', 'train', 'weight_train', 'weight_test', 'N2', 'm', 'pt', 'truth_pt', 'npv']
 
-    # Shuffle and re-index to allow better indexing
-    data = data.sample(frac=1, random_state=RNG).reset_index(drop=True)  # For reproducibility
-
-    # Split into training- and test dataset
-    # @TODO: Make obsolete
-    num_sig = int((data['signal'] == 1).sum())
-    num_bkg = int((data['signal'] == 0).sum())
-    num_train = int(num_sig * train_fraction)
-
-    index = data.index.values
-
-    train_sig = RNG.choice(index[data['signal'] == 1], num_train, replace=False)
-    train_bkg = RNG.choice(index[data['signal'] == 0], num_train, replace=False)
-
-    train = np.zeros((data.shape[0],)).astype(bool)
-    train[train_sig] = True
-    train[train_bkg] = True
-    data['train'] = pd.Series(train, index=data.index)
-
-    # Re-scale weights
-    msk = data['signal'].astype(bool)
-    for feat in ['weight', 'weight_flat']:
-        data.loc[ msk, feat] /= data.loc[ msk, feat].mean()
-        data.loc[~msk, feat] /= data.loc[~msk, feat].mean()
+    # Remove duplicates
+    for feat in features_decorrelation:
+        features_auxiliary.pop(feat, None)
         pass
 
-    # Report
-    for feat in ['weight', 'weight_flat']:
-        for signal in [True, False]:
-            msk  = data['signal'] == int(signal)
-            name = 'Signal' if signal else 'Background'
-            w = data.loc[msk, feat]
-            print "{name:11s} Mean {feat:<12s} {:4.2f} | 99th percentile {feat:<12s} {:4.1f} | Max. {feat:<12s} {:4.0f}".format(w.mean(), np.percentile(w, 99), w.max(), name=name+':', feat=feat+':')
-            pass
-        pass
+    # Select features from DataFrame
+    features = features_input + features_decorrelation + features_auxiliary
+    data = data[features]
 
     # Return
     return data, features_input, features_decorrelation
