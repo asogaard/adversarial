@@ -113,8 +113,8 @@ def plot (*argv):
     c.xline(FIT_RANGE[1], ymax=0.82, text_align='BL', linecolor=ROOT.kGray + 2)
 
     # Save
-    mkdir('figures/')
-    c.save('figures/ddt.pdf')
+    mkdir('figures/ddt/')
+    c.save('figures/ddt/ddt.pdf')
     return
 
 
