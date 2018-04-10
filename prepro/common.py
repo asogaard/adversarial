@@ -2,18 +2,15 @@
 
 # Basic import(s)
 import h5py
-import numpy as np
 import datetime
 
 # Project import(s)
 from adversarial.utils import mkdir
 from adversarial.utils import garbage_collect
 
-# Custom import(s)
-import rootplotting.rootplotting as rp
-
 # Command-line arguments parser
 import argparse
+
 
 def get_parser(**kwargs):
     """
