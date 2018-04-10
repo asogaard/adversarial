@@ -1,10 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-"""Script for slimming HDF5 files from W/top tagging ntuples."""
+"""Script for slimming HDF5 files from W/top tagging ntuples.
+
+  1. Convert
+> 2. Slim
+  3. Reweight
+"""
 
 # Basic import(s)
 import glob
+import datetime
 
 # Get ROOT to stop hogging the command-line options
 import ROOT
@@ -14,11 +20,8 @@ import root_numpy
 # Scientific import(s)
 import numpy as np
 from numpy.lib.recfunctions import append_fields
-from hep_ml.reweight import BinsReweighter
-import matplotlib.pyplot as plt
 
 # Project import(s)
-from adversarial.utils import mkdir
 from adversarial.profile import Profile, profile
 from .common import load_hdf5, save_hdf5
 
@@ -28,7 +31,7 @@ import argparse
 parser = argparse.ArgumentParser(description="Slim HDF5 file.")
 
 parser.add_argument('--dir', action='store', type=str,
-                    default='/eos/atlas/user/a/asogaard/adversarial/data/2018-04-07/',
+                    default='/eos/atlas/user/a/asogaard/adversarial/data/{:s}/'.format(str(datetime.date.today())),
                     help='Directory in which to read and write HDF5 files.')
 
 
@@ -38,6 +41,9 @@ BRANCHES = [
     # Kinematics
     'm',
     'pt',
+
+    # Truth variables
+    'truth_pt',
 
     # Event-level info
     'npv',
@@ -67,7 +73,7 @@ def main ():
 
     # Parse command-line argument
     args = parser.parse_args()
-    
+
     # Modify directory name to conform to convention
     if not args.dir.endswith('/'): args.dir += '/'
 
@@ -77,13 +83,13 @@ def main ():
     print "Found {} files.".format(len(paths))
 
     for ipath, path in enumerate(paths):
-        
+
         # Reading input HDF5 file
         print "[{}/{}] {}".format(ipath + 1, len(paths), path)
         data = load_hdf5(path)
 
-        print "  Read {} samples.".format(data.shape[0])        
-        
+        print "  Read {} samples.".format(data.shape[0])
+
         # Perform slimming
         missing = [branch for branch in BRANCHES if branch not in data.dtype.names]
         if missing:
@@ -92,17 +98,17 @@ def main ():
                 print "  {}".format(name)
                 pass
             return 1
-        
+
         data = data[BRANCHES].copy()
-        
+
         # Add new, necessary fields
         data = append_fields(data, 'rho',    np.log(np.square(data['m']) / np.square(data['pt'])))
         data = append_fields(data, 'rhoDDT', np.log(np.square(data['m']) / data['pt'] / 1.))
-        
+
         # Writing output HDF5 file
         save_hdf5(data, path.replace('_full', '_slim'))
         pass
-    
+
     return
 
 
