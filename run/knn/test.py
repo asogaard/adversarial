@@ -23,74 +23,61 @@ from .common import *
 # Custom import(s)
 import rootplotting as rp
 
+# Global definitions
+BOUNDS = [
+    ROOT.TF1('bounds_0', "TMath::Sqrt( TMath::Power( 50, 2) * TMath::Exp(-x) )", AXIS[VARX][1], AXIS[VARX][2]),
+    ROOT.TF1('bounds_1', "TMath::Sqrt( TMath::Power(300, 2) * TMath::Exp(-x) )", AXIS[VARX][1], AXIS[VARX][2])
+    ]
+
+nb_contour = 13 * 16
+
+# Shout out to Cynthia Brewer and Mark Harrower
+# [http://colorbrewer2.org]. Palette is colorblind-safe.
+rgbs = [
+    (247/255., 251/255., 255/255.),
+    (222/255., 235/255., 247/255.),
+    (198/255., 219/255., 239/255.),
+    (158/255., 202/255., 225/255.),
+    (107/255., 174/255., 214/255.),
+    ( 66/255., 146/255., 198/255.),
+    ( 33/255., 113/255., 181/255.),
+    (  8/255.,  81/255., 156/255.),
+    (  8/255.,  48/255., 107/255.)
+    ]
+
+red, green, blue = map(np.array, zip(*rgbs))
+nb_cols = len(rgbs)
+stops = np.linspace(0, 1, nb_cols, endpoint=True)
+
+ROOT.TColor.CreateGradientColorTable(nb_cols, stops, red, green, blue, nb_contour)
+
+BOUNDS[0].SetLineColor(ROOT.kGray + 0)
+BOUNDS[1].SetLineColor(ROOT.kGray + 3)
+for bound in BOUNDS:
+    bound.SetLineWidth(1)
+    bound.SetLineStyle(2)
+    pass
+
+ZRANGE = (0.125, 0.325)
+
 
 # Main function definition
 @profile
 def main (args):
 
-    # Initialising
-    # --------------------------------------------------------------------------
+    # Initialise
     args, cfg = initialise(args)
 
-
-    # Loading data
-    # --------------------------------------------------------------------------
+    # Load data
     data, _, _ = load_data(args.input + 'data.h5', train=True, background=True)
-    
 
-    # Common definitions
-    # --------------------------------------------------------------------------
-    bounds = [
-        ROOT.TF1('bounds_0', "TMath::Sqrt( TMath::Power( 50, 2) * TMath::Exp(-x) )", AXIS[VARX][1], AXIS[VARX][2]),
-        ROOT.TF1('bounds_1', "TMath::Sqrt( TMath::Power(300, 2) * TMath::Exp(-x) )", AXIS[VARX][1], AXIS[VARX][2])
-        ]
-
-    nb_contour = 13 * 16
-
-    # Shout out to Cynthia Brewer and Mark Harrower
-    # [http://colorbrewer2.org]. Palette is colorblind-safe.
-    rgbs = [
-        (247/255., 251/255., 255/255.),
-        (222/255., 235/255., 247/255.),
-        (198/255., 219/255., 239/255.),
-        (158/255., 202/255., 225/255.),
-        (107/255., 174/255., 214/255.),
-        ( 66/255., 146/255., 198/255.),
-        ( 33/255., 113/255., 181/255.),
-        (  8/255.,  81/255., 156/255.),
-        (  8/255.,  48/255., 107/255.)
-        ]
-
-    red, green, blue = map(np.array, zip(*rgbs))
-    nb_cols = len(rgbs)
-    stops = np.linspace(0, 1, nb_cols, endpoint=True)
-
-    ROOT.TColor.CreateGradientColorTable(nb_cols, stops, red, green, blue, nb_contour)
-
-    bounds[0].SetLineColor(ROOT.kGray + 0)
-    bounds[1].SetLineColor(ROOT.kGray + 3)
-    for bound in bounds:
-        bound.SetLineWidth(1)
-        bound.SetLineStyle(2)
-        pass
-
-    zrange = (0.125, 0.325)
-
-
-    # Filling measured profile
-    # --------------------------------------------------------------------------
+    # Fill measured profile
     profile_meas, _ = fill_profile(data)
 
-
     # Loading KNN classifier
-    # --------------------------------------------------------------------------
-    with Profile("Loading KNN classifier"):
-        knn = loadclf('models/knn/knn_{:s}_{:.0f}.pkl.gz'.format(VAR, EFF))
-        pass
-
+    knn = loadclf('models/knn/knn_{:s}_{:.0f}.pkl.gz'.format(VAR, EFF))
 
     # Filling fitted profile
-    # --------------------------------------------------------------------------
     with Profile("Filling fitted profile"):
         rebin = 8
         edges, centres = dict(), dict()
@@ -124,56 +111,66 @@ def main (args):
         pass
 
 
-    # Plotting profile
-    # --------------------------------------------------------------------------
-    for fit in [False, True]:
-        with Profile("Plotting {}".format('fit' if fit else 'profile')):
+    # Plotting
+    with Profile("Plotting"):
+        for fit in [False, True]:
 
             # Select correct profile
             profile = profile_fit if fit else profile_meas
 
-            # rootplotting
-            c = rp.canvas(batch=True)
-            pad = c.pads()[0]._bare()
-            pad.cd()
-            pad.SetRightMargin(0.20)
-            pad.SetLeftMargin(0.15)
-            pad.SetTopMargin(0.10)
-
-            # Styling
-            profile.GetXaxis().SetTitle("Large-#it{R} jet " + latex(VARX, ROOT=True) + " = log(m^{2}/p_{T}^{2})")
-            profile.GetYaxis().SetTitle("Large-#it{R} jet " + latex(VARY, ROOT=True) + " [GeV]")
-            profile.GetZaxis().SetTitle("%s %s^{(%s%%)}" % ("#it{k}-NN#minusfitted" if fit else "Measured", latex(VAR, ROOT=True), EFF))
-
-            profile.GetYaxis().SetNdivisions(505)
-            profile.GetZaxis().SetNdivisions(505)
-            profile.GetXaxis().SetTitleOffset(1.4)
-            profile.GetYaxis().SetTitleOffset(1.8)
-            profile.GetZaxis().SetTitleOffset(1.3)
-            if zrange:
-                profile.GetZaxis().SetRangeUser(*zrange)
-                pass
-            profile.SetContour(nb_contour)
-
-            # Draw
-            profile.Draw('COLZ')
-            bounds[0].DrawCopy("SAME")
-            bounds[1].DrawCopy("SAME")
-            c.latex("m > 50 GeV",  -4.5, bounds[0].Eval(-4.5) + 30, align=21, angle=-37, textsize=13, textcolor=ROOT.kGray + 0)
-            c.latex("m < 300 GeV", -2.5, bounds[1].Eval(-2.5) - 30, align=23, angle=-57, textsize=13, textcolor=ROOT.kGray + 3)
-
-            # Decorations
-            c.text(qualifier=QUALIFIER, ymax=0.92, xmin=0.15)
-            c.text(["#sqrt{s} = 13 TeV", "QCD jets"], ATLAS=False, textcolor=ROOT.kWhite)
-
-            # Save
-            mkdir('figures/knn/')
-            c.save('figures/knn/knn_{}_{:s}_{:.0f}.pdf'.format('fit' if fit else 'profile', VAR, EFF))
+            # Plot
+            plot(profile, fit)
             pass
-
-        pass  # end: fit/profile
+        pass
 
     return
+
+
+def plot (profile, fit):
+    """
+    Method for delegating plotting.
+    """
+
+    # rootplotting
+    c = rp.canvas(batch=True)
+    pad = c.pads()[0]._bare()
+    pad.cd()
+    pad.SetRightMargin(0.20)
+    pad.SetLeftMargin(0.15)
+    pad.SetTopMargin(0.10)
+
+    # Styling
+    profile.GetXaxis().SetTitle("Large-#it{R} jet " + latex(VARX, ROOT=True) + " = log(m^{2}/p_{T}^{2})")
+    profile.GetYaxis().SetTitle("Large-#it{R} jet " + latex(VARY, ROOT=True) + " [GeV]")
+    profile.GetZaxis().SetTitle("%s %s^{(%s%%)}" % ("#it{k}-NN#minusfitted" if fit else "Measured", latex(VAR, ROOT=True), EFF))
+
+    profile.GetYaxis().SetNdivisions(505)
+    profile.GetZaxis().SetNdivisions(505)
+    profile.GetXaxis().SetTitleOffset(1.4)
+    profile.GetYaxis().SetTitleOffset(1.8)
+    profile.GetZaxis().SetTitleOffset(1.3)
+    if ZRANGE:
+        profile.GetZaxis().SetRangeUser(*ZRANGE)
+        pass
+    profile.SetContour(nb_contour)
+
+    # Draw
+    profile.Draw('COLZ')
+    BOUNDS[0].DrawCopy("SAME")
+    BOUNDS[1].DrawCopy("SAME")
+    c.latex("m > 50 GeV",  -4.5, BOUNDS[0].Eval(-4.5) + 30, align=21, angle=-37, textsize=13, textcolor=ROOT.kGray + 0)
+    c.latex("m < 300 GeV", -2.5, BOUNDS[1].Eval(-2.5) - 30, align=23, angle=-57, textsize=13, textcolor=ROOT.kGray + 3)
+
+    # Decorations
+    c.text(qualifier=QUALIFIER, ymax=0.92, xmin=0.15)
+    c.text(["#sqrt{s} = 13 TeV", "QCD jets"], ATLAS=False, textcolor=ROOT.kWhite)
+
+    # Save
+    mkdir('figures/knn/')
+    c.save('figures/knn/knn_{}_{:s}_{:.0f}.pdf'.format('fit' if fit else 'profile', VAR, EFF))
+    pass
+
+
 
 
 # Main function call

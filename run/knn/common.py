@@ -122,7 +122,7 @@ def fill_profile (data):
 
         # Bin edges in x and y
         edges = [bin[idx:idx+2] for idx, bin in zip([i,j],bins)]
-        
+
         # Masks
         msks = [(data[var] > edges[dim][0]) & (data[var] <= edges[dim][1]) for dim, var in enumerate(VARS)]
         msk = reduce(lambda x,y: x & y, msks)
