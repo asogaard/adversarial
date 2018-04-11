@@ -13,16 +13,18 @@
     "likelihood"      : "GAUSSIAN",
     "variables" : {
         "classifier/compile/lr" : {
-            "type" : "FLOAT",
+            "type" : "INT",
             "size" : 1,
-            "min"  : 1.0E-05,
-            "max"  : 1.0E-01
+            "min"  : -5,
+            "max"  : -1,
+	    "comment": "In the script, `lr` is transformed as `lr` -> `10^(lr)`."
         },
         "classifier/compile/decay" : {
-            "type" : "FLOAT",
+            "type" : "INT",
             "size" : 1,
-            "min"  : 1.0E-06,
-            "max"  : 1.0E-02
+            "min"  : -6,
+            "max"  : -2,
+	    "comment": "In the script, `decay` is transformed as `decay` -> `10^(decay)`."
         },
         "classifier/model/architecture" : {
             "type" : "INT",
@@ -34,10 +36,11 @@
             "type" : "INT",
             "size" : 1,
             "min"  : 1,
-            "max"  : 512
+            "max"  : 9,
+	    "comment": "In the script, `unit` are transformed as `unit` -> `2^(unit)`."
         },
         "classifier/model/default/dropout" : {
-            "type" : "float",
+            "type" : "FLOAT",
             "size" : 1,
             "min"  : 0.0,
             "max"  : 0.5
