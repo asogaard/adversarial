@@ -37,7 +37,7 @@ from adversarial.constants import *
 
 
 # Global variable(s)
-rng = np.random.RandomState(21)  # For reproducibility
+RNG = np.random.RandomState(21)  # For reproducibility
 
 
 # Main function definition
@@ -122,7 +122,7 @@ def main (args):
             opts['optimizer'] = eval("keras.optimizers.{}(lr={}, decay={})" \
                                      .format(opts['optimizer'],
                                              opts.pop('lr'),
-                                             opts.pop('decay')))
+                                             opts.pop('decay', 0)))
             pass
 
         # Multiply batch size by number of devices, to ensure equal splits.
@@ -159,6 +159,16 @@ def main (args):
     # Loading data
     # --------------------------------------------------------------------------
     data, features, _ = load_data(args.input + 'data.h5')
+
+    log.info("Found {:7.0f} training and {:7.0f} test samples for signal".format(
+        sum((data['signal'] == 1) & (data['train'] == 1)),
+        sum((data['signal'] == 1) & (data['train'] == 0))
+        ))
+    log.info("Found {:7.0f} training and {:7.0f} test samples for background".format(
+        sum((data['signal'] == 0) & (data['train'] == 1)),
+        sum((data['signal'] == 0) & (data['train'] == 0))
+        ))
+
     data = data[data['train'] == 1]
     num_features = len(features)
 
@@ -167,57 +177,18 @@ def main (args):
     digits = int(np.ceil(max(-np.log10(lambda_reg), 0)))
     lambda_str = '{l:.{d:d}f}'.format(d=digits,l=lambda_reg).replace('.', 'p')
 
-    # Get standard-formatted inputs for reweighting regressor
-    from run.reweight.common import get_input as reweighter_input
-    from run.reweight.common import Scenario as ReweightedScenario
-    decorrelation, decorrelation_weight = reweighter_input(data, ReweightedScenario.FLATNESS)
+    # Get standard-formatted decorrelation inputs
+    decorrelation = get_decorrelation_variables(data)
 
+    # Specify common weights
+    # -- Classifier
+    weight_var = 'weight_train'
+    data['weight_clf'] = pd.Series(data[weight_var].values, index=data.index)
 
-    # Re-weighting to flatness at similar jet mass distributions
-    # --------------------------------------------------------------------------
-    with Profile("Re-weighting"):
-
-        from run.reweight.common import Scenario, get_input
-
-        # Flatness
-        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-        # Load reweighting regressor
-        with gzip.open('models/reweight/reweighter_flatness.pkl.gz', 'r') as f:
-            reweighter = pickle.load(f)
-            pass
-
-        # Compute flatness-boosted weights for background
-        msk = (data['signal'] == 0)
-        weight_flatness  = reweighter.predict_weights(decorrelation[msk], original_weight=decorrelation_weight[msk])
-        weight_flatness *= np.sum(data.loc[msk, 'weight']) / np.sum(weight_flatness)
-
-        # Store flatness-boosted weights
-        weight_flatness_      = data['weight'].copy().as_matrix() * 0.  # @NOTE: Make sure that this is the right thing to do
-        weight_flatness_[msk] = weight_flatness
-        data['weight_flatness'] = pd.Series(weight_flatness_, index=data.index)
-        #data['weight_flatness'] *= np.sum(data['weight']) / np.sum(data.loc[data['signal'] == 0, 'weight'])  # @NOTE: Make sure that this is the right thing to do
-        data['weight_flatness'] /= np.mean(data['weight_flatness'])  # @NOTE: Make sure that this is the right thing to do
-        #print "@TEMP: Mean weight_flatness:", np.mean(data['weight_flatness'])
-
-
-        # Jet mass
-        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-        # Load reweighting regressor
-        with gzip.open('models/reweight/reweighter_mass.pkl.gz', 'r') as f:
-            reweighter = pickle.load(f)
-            pass
-
-        # Compute jet-mass-reweighted weights for signal
-        msk = (data['signal'] == 1)
-        sig_, _, sig_weight_, _ = reweighter_input(data[msk], ReweightedScenario.MASS)
-        weight_mass  = reweighter.predict_weights(sig_, original_weight=sig_weight_)
-        weight_mass *= np.sum(data.loc[msk, 'weight']) / np.sum(weight_mass)
-
-        # Store jet-mass-reweighted weights
-        weight_mass_      = data['weight'].copy().as_matrix()
-        weight_mass_[msk] = weight_mass
-        data['weight_mass'] = pd.Series(weight_mass_, index=data.index)
-        pass
+    # -- Adversary
+    weight_var = 'weight_train'  # 'weight' / 'weight_flat'
+    data['weight_adv'] = pd.Series(np.multiply(data[weight_var].values, 1. - data['signal'].values), index=data.index)
+    data['weight_adv'] /= data['weight_adv'].mean()
 
 
     # Classifier-only fit, cross-validation
@@ -240,24 +211,17 @@ def main (args):
         # Import module creator methods and optimiser options
         from adversarial.models import classifier_model, adversary_model, combined_model, decorrelation_model
 
-        # Import custom callbacks
-        from adversarial.callbacks import LossCallback
-
         # Collection of classifiers and their associated training histories
         classifiers = list()
         histories   = list()
 
         # Train or load classifiers
-        if (args.train or args.train_classifier) and False:  # @TEMP
+        if args.train or args.train_classifier:
             log.info("Training cross-validation classifiers")
 
             # Loop `k` folds
             for fold, (train, validation) in enumerate(skf):
                 with Profile("Fold {}/{}".format(fold + 1, args.folds)):
-
-                    # Map to DataFrame indices
-                    #train      = data.index[train]
-                    #validation = data.index[validation]
 
                     # Define unique name for current classifier
                     name = '{}__{}of{}'.format(basename, fold + 1, args.folds)
@@ -280,27 +244,36 @@ def main (args):
                     # Prepare arrays
                     X = data[features].values[train]
                     Y = data['signal'].values[train]
-                    W = data['weight'].values[train]
+                    W = data['weight_clf'].values[train]
                     validation_data = (
                         data[features].values[validation],
                         data['signal'].values[validation],
-                        data['weight'].values[validation]
+                        data['weight_clf'].values[validation]
                     )
 
                     # Create callbacks
                     callbacks = []
-
-                    # -- Loss logging, for debugging
-                    #callbacks += [LossCallback(train=(X,Y,W), validation=validation_data)]
 
                     # -- TensorBoard
                     if not args.theano:
                         callbacks += [TensorBoard(log_dir=tensorboard_dir + 'classifier/fold{}/'.format(fold))]
                         pass
 
+                    # Compute initial losses
+                    X_val, Y_val, W_val = validation_data
+                    eval_opts = dict(batch_size=cfg['classifier']['fit']['batch_size'], verbose=0)
+                    #K.set_learning_phase(1)  # Manually set to training phase, for consistent comparison
+                    initial_losses = [[parallelised.evaluate(X,     Y,     sample_weight=W,     **eval_opts)],
+                                      [parallelised.evaluate(X_val, Y_val, sample_weight=W_val, **eval_opts)]]
 
                     # Fit classifier model
                     ret = parallelised.fit(X, Y, sample_weight=W, validation_data=validation_data, callbacks=callbacks, **cfg['classifier']['fit'])
+
+                    # Prepend initial losses
+                    for metric, loss_train, loss_val in zip(parallelised.metrics_names, *initial_losses):
+                        ret.history[metric]         .insert(0, loss_train)
+                        ret.history['val_' + metric].insert(0, loss_val)
+                        pass
 
                     # Add to list of cost histories
                     histories.append(ret.history)
@@ -390,7 +363,7 @@ def main (args):
             # Prepare arrays
             X = data[features].values
             Y = data['signal'].values
-            W = data['weight'].values  # @TODO: Normalise to mean 1
+            W = data['weight_clf'].values
 
             # Fit classifier model
             ret = parallelised.fit(X, Y, sample_weight=W, callbacks=callbacks, **cfg['classifier']['fit'])
@@ -423,16 +396,11 @@ def main (args):
 
     cfg['combined']['compile']['loss'][1] = kullback_leibler
 
-    pretrain_epochs = 5  # @TODO: Make configurable  # `1` leads to good performance.
+    pretrain_epochs = 20  # @TODO: Make configurable  # `1` leads to good performance.
 
 
     # Combined adversarial fit, cross-validation
     # --------------------------------------------------------------------------
-    weight_var = 'weight'  # 'weight_flatness'
-    data['weight_adv'] = pd.Series(np.multiply(data[weight_var].values, 1. - data['signal'].values), index=data.index)
-    data['weight_adv'] /= data['weight_adv'].mean()
-
-
     """ @TEMP
     with Profile("Combined adversarial fit, cross-validation"):
         # @TODO:
@@ -453,10 +421,6 @@ def main (args):
             # Loop `k` folds
             for fold, (train, validation) in enumerate(skf):
                 with Profile("Fold {}/{}".format(fold + 1, args.folds)):
-
-                    # Map to DataFrame indices
-                    #train      = data.index[train]
-                    #validation = data.index[validation]
 
                     # Define unique name for current classifier
                     name = '{}__{}of{}'.format(basename, fold + 1, args.folds)
@@ -490,11 +454,11 @@ def main (args):
 
                     X = [data[features].values[train], decorrelation[train]]
                     Y = [data['signal'].values[train], np.ones_like(data['signal'].values[train]).astype(K.floatx())]
-                    W = [data['weight'].values[train], data['weight_adv'].values[train]]
+                    W = [data['weight_clf'].values[train], data['weight_adv'].values[train]]
                     validation_data = (
                         [data[features].values[validation], decorrelation[validation]],
                         [data['signal'].values[validation], np.ones_like(data['signal'].values[validation]).astype(K.floatx())],
-                        [data['weight'].values[validation], data['weight_adv'].values[validation]]
+                        [data['weight_clf'].values[validation], data['weight_adv'].values[validation]]
                     )
                     #W = [data['weight'].values, np.multiply(data['weight_flatness'].values, 1. - data['signal'].values)]
                     #W = [data['weight'].values, np.multiply(data['weight'].values, 1. - data['signal'].values)]
@@ -604,17 +568,6 @@ def main (args):
         # Create callback array
         callbacks = list()
 
-        # Create callback logging the adversary p.d.f.'s during training
-        #callback_posterior = PosteriorCallback(data, args, adversary)
-
-        # Create callback logging the adversary p.d.f.'s during training
-        #callback_profiles  = ProfilesCallback(data, args, classifier)
-
-        # (opt.) List all callbacks to be used
-        #if args.plot:
-        #    callbacks += [callback_posterior, callback_profiles]
-        #    pass
-
         # (opt.) Add TensorBoard callback
         if not args.theano:
             callbacks += [TensorBoard(log_dir=tensorboard_dir + 'adversarial/')]
@@ -642,7 +595,7 @@ def main (args):
             # Prepare arrays
             X = [data[features].values, decorrelation]
             Y = [data['signal'].values.astype(K.floatx()), np.ones_like(data['signal'].values).astype(K.floatx())]
-            W = [data['weight'].values / data['weight'].mean(), data['weight_adv'].values]
+            W = [data['weight_clf'].values, data['weight_adv'].values]
 
             # Pre-training adversary
             log.info("Pre-training")
@@ -693,135 +646,6 @@ def main (args):
     # --------------------------------------------------------------------------
     lwtnn_save(classifier, 'ann')
 
-
-    # Auxiliary mass-decorrelation methods
-    # --------------------------------------------------------------------------
-    if args.train_aux:
-
-        # Mass-reweighted classifier fit, full
-        # ------------------------------------
-        with Profile("Mass-reweighted classifier fit, full"):
-
-            # Define variable(s)
-            name    = 'classifier_massreweighted'
-            basedir = 'models/adversarial/classifier/full/'
-
-            if args.train or args.train_classifier:
-                log.info("Training full classifier")
-
-                # Get classifier
-                classifier = classifier_model(num_features, **cfg['classifier']['model'])
-
-                # Parallelise on GPUs
-                if (not args.theano) and args.gpu and args.devices > 1:
-                    parallelised = multi_gpu_model(classifier, args.devices)
-                else:
-                    parallelised = classifier
-                    pass
-
-                # Compile model (necessary to save properly)
-                # @TODO: Reset optimiser?
-                parallelised.compile(**cfg['classifier']['compile'])
-
-                # Create callbacks
-                callbacks = []
-
-                # -- TensorBoard
-                if not args.theano:
-                    callbacks += [TensorBoard(log_dir=tensorboard_dir + name + '/')]
-                    pass
-
-                # Prepare arrays
-                X = data[features].values
-                Y = data['signal'].values
-                W = data['weight_mass'].values  # @TODO
-
-                # Fit classifier model
-                ret = parallelised.fit(X, Y, sample_weight=W, callbacks=callbacks, **cfg['classifier']['fit'])
-
-                # Save classifier model and training history to file, both in unique
-                # output directory and in the directory for pre-trained classifiers.
-                for destination in [args.output, basedir]:
-                    save(destination, name, classifier, ret.history)
-                    pass
-
-            else:
-
-                # Load pre-trained classifier
-                log.info("Loading full classifier from file")
-                classifier, history = load(basedir, name)
-                pass # end: train/load
-            pass
-
-
-        # Linearly decorrelated classifier fit, full
-        # ------------------------------------------
-        with Profile("Linearly decorrelated classifier fit, full"):
-
-            # Define variable(s)
-            name    = 'classifier_decorrelator_lambda{}'.format(lambda_str)
-            basedir = 'models/adversarial/combined/full/'
-
-            # Load pre-trained classifier
-            classifier, _ = load('models/adversarial/classifier/full/', 'classifier')
-
-            # Create decorrelation model
-            decorrelator = decorrelation_model(classifier, decorrelation.shape[1], **cfg['combined']['model'])
-
-            if args.train or args.train_adversarial:
-                log.info("Training full classifier")
-
-                # Save classifier model diagram to file
-                plot_model(decorrelator, to_file=args.output + 'model_{}.png'.format(name), show_shapes=True)
-
-                # Parallelise on GPUs
-                if (not args.theano) and args.gpu and args.devices > 1:
-                    parallelised = multi_gpu_model(decorrelator, args.devices)
-                else:
-                    parallelised = decorrelator
-                    pass
-
-                # Update compilation config
-                # -- Add linear correlation loss
-                cfg['classifier']['compile']['loss'] = [cfg['classifier']['compile']['loss'], 'MSE']
-                # -- Scale learning rate down by 1000
-                cfg['classifier']['compile']['optimizer'].lr *= 1.0E-03
-
-                # Compile model (necessary to save properly)
-                # @TODO: Reset optimiser?
-                parallelised.compile(loss_weights=[1., lambda_reg], **cfg['classifier']['compile'])
-
-                # Create callbacks
-                callbacks = []
-
-                # -- TensorBoard
-                if not args.theano:
-                    callbacks += [TensorBoard(log_dir=tensorboard_dir + name + '/')]
-                    pass
-
-                # Prepare arrays
-                X = data[features].values
-                Y = data['signal'].values
-                W = data['weight'].values
-                zeros = np.zeros((X.shape[0],))
-
-                # Fit classifier model
-                ret = parallelised.fit([X, decorrelation, W], [Y, zeros], sample_weight=[W, W], callbacks=callbacks, **cfg['classifier']['fit'])
-
-                # Save classifier model and training history to file, both in unique
-                # output directory and in the directory for pre-trained classifiers.
-                for destination in [args.output, basedir]:
-                    save(destination, name, decorrelator, ret.history)
-                    pass
-
-            else:
-
-                # Load pre-trained classifier
-                log.info("Loading full classifier from file")
-                decorrelator, history = load(basedir, name, model=decorrelator)
-                pass # end: train/load
-            pass
-        pass
 
     # Clean-up
     # --------------------------------------------------------------------------
