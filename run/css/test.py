@@ -23,6 +23,7 @@ from .common import *
 # Custom import(s)
 import rootplotting as rp
 
+BINS=TAU21BINS
 
 # Main function definition
 
@@ -36,7 +37,7 @@ def fill_css (data, jssVar, mass, doApply):
       AddCSS(jssVar, data)
       jssData = data["%sCSS"%jssVar]
 
-    for cmass,ctau,cweight in zip(massData, tau21Data, weightData):
+    for cmass,ctau,cweight in zip(massData, jssData, weightData):
       if cmass > MASS_BINS[mass] and cmass < MASS_BINS[mass+1]:
         profile.Fill(ctau,cweight)
 
@@ -59,8 +60,8 @@ def fill_mass_profile (data, var, doApply):
       for i in range(massProf.GetNbinsX()):
         profile.SetBinContent(i, mass, massProf.GetBinContent(i))
 
-    mkdir('figures/')
-    c.save('figures/cssProfile_{}.pdf'.format(doApply))
+    mkdir('figures/css/')
+    c.save('figures/css/cssProfile_{}.pdf'.format(doApply))
     return profile
 
 
@@ -74,8 +75,8 @@ def main (args):
 
     # Loading data
     # --------------------------------------------------------------------------
-    #data, features, _ = load_data(args.input + 'data.h5')
-    data, features, _ = load_data("/afs/cern.ch/work/j/jroloff/adversarial/data.h5")
+    data, features, _ = load_data(args.input + 'data.h5')
+    #data, features, _ = load_data("/afs/cern.ch/work/j/jroloff/adversarial/data.h5")
     data = data[(data['train'] == 0) & (data['signal'] == 0)]
 
 
@@ -132,8 +133,8 @@ def main (args):
                qualifier=QUALIFIER)
 
         # Save
-        mkdir('figures/')
-        c.save('figures/css.pdf')
+        mkdir('figures/css/')
+        c.save('figures/css/css.pdf')
         pass
 
     return 0
