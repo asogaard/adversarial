@@ -93,7 +93,7 @@ def add_knn (data, feat=VAR, newfeat=None, path=None):
 
     # Prepare data array
     X = standardise(data)
-    
+
     # Load model
     knn = loadclf(path)
 
@@ -110,23 +110,24 @@ def fill_profile (data):
 
     # Define arrays
     shape = (AXIS[VARX][0], AXIS[VARY][0])
-    binsx = np.linspace(AXIS[VARX][1], AXIS[VARX][2], AXIS[VARX][0] + 1, endpoint=True)
-    binsy = np.linspace(AXIS[VARY][1], AXIS[VARY][2], AXIS[VARY][0] + 1, endpoint=True)
+    bins = [np.linspace(AXIS[var][1], AXIS[var][2], AXIS[var][0] + 1, endpoint=True) for var [VARX, VARY]]
+    bins = dict(zip(['x', 'y'], bins))
     x = np.zeros(shape)
     y = np.zeros_like(x)
     z = np.zeros_like(x)
 
     # Create `profile` histogram
-    profile = ROOT.TH2F('profile', "", len(binsx) - 1, binsx.flatten('C'), len(binsy) - 1, binsy.flatten('C'))
+    profile = ROOT.TH2F('profile', "", len(bins['x']) - 1, bins['x'].flatten('C'), len(bins['y']) - 1, bins['y'].flatten('C'))
 
     # Fill profile
     for i,j in itertools.product(*map(range, shape)):
 
         # Bin edges in x and y
-        xmin, xmax = binsx[i:i+2]
-        ymin, ymax = binsy[j:j+2]
+        xmin, xmax = bins['x'][i:i+2]
+        ymin, ymax = bins['y'][j:j+2]
 
         # Masks
+        msks = {key: for key, var in  zip(['x', 'y'], [VARX, VARY])}
         mskx = (data[VARX] > xmin) & (data[VARX] <= xmax)
         msky = (data[VARY] > ymin) & (data[VARY] <= ymax)
         msk  = mskx & msky
