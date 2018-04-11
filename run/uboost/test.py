@@ -226,7 +226,7 @@ def test (data, title, name):
         with Profile("Plotting efficiencies"):
 
             #bins = np.linspace(40, 300, 2 * 26 + 1, endpoint=True)
-            bins = np.linspace(40, 300, 1 * 26 + 1, endpoint=True)
+            bins = np.linspace(50, 300, 1 * 26 + 1, endpoint=True)
             fig, ax = plt.subplots()
 
             # Loop training/test dataset
@@ -241,7 +241,7 @@ def test (data, title, name):
                 for icut, eff in enumerate(effs):
 
                     # Cut mask
-                    cut = wpercentile(np.array(data.loc[msk_bkg, name]).flatten(), 100 - eff, weights=np.array(data.loc[msk_bkg, 'weight_train']).flatten())
+                    cut = wpercentile(np.array(data.loc[msk_bkg, name]).flatten(), 100 - eff, weights=np.array(data.loc[msk_bkg, 'weight_test']).flatten())
                     msk_cut = data[name] > cut
 
                     # Compute numerator/denominator histograms
@@ -251,6 +251,10 @@ def test (data, title, name):
                     # Cast
                     num   = num  .astype(np.float)
                     denom = denom.astype(np.float)
+		
+		    #print("mass: ",data.loc[msk_bkg,'m'].head(5))
+		    #print("weight: ",data.loc[msk_bkg,'weight_test'].head(5))
+		    #print("histo: ",denom)
 
                     # Plot efficiency profile
                     plt.plot(bins[:-1] + 0.5 * np.diff(bins), num/denom, color='b' if is_train else 'r', alpha=(100 - eff) / 100., label='{} > {:.2f} (bkg. eff. = {:.0f}%)'.format("uB", cut, eff) if is_train else None)   # ...format(title, cut, eff) ...
