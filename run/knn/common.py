@@ -110,28 +110,22 @@ def fill_profile (data):
     of the background `VAR`. """
 
     # Define arrays
-    shape = (AXIS[VARX][0], AXIS[VARY][0])
-    bins = [np.linspace(AXIS[var][1], AXIS[var][2], AXIS[var][0] + 1, endpoint=True) for var in VARS]
-    bins = dict(zip(['x', 'y'], bins))
-    x = np.zeros(shape)
-    y = np.zeros_like(x)
-    z = np.zeros_like(x)
+    shape   = (AXIS[VARX][0], AXIS[VARY][0])
+    bins    = [np.linspace(AXIS[var][1], AXIS[var][2], AXIS[var][0] + 1, endpoint=True) for var in VARS]
+    x, y, z = (np.zeros(shape) for _ in range(3))
 
     # Create `profile` histogram
-    profile = ROOT.TH2F('profile', "", len(bins['x']) - 1, bins['x'].flatten('C'),
-                                       len(bins['y']) - 1, bins['y'].flatten('C'))
+    profile = ROOT.TH2F('profile', "", len(bins[0]) - 1, bins[0].flatten('C'), len(bins[1]) - 1, bins[1].flatten('C'))
 
     # Fill profile
     for i,j in itertools.product(*map(range, shape)):
 
         # Bin edges in x and y
-        xmin, xmax = bins['x'][i:i+2]
-        ymin, ymax = bins['y'][j:j+2]
-
+        edges = [bin[idx:idx+2] for idx, bin in zip([i,j],bins)]
+        
         # Masks
-        mskx = (data[VARX] > xmin) & (data[VARX] <= xmax)
-        msky = (data[VARY] > ymin) & (data[VARY] <= ymax)
-        msk  = mskx & msky
+        msks = [(data[var] > edges[dim][0]) & (data[var] <= edges[dim][1]) for dim, var in enumerate(VARS)]
+        msk = reduce(lambda x,y: x & y, msks)
 
         # Percentile
         perc = np.nan
@@ -140,8 +134,8 @@ def fill_profile (data):
                                weights=data.loc[msk, 'weight_test'].values)
             pass
 
-        x[i,j] = (xmin + xmax) * 0.5
-        y[i,j] = (ymin + ymax) * 0.5
+        x[i,j] = np.mean(edges[0])
+        y[i,j] = np.mean(edges[1])
         z[i,j] = perc
 
         # Set non-zero bin content
@@ -155,8 +149,6 @@ def fill_profile (data):
 
     # Filter out NaNs
     msk = ~np.isnan(z)
-    x = x[msk]
-    y = y[msk]
-    z = z[msk]
+    x, y, z = x[msk], y[msk], z[msk]
 
     return profile, (x,y,z)

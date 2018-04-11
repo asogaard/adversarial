@@ -35,9 +35,8 @@ def main (args):
 
     # Loading data
     # --------------------------------------------------------------------------
-    data, _, _ = load_data(args.input + 'data.h5')
-    data = data[(data['train'] == 1) & (data['signal'] == 0)]
-
+    data, _, _ = load_data(args.input + 'data.h5', train=True, background=True)
+    
 
     # Common definitions
     # --------------------------------------------------------------------------
@@ -114,7 +113,7 @@ def main (args):
         g = dict()
         g['x'], g['y'] = np.meshgrid(centres['x'], centres['y'])
         g['x'], g['y'] = standardise(g['x'], g['y'])
-        
+
         X = np.vstack((g['x'].flatten(), g['y'].flatten())).T
         fit = knn.predict(X).reshape(g['x'].shape).T
 
