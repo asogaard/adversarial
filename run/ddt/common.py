@@ -29,8 +29,8 @@ def add_ddt (data, feat='Tau21', newfeat=None, path='models/ddt/ddt.pkl.gz'):
     Arguments:
         data: Pandas DataFrame to which to add the DDT-transformed variable.
         feat: Substructure variable to be decorrelated.
-        newfeat: Name of output featur. By default, `{feat}DDT`.
-        path: Path to trained DDT transform model
+        newfeat: Name of output feature. By default, `{feat}DDT`.
+        path: Path to trained DDT transform model.
     """
 
     # Check(s)
