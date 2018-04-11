@@ -440,15 +440,13 @@ def main (args):
         # @TODO:
         # - Decide on proper metric!
         #   - clf_loss - lambda * <JSD( pass(m) || fail(m) )>?
-        #   - Stratified k-fold cross-validation?
+        #   - 1/eff_bkg@eff_sig=50% + (1/JSD)
         return None
 
 
     # Combined adversarial fit, full
     # --------------------------------------------------------------------------
     with Profile("Combined adversarial fit, full"):
-        # @TODO:
-        # - Checkpointing
 
         # Define variables
         name    = 'combined_lambda{}'.format(lambda_str)

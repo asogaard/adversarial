@@ -53,42 +53,30 @@ def initialise_config (args, cfg):
     # Import(s)
     import keras
 
-
     # If the `model/architecture` parameter is provided as an int, convert
     # to list of empty dicts
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     for network in ['classifier', 'adversary']:
         if isinstance(cfg[network]['model']['architecture'], int):
             cfg[network]['model']['architecture'] = [{} for _ in range(cfg[network]['model']['architecture'])]
             pass
         pass
 
-
     # Scale loss_weights[0] by 1./(1. + lambda_reg)
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     cfg['combined']['compile']['loss_weights'][0] *= 1./(1. + cfg['combined']['model']['lambda_reg'])
 
-
     # Set adversary learning rate (LR) ratio from ratio of loss_weights
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     try:
         cfg['combined']['model']['lr_ratio'] = cfg['combined']['compile']['loss_weights'][0] / \
                                                cfg['combined']['compile']['loss_weights'][1]
-    except KeyError:
-        # ...
-        pass
-
+    except KeyError: pass
 
     # Multiply batch size by number of devices, to ensure equal splits.
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     for model in ['classifier', 'combined']:
         cfg[model]['fit']['batch_size'] *= args.devices
         pass
 
-
     # Validate learning rates and decays
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    # If e.g. `lr = -3`, then let `lr -> 10^(lr) = 1E-03`
+    # @NOTE: If e.g. `lr = -3`, then let `lr -> 10^(lr) = 1E-03`
     transform = lambda v: np.power(10., v)
     for mdl in cfg.keys():
         for key in ['lr', 'decay']:
@@ -99,10 +87,8 @@ def initialise_config (args, cfg):
             pass
         pass
 
-
     # Validate architecture
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    # If `0 < units < 10`, then let `units -> 2^(units)`
+    # @NOTE: If `0 < units < 10`, then let `units -> 2^(units)`
     do_transform_units = lambda d: 'units' in d and d['units'] > 0 and d['units'] < 10
     transform_units    = lambda d: int(np.power(2, d['units']))
     for mdl in cfg.keys():
@@ -125,9 +111,7 @@ def initialise_config (args, cfg):
             pass
         pass
 
-
     # Evaluate the 'optimizer' fields for each model, once and for all
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     # @NOTE: This should be done _last_, to ensure that `lr` and `decay` have
     #        been properly transformed, if necessary.
     for model in ['classifier', 'combined']:
