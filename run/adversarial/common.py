@@ -78,16 +78,6 @@ def initialise_config (args, cfg):
         # ...
         pass
 
-    # Evaluate the 'optimizer' fields for each model, once and for all
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    for model in ['classifier', 'combined']:
-        opts = cfg[model]['compile']
-        opts['optimizer'] = eval("keras.optimizers.{}(lr={}, decay={})" \
-                                 .format(opts['optimizer'],
-                                         opts.pop('lr'),
-                                         opts.pop('decay', 0)))
-        pass
-
 
     # Multiply batch size by number of devices, to ensure equal splits.
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -99,10 +89,12 @@ def initialise_config (args, cfg):
     # Validate learning rates and decays
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     # If e.g. `lr = -3`, then let `lr -> 10^(lr) = 1E-03`
+    transform = lambda v: np.power(10., v)
     for mdl in cfg.keys():
         for key in ['lr', 'decay']:
             if key in cfg[mdl]['compile'] and cfg[mdl]['compile'][key] < 0:
-                cfg[mdl]['compile'][key] = np.power(10, cfg[mdl]['compile'][key])
+                log.info("Scaling {}/{} {} -> {}".format(mdl, key, cfg[mdl]['compile'][key], transform(cfg[mdl]['compile'][key])))
+                cfg[mdl]['compile'][key] = transform(cfg[mdl]['compile'][key])
                 pass
             pass
         pass
@@ -127,11 +119,24 @@ def initialise_config (args, cfg):
 
         for layer in layers:
             if do_transform_units(layer):
+                log.info("Scaling {}/units {} -> {}".format(mdl, layer['units'], transform_units(layer)))
                 layer['units'] = transform_units(layer)
                 pass
             pass
         pass
 
+
+    # Evaluate the 'optimizer' fields for each model, once and for all
+    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    # @NOTE: This should be done _last_, to ensure that `lr` and `decay` have
+    #        been properly transformed, if necessary.
+    for model in ['classifier', 'combined']:
+        opts = cfg[model]['compile']
+        opts['optimizer'] = eval("keras.optimizers.{}(lr={}, decay={})" \
+                                 .format(opts['optimizer'],
+                                         opts.pop('lr'),
+                                         opts.pop('decay', 0)))
+        pass
 
     return
 
