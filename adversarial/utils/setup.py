@@ -368,6 +368,7 @@ def load_data (path, name='dataset', train=None, test=None, signal=None, backgro
     """
 
     # Check(s)
+    assert False not in [train, test, signal, background]
     if sample:                           assert 0 < sample and sample < 1.
     if None not in [train, test]:        assert train != test
     if None not in [signal, background]: assert signal != background
