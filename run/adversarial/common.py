@@ -141,7 +141,7 @@ def initialise_tensorboard (args, cfg):
     """
 
     # Start TensorBoard instance
-    tensorboard_dir = None
+    tensorboard_pid, tensorboard_dir = None, None
     if args.tensorboard:
         assert not args.theano, "TensorBoard requires TensorFlow backend."
 
@@ -155,7 +155,7 @@ def initialise_tensorboard (args, cfg):
         pass
         pass
 
-    return tensorboard_dir
+    return tensorboard_pid, tensorboard_dir
 
 
 def print_env (args, cfg):

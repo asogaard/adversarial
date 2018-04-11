@@ -81,7 +81,7 @@ def main (args):
         initialise_config(args, cfg)
 
         # Setup TensorBoard, if applicable
-        tensorboard_dir = initialise_tensorboard(args, cfg)
+        tensorboard_pid, tensorboard_dir = initialise_tensorboard(args, cfg)
 
         # Print the current environment setup
         print_env(args, cfg)
@@ -309,7 +309,7 @@ def main (args):
 
     cfg['combined']['compile']['loss'][1] = kullback_leibler
 
-    pretrain_epochs = 20  # @TODO: Make configurable  # `1` leads to good performance.
+    pretrain_epochs = 20  # @TODO: Make configurable
 
 
     # Combined adversarial fit, cross-validation
@@ -440,7 +440,7 @@ def main (args):
         # @TODO:
         # - Decide on proper metric!
         #   - clf_loss - lambda * <JSD( pass(m) || fail(m) )>?
-        #   - 1/eff_bkg@eff_sig=50% + (1/JSD)
+        #   - (rej + lambda * jsd)/(1 + lambda)
         return None
 
 
@@ -511,7 +511,9 @@ def main (args):
 
             # Save combined model and training history to file, both in unique
             # output directory and in the directory for pre-trained classifiers.
-            save([args.output, basedir], name, combined, ret.history)
+            adv = lambda s: s.replace('combined', 'adversary')
+            save([args.output,     basedir],      name,  combined, ret.history)
+            save([args.output, adv(basedir)], adv(name), adversary)
 
         else:
 
