@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 """Common methods for training and testing fixed-efficiency kNN regressor."""
@@ -35,7 +34,13 @@ AXIS = {      # Dict holding (num_bins, axis_min, axis_max) for axis variables
 @profile
 def add_knn (data, feat=VAR, newfeat=None, path=None):
     """
-    ...
+    Add kNN-transformed `feat` to `data`. Modifies `data` in-place.
+
+    Arguments:
+        data: Pandas DataFrame to which to add the kNN-transformed variable.
+        feat: Substructure variable to be decorrelated.
+        newfeat: Name of output feature. By default, `{feat}kNN`.
+        path: Path to trained kNN transform model.
     """
 
     # Check(s)
@@ -94,7 +99,7 @@ def fill_profile (data):
             perc = wpercentile(data=   data.loc[msk, VAR]          .values, percents=EFF,
                                weights=data.loc[msk, 'weight_test'].values)
             pass
-            
+
         x[i,j] = (xmin + xmax) * 0.5
         y[i,j] = (ymin + ymax) * 0.5
         z[i,j] = perc
