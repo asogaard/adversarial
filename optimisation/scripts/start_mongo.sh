@@ -48,5 +48,3 @@ fi
 
 # Perform cleanup
 source $dir/scripts/cleanup.sh
-
-print "Remember to run spearmint.main yourself!"
