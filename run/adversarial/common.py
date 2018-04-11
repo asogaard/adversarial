@@ -120,7 +120,7 @@ def initialise_config (args, cfg):
         if 'architecture' in cfg[mdl]['model']:
             layers += cfg[mdl]['model']['architecture']
             pass
-            
+
         if 'default' in cfg[mdl]['model']:
             layers += [cfg[mdl]['model']['default']]
             pass
@@ -204,14 +204,12 @@ def print_env (args, cfg):
             pass
     except NameError: log.info("Keras not imported")
 
-    # Save command-line argument configuration in output directory
-    with open(args.output + 'args.json', 'wb') as f:
-        json.dump(vars(args), f, indent=4, sort_keys=True)
-        pass
-
-    # Save configuration dict in output directory
-    with open(args.output + 'config.json', 'wb') as f:
-        json.dump(str(cfg), f, indent=4, sort_keys=True)
+    # Save command-line argument namespace and configuration dict in output
+    # directory.
+    for obj, mthd, name in zip([args, cfg], [vars, str], ['args', config]):
+        with open(args.output + '{}.json'.format(name), 'wb') as f:
+            json.dump(mthd(obj), f, indent=4, sort_keys=True)
+            pass
         pass
 
     return
