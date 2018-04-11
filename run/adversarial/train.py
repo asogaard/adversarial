@@ -34,6 +34,7 @@ import matplotlib.pyplot as plt
 from adversarial.utils     import *
 from adversarial.profile   import *
 from adversarial.constants import *
+from .common import *
 
 
 # Global variable(s)
@@ -79,7 +80,6 @@ def main (args):
 
         import keras
         import keras.backend as K
-        from keras.utils import multi_gpu_model
         from keras.models import load_model
         from keras.callbacks import Callback, TensorBoard, EarlyStopping
         from keras.utils.vis_utils import plot_model
@@ -160,14 +160,12 @@ def main (args):
     # --------------------------------------------------------------------------
     data, features, _ = load_data(args.input + 'data.h5')
 
-    log.info("Found {:7.0f} training and {:7.0f} test samples for signal".format(
-        sum((data['signal'] == 1) & (data['train'] == 1)),
-        sum((data['signal'] == 1) & (data['train'] == 0))
+    for signal, name in zip([1, 0], ['signal', 'background']):
+        log.info("Found {:7.0f} training and {:7.0f} test samples for {}".format(name,
+            sum((data['signal'] == signal) & (data['train'] == 1)),
+            sum((data['signal'] == signal) & (data['train'] == 0))
         ))
-    log.info("Found {:7.0f} training and {:7.0f} test samples for background".format(
-        sum((data['signal'] == 0) & (data['train'] == 1)),
-        sum((data['signal'] == 0) & (data['train'] == 0))
-        ))
+        pass
 
     data = data[data['train'] == 1]
     num_features = len(features)
@@ -232,11 +230,7 @@ def main (args):
                     # Parallelise on GPUs
                     # @NOTE: Store reference to base model to allow for saving.
                     #        Cf. [https://github.com/keras-team/keras/issues/8446#issuecomment-343559454]
-                    if (not args.theano) and args.gpu and args.devices > 1:
-                        parallelised = multi_gpu_model(classifier, args.devices)
-                    else:
-                        parallelised = classifier
-                        pass
+                    parallelised = parallelise_model(classifie, args)
 
                     # Compile model (necessary to save properly)
                     parallelised.compile(**cfg['classifier']['compile'])
@@ -343,11 +337,7 @@ def main (args):
             plot_model(classifier, to_file=args.output + 'model_{}.png'.format(name), show_shapes=True)
 
             # Parallelise on GPUs
-            if (not args.theano) and args.gpu and args.devices > 1:
-                parallelised = multi_gpu_model(classifier, args.devices)
-            else:
-                parallelised = classifier
-                pass
+            parallelised = parallelise_model(classifier, args)
 
             # Compile model (necessary to save properly)
             parallelised.compile(**cfg['classifier']['compile'])
@@ -436,11 +426,7 @@ def main (args):
                     combined = combined_model(classifier, adversary, **cfg['combined']['model'])
 
                     # Parallelise on GPUs
-                    if (not args.theano) and args.gpu and args.devices > 1:
-                        parallelised = multi_gpu_model(combined, args.devices)
-                    else:
-                        parallelised = combined
-                        pass
+                    parallelised = parallelise_model(combined, args)
 
                     # Prepare arrays
                     # @TODO:
@@ -583,12 +569,8 @@ def main (args):
             log.info("Training full, combined model")
 
             # Parallelise on GPUs
-            if (not args.theano) and args.gpu and args.devices > 1:
-                parallelised = multi_gpu_model(combined, args.devices)
-            else:
-                parallelised = combined
-                pass
-
+            parallelised = parallelise_model(combined, args)
+            
             # Compile model (necessary to save properly)
             parallelised.compile(**cfg['combined']['compile'])
 
