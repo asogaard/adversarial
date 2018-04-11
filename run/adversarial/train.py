@@ -4,15 +4,8 @@
 """Script for performing training adversarial neural network for de-correlated jet tagging."""
 
 # Basic import(s)
-import os
-import sys
-import gzip
 import glob
-import json
 import pickle
-import datetime
-import subprocess
-from pprint import pprint
 import logging as log
 import itertools
 
@@ -84,75 +77,14 @@ def main (args):
         from keras.callbacks import Callback, TensorBoard, EarlyStopping
         from keras.utils.vis_utils import plot_model
 
-        # Print setup information
-        log.info("Running '%s'" % __file__)
-        log.info("Command-line arguments:")
-        pprint(vars(args))
+        # Neural network-specific initialisation of the configuration dict
+        initialise_config(args, cfg)
 
-        log.info("Configuration file contents:")
-        pprint(cfg)
+        # Setup TensorBoard, if applicable
+        tensorboard_dir = initialise_tensorboard(args, cfg)
 
-        log.info("Python version: {}".format(sys.version.split()[0]))
-        log.info("Numpy  version: {}".format(np.__version__))
-        try:
-            log.info("Keras  version: {}".format(keras.__version__))
-            log.info("Using keras backend: '{}'".format(K.backend()))
-            if K.backend() == 'tensorflow':
-                import tensorflow
-                print "  TensorFlow version: {}".format(tensorflow.__version__)
-            else:
-                import theano
-                print "  Theano version: {}".format(theano.__version__)
-                pass
-        except NameError: log.info("Keras not imported")
-
-        # Save command-line argument configuration in output directory
-        with open(args.output + 'args.json', 'wb') as f:
-            json.dump(vars(args), f, indent=4, sort_keys=True)
-            pass
-
-        # Save configuration dict in output directory
-        with open(args.output + 'config.json', 'wb') as f:
-            json.dump(cfg, f, indent=4, sort_keys=True)
-            pass
-
-        # Evaluate the 'optimizer' fields for each model, once and for all
-        for model in ['classifier', 'combined']:
-            opts = cfg[model]['compile']
-            opts['optimizer'] = eval("keras.optimizers.{}(lr={}, decay={})" \
-                                     .format(opts['optimizer'],
-                                             opts.pop('lr'),
-                                             opts.pop('decay', 0)))
-            pass
-
-        # Multiply batch size by number of devices, to ensure equal splits.
-        for model in ['classifier', 'combined']:
-            cfg[model]['fit']['batch_size'] *= args.devices
-            pass
-
-        # If the `model/architecture` parameter is provided as an int, convert
-        # to list of empty dicts
-        for network in ['classifier', 'adversary']:
-            if isinstance(cfg[network]['model']['architecture'], int):
-                cfg[network]['model']['architecture'] = [{} for _ in range(cfg[network]['model']['architecture'])]
-                pass
-            pass
-
-        # Start TensorBoard instance
-        if not args.theano:
-            tensorboard_dir = 'logs/tensorboard/{}/'.format('-'.join(re.split('-|:| ', str(datetime.datetime.now()).replace('.', 'T'))) if args.jobname == "" else args.jobname)
-            log.info("Writing TensorBoard logs to '{}'".format(tensorboard_dir))
-            if args.tensorboard:
-                assert not args.theano, "TensorBoard requires TensorFlow backend."
-
-                log.info("Starting TensorBoard instance in background.")
-                log.info("The output will be available at:")
-                log.info("  http://localhost:6006")
-                tensorboard_pid = subprocess.Popen(["tensorboard", "--logdir", tensorboard_dir]).pid
-                log.info("TensorBoard has PID {}.".format(tensorboard_pid))
-                pass
-            pass
-
+        # Print the current environment setup
+        print_env(args, cfg)
         pass
 
 
@@ -161,9 +93,10 @@ def main (args):
     data, features, _ = load_data(args.input + 'data.h5')
 
     for signal, name in zip([1, 0], ['signal', 'background']):
-        log.info("Found {:7.0f} training and {:7.0f} test samples for {}".format(name,
+        log.info("Found {:7.0f} training and {:7.0f} test samples for {}".format(
             sum((data['signal'] == signal) & (data['train'] == 1)),
-            sum((data['signal'] == signal) & (data['train'] == 0))
+            sum((data['signal'] == signal) & (data['train'] == 0)),
+            name
         ))
         pass
 
@@ -230,7 +163,7 @@ def main (args):
                     # Parallelise on GPUs
                     # @NOTE: Store reference to base model to allow for saving.
                     #        Cf. [https://github.com/keras-team/keras/issues/8446#issuecomment-343559454]
-                    parallelised = parallelise_model(classifie, args)
+                    parallelised = parallelise_model(classifier, args)
 
                     # Compile model (necessary to save properly)
                     parallelised.compile(**cfg['classifier']['compile'])
@@ -249,14 +182,13 @@ def main (args):
                     callbacks = []
 
                     # -- TensorBoard
-                    if not args.theano:
+                    if args.tensorboard:
                         callbacks += [TensorBoard(log_dir=tensorboard_dir + 'classifier/fold{}/'.format(fold))]
                         pass
 
                     # Compute initial losses
                     X_val, Y_val, W_val = validation_data
                     eval_opts = dict(batch_size=cfg['classifier']['fit']['batch_size'], verbose=0)
-                    #K.set_learning_phase(1)  # Manually set to training phase, for consistent comparison
                     initial_losses = [[parallelised.evaluate(X,     Y,     sample_weight=W,     **eval_opts)],
                                       [parallelised.evaluate(X_val, Y_val, sample_weight=W_val, **eval_opts)]]
 
@@ -346,7 +278,7 @@ def main (args):
             callbacks = []
 
             # -- TensorBoard
-            if not args.theano:
+            if args.tensorboard:
                 callbacks += [TensorBoard(log_dir=tensorboard_dir + name + '/')]
                 pass
 
@@ -555,7 +487,7 @@ def main (args):
         callbacks = list()
 
         # (opt.) Add TensorBoard callback
-        if not args.theano:
+        if args.tensorboard:
             callbacks += [TensorBoard(log_dir=tensorboard_dir + 'adversarial/')]
             pass
 
@@ -570,7 +502,7 @@ def main (args):
 
             # Parallelise on GPUs
             parallelised = parallelise_model(combined, args)
-            
+
             # Compile model (necessary to save properly)
             parallelised.compile(**cfg['combined']['compile'])
 
