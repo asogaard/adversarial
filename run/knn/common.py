@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 
 # Project import(s)
-from adversarial.utils import wpercentile, loadclf
+from adversarial.utils import wpercentile, loadclf, garbage_collect
 from adversarial.profile import profile
 
 # Common definition(s)
@@ -29,6 +29,48 @@ AXIS = {      # Dict holding (num_bins, axis_min, axis_max) for axis variables
 #### @NOTE: It is assumed that, for the chosen `VAR`, signal is towards small
 ####        values; and background towards large values.
 #### ________________________________________________________________________
+
+
+@garbage_collect
+def standardise (array, y=None):
+    """
+    Standardise axis-variables for kNN regression.
+
+    Arguments:
+        array: (N,2) numpy array or Pandas DataFrame containing axis variables.
+
+    Returns:
+        (N,2) numpy array containing standardised axis variables.
+    """
+
+    # If DataFrame, extract relevant columns and call method again.
+    if isinstance(array, pd.DataFrame):
+        X = data[[VARX, VARY]].values.astype(np.float)
+        return standardise(X)
+
+    # If receiving separate arrays
+    if y is not None:
+        x = array
+        assert x.shape == y.shape
+        shape = x.shape
+        X = np.vstack((x.flatten(), y.flatten())).T
+        X = standardise(X)
+        x,y = list(X.T)
+        x = x.reshape(shape)
+        y = y.reshape(shape)
+        return x,y
+
+    # Check(s)
+    assert array.shape[1] == 2
+
+    # Standardise
+    X = np.array(array, dtype=np.float)
+    for dim, var in zip([0,1], [VARX, VARY]):
+        X[:,dim] -= float(AXIS[var][1])
+        X[:,dim] /= float(AXIS[var][2] - AXIS[var][1])
+        pass
+
+    return X
 
 
 @profile
@@ -50,12 +92,8 @@ def add_knn (data, feat=VAR, newfeat=None, path=None):
         pass
 
     # Prepare data array
-    X = data[[VARX, VARY]].values.astype(np.float)
-    X[:,0] -= AXIS[VARX][1]
-    X[:,0] /= AXIS[VARX][2] - AXIS[VARX][1]
-    X[:,1] -= AXIS[VARY][1]
-    X[:,1] /= AXIS[VARY][2] - AXIS[VARY][1]
-
+    X = standardise(data)
+    
     # Load model
     knn = loadclf(path)
 
@@ -111,10 +149,7 @@ def fill_profile (data):
         pass
 
     # Normalise arrays
-    x -= AXIS[VARX][1]
-    x /= AXIS[VARX][2] - AXIS[VARX][1]
-    y -= AXIS[VARY][1]
-    y /= AXIS[VARY][2] - AXIS[VARY][1]
+    x,y = standardise(x,y)
 
     # Filter out NaNs
     msk = ~np.isnan(z)

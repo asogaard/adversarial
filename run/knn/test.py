@@ -113,11 +113,8 @@ def main (args):
         # Get predictions evaluated at re-binned bin centres
         g = dict()
         g['x'], g['y'] = np.meshgrid(centres['x'], centres['y'])
-        for ax, var in zip(['x', 'y'], [VARX, VARY]):
-            g[ax] -= AXIS[var][1]
-            g[ax] /= AXIS[var][2] - AXIS[var][1]
-            pass
-
+        g['x'], g['y'] = standardise(g['x'], g['y'])
+        
         X = np.vstack((g['x'].flatten(), g['y'].flatten())).T
         fit = knn.predict(X).reshape(g['x'].shape).T
 
