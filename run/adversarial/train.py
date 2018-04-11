@@ -117,25 +117,20 @@ def main (args):
     data['weight_clf'] = pd.Series(data[weight_var].values, index=data.index)
 
     # -- Adversary
-    weight_var = 'weight_train'  # 'weight' / 'weight_flat'
+    weight_var = 'weight_train'
     data['weight_adv'] = pd.Series(np.multiply(data[weight_var].values, 1. - data['signal'].values), index=data.index)
-    data['weight_adv'] /= data['weight_adv'].mean()
 
 
     # Classifier-only fit, cross-validation
     # --------------------------------------------------------------------------
     with Profile("Classifier-only fit, cross-validation"):
-        # @TODO:
-        # - Implement data generator looping over all of the background and
-        # randomly sampling signal events to have equal fractions in each
-        # batch. Use DataFlow from Tensorpack?
 
         # Define variable(s)
         basename = 'crossval_classifier'
         basedir  = 'models/adversarial/classifier/crossval/'
 
         # Get indices for each fold in stratified k-fold training
-        # @NOTE: No shuffling is performed -- assuming that's already done above.
+        # @NOTE: No shuffling is performed -- assuming that's already done.
         skf = StratifiedKFold(n_splits=args.folds).split(data[features].values,
                                                          data['signal'].values)
 
@@ -381,11 +376,11 @@ def main (args):
                     classifier.trainable = False
 
                     # Compile model for pre-training
-                    save_lr = K.get_value(cfg['combined']['compile']['optimizer'].lr)
-                    K.set_value(cfg['combined']['compile']['optimizer'].lr, save_lr)
+                    #save_lr = K.get_value(cfg['combined']['compile']['optimizer'].lr)
+                    #K.set_value(cfg['combined']['compile']['optimizer'].lr, save_lr)
                     parallelised.compile(**cfg['combined']['compile'])
 
-                    log.info("Learning rate before pre-training:  {}".format(K.get_value(cfg['combined']['compile']['optimizer'].lr)))
+                    #log.info("Learning rate before pre-training:  {}".format(K.get_value(cfg['combined']['compile']['optimizer'].lr)))
 
                     # Compute initial losses
                     log.info("Computing initial loss")
@@ -404,9 +399,9 @@ def main (args):
                     classifier.trainable = True
 
                     # Re-compile combined model for full training
-                    K.set_value(cfg['combined']['compile']['optimizer'].lr, save_lr)
+                    #K.set_value(cfg['combined']['compile']['optimizer'].lr, save_lr)
                     parallelised.compile(**cfg['combined']['compile'])
-                    log.info("Learning rate before full training: {}".format(K.get_value(cfg['combined']['compile']['optimizer'].lr)))
+                    #log.info("Learning rate before full training: {}".format(K.get_value(cfg['combined']['compile']['optimizer'].lr)))
 
                     ret = parallelised.fit(X, Y, sample_weight=W, validation_data=validation_data, **cfg['combined']['fit'])
 
@@ -508,11 +503,11 @@ def main (args):
             classifier.trainable = False
 
             # Compile model for pre-training
-            save_lr = K.get_value(cfg['combined']['compile']['optimizer'].lr)
-            K.set_value(cfg['combined']['compile']['optimizer'].lr, save_lr)
+            #save_lr = K.get_value(cfg['combined']['compile']['optimizer'].lr)
+            #K.set_value(cfg['combined']['compile']['optimizer'].lr, save_lr)
             parallelised.compile(**cfg['combined']['compile'])
 
-            log.info("Learning rate before pre-training:  {}".format(K.get_value(cfg['combined']['compile']['optimizer'].lr)))
+            #log.info("Learning rate before pre-training:  {}".format(K.get_value(cfg['combined']['compile']['optimizer'].lr)))
 
             pretrain_fit_opts = dict(**cfg['combined']['fit'])
             pretrain_fit_opts['epochs'] = pretrain_epochs
@@ -523,9 +518,10 @@ def main (args):
             classifier.trainable = True
 
             # Re-compile combined model for full training
-            K.set_value(cfg['combined']['compile']['optimizer'].lr, save_lr)
+            #K.set_value(cfg['combined']['compile']['optimizer'].lr, save_lr)
             parallelised.compile(**cfg['combined']['compile'])
-            log.info("Learning rate before full training: {}".format(K.get_value(cfg['combined']['compile']['optimizer'].lr)))
+
+            #log.info("Learning rate before full training: {}".format(K.get_value(cfg['combined']['compile']['optimizer'].lr)))
 
             # Fit classifier model
             ret = parallelised.fit(X, Y, sample_weight=W, callbacks=callbacks, **cfg['combined']['fit'])
