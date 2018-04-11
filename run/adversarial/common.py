@@ -206,7 +206,7 @@ def print_env (args, cfg):
 
     # Save command-line argument namespace and configuration dict in output
     # directory.
-    for obj, mthd, name in zip([args, cfg], [vars, str], ['args', config]):
+    for obj, mthd, name in zip([args, cfg], [vars, str], ['args', 'config']):
         with open(args.output + '{}.json'.format(name), 'wb') as f:
             json.dump(mthd(obj), f, indent=4, sort_keys=True)
             pass
