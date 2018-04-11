@@ -172,17 +172,6 @@ def initialise (args):
         cfg = json.load(f)
         pass
 
-    # Validate learning rates and decays
-    # If e.g. `lr = -3`, then let `lr -> 10^(lr) = 1E-03`
-    for mdl in cfg.keys():
-        for key in ['lr', 'decay']:
-            if key in cfg[mdl]['compile'] and cfg[mdl]['compile'][key] < 0:
-                cfg[mdl]['compile'][key] = np.power(10, cfg[mdl]['compile'][key])
-                pass
-            pass
-        pass
-
-
     # Apply patches
     args.patches = args.patches or []
     for patch_file in args.patches:
@@ -191,17 +180,6 @@ def initialise (args):
             patch = json.load(f)
             pass
         apply_patch(cfg, patch)
-        pass
-
-    # Scale loss_weights[0] by 1./(1. + lambda_reg)
-    cfg['combined']['compile']['loss_weights'][0] *= 1./(1. + cfg['combined']['model']['lambda_reg'])
-
-    # Set adversary learning rate (LR) ratio from ratio of loss_weights
-    try:
-        cfg['combined']['model']['lr_ratio'] = cfg['combined']['compile']['loss_weights'][0] / \
-                                               cfg['combined']['compile']['loss_weights'][1]
-    except KeyError:
-        # ...
         pass
 
     # Return
