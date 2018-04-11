@@ -32,6 +32,7 @@ def latex (variable_name, ROOT=True):
     name = variable_name.lower()
 
     name = re.sub('^d2', 'D_{2}', name)
+    name = re.sub('^n2', 'N_{2}', name)
     name = re.sub('^pt$', 'p_{T}', name)
     #name = re.sub('rho', '\\rho', name)
     name = name.replace('rho', '\\rho')
