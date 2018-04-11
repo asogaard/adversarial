@@ -210,10 +210,7 @@ def main (args):
                     # Save classifier model and training history to file, both
                     # in unique output directory and in the directory for pre-
                     # trained classifiers
-                    for destination in [args.output, basedir]:
-                        save(destination, name, classifier, ret.history)
-                        pass
-
+                    save([args.output, basedir], name, classifier, ret.history)
                     pass
                 pass # end: k-fold cross-validation
             pass
@@ -292,9 +289,7 @@ def main (args):
 
             # Save classifier model and training history to file, both in unique
             # output directory and in the directory for pre-trained classifiers.
-            for destination in [args.output, basedir]:
-                save(destination, name, classifier, ret.history)
-                pass
+            save([args.output, basedir], name, classifier, ret.history)
 
         else:
 
@@ -438,10 +433,7 @@ def main (args):
 
                     # Save combined model and training history to file, both in unique
                     # output directory and in the directory for pre-trained classifiers.
-                    for destination in [args.output, basedir]:
-                        print "Saving {} to {}".format(name, destination)
-                        save(destination, name, combined, ret.history)
-                        pass
+                    save([args.output, basedir], name, combined, ret.history)
                     pass
                 pass
             pass
@@ -540,9 +532,7 @@ def main (args):
 
             # Save combined model and training history to file, both in unique
             # output directory and in the directory for pre-trained classifiers.
-            for destination in [args.output, basedir]:
-                save(destination, name, combined, ret.history)
-                pass
+            save([args.output, basedir], name, combined, ret.history)
 
         else:
 

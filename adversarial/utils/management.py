@@ -131,11 +131,19 @@ def save (basedir, name, model, history=None):
 
     Arguments:
         basedir: Directory in which models should be saved. Is created if it
-            doesn't already exist.
+            doesn't already exist. If a list or tuple is specified, the model is
+            saved to each directory in the list
         name: Name of model to be saved, used in filenames.
         model: Keras model to be saved.
         history: Container with logged training history.
     """
+
+    # Check(s)
+    if isinstance(basedir, (list, tuple)):
+        for d in basedir:
+            save(d, name, model, history)
+            pass
+        return
 
     # Make sure output directory exists
     mkdir(basedir)
