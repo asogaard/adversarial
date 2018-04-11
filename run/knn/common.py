@@ -19,6 +19,7 @@ VAR  = 'N2'   # Substructure variable to decorrelate
 EFF  = 19     # Fixed backround efficiency at which to perform decorrelation
 VARX = 'rho'  # X-axis variable from which to decorrelate
 VARY = 'pt'   # Y-axis variable from which to decorrelate
+VARS = [VARX, VARY]
 AXIS = {      # Dict holding (num_bins, axis_min, axis_max) for axis variables
     'rho': (20, -7.0, -1.0),
     'pt':  (20, 200., 2000.),
@@ -110,14 +111,15 @@ def fill_profile (data):
 
     # Define arrays
     shape = (AXIS[VARX][0], AXIS[VARY][0])
-    bins = [np.linspace(AXIS[var][1], AXIS[var][2], AXIS[var][0] + 1, endpoint=True) for var [VARX, VARY]]
+    bins = [np.linspace(AXIS[var][1], AXIS[var][2], AXIS[var][0] + 1, endpoint=True) for var in VARS]
     bins = dict(zip(['x', 'y'], bins))
     x = np.zeros(shape)
     y = np.zeros_like(x)
     z = np.zeros_like(x)
 
     # Create `profile` histogram
-    profile = ROOT.TH2F('profile', "", len(bins['x']) - 1, bins['x'].flatten('C'), len(bins['y']) - 1, bins['y'].flatten('C'))
+    profile = ROOT.TH2F('profile', "", len(bins['x']) - 1, bins['x'].flatten('C'),
+                                       len(bins['y']) - 1, bins['y'].flatten('C'))
 
     # Fill profile
     for i,j in itertools.product(*map(range, shape)):
@@ -127,7 +129,6 @@ def fill_profile (data):
         ymin, ymax = bins['y'][j:j+2]
 
         # Masks
-        msks = {key: for key, var in  zip(['x', 'y'], [VARX, VARY])}
         mskx = (data[VARX] > xmin) & (data[VARX] <= xmax)
         msky = (data[VARY] > ymin) & (data[VARY] <= ymax)
         msk  = mskx & msky
