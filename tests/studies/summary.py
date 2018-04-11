@@ -116,7 +116,7 @@ def plot (*argv):
                 # @TODO: uBoost
 
                 # Style
-                ifeat += 3 if ifeat > 3 else 0  # @TEMP
+                if ifeat > 5: ifeat += 2  # @TEMP
 
                 colour      = rp.colours[(ifeat // 2) % len(rp.colours)]
                 markerstyle = 20 + (ifeat % 2) * 4
@@ -133,13 +133,14 @@ def plot (*argv):
 
         # Markers, parametrised decorrelation
         for base_feat, group in scan_features.iteritems():
+
             # Get index in list of features
             ifeat = features.index(base_feat)
-            ifeat += 3 if ifeat > 3 else 0  # @TEMP
+            if ifeat > 5: ifeat += 2  # @TEMP
 
             # Style
             colour      = rp.colours[(ifeat // 2) % len(rp.colours)]
-            markerstyle = 24  # 20 + (ifeat % 2) * 4
+            markerstyle = 24
 
             for feat, label in group:
                 idx = map(lambda t: t[2], points).index(feat)
@@ -165,7 +166,7 @@ def plot (*argv):
 
 
         # Connecting lines (simple)
-        for i in [0,1]:
+        for i in range(3):
             x1, y1, _ = points[2 * i + 0]
             x2, y2, _ = points[2 * i + 1]
             colour = rp.colours[i]

@@ -93,8 +93,7 @@ def plot (*argv):
     base['linewidth'] = 2
     base.pop('alpha')
     for ifeat, feat in filter(lambda t: simple_features == signal_low(t[1]), enumerate(features)):
-        if   ifeat > 4: ifeat += 3
-        elif ifeat > 3: ifeat += 1
+        if ifeat > 5: ifeat += 2  # @TEMP
         opts = dict(
             linecolor   = rp.colours[(ifeat // 2)],
             linestyle   = 1 + (ifeat % 2),

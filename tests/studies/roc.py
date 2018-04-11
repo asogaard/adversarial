@@ -106,7 +106,7 @@ def plot (*argv):
 
     # -- ROCs
     for ifeat, feat in enumerate(features):
-        if ifeat > 4: ifeat += 3
+        if ifeat > 5: ifeat += 2  # @TEMP
         eff_sig, eff_bkg = ROCs[feat]
         c.graph(np.power(eff_bkg, -1.), bins=eff_sig, linestyle=1 + (ifeat % 2), linecolor=rp.colours[(ifeat // 2) % len(rp.colours)], linewidth=2, label=latex(feat, ROOT=True), option='L')
         pass

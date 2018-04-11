@@ -100,7 +100,7 @@ def plot (*argv):
         c.pads()[1].hist([1], bins=[bins[0], bins[-1]], linecolor=ROOT.kGray + 2)
         for is_simple in [True, False]:
             for ifeat, feat in filter(lambda t: is_simple == signal_low(t[1]), enumerate(features)):
-                if ifeat > 4: ifeat += 3
+                if ifeat > 5: ifeat += 2  # @TEMP
                 opts = dict(
                     linecolor   = rp.colours[(ifeat // 2)],
                     markercolor = rp.colours[(ifeat // 2)],

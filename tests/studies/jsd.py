@@ -103,7 +103,7 @@ def plot (*argv):
     for is_simple in [True, False]:
         for ifeat, feat in enumerate(features):
             if is_simple != signal_low(feat): continue
-            ifeat += 3 if ifeat > 3 else 0  # @TEMP
+            if ifeat > 5: ifeat += 2  # @TEMP
             colour = rp.colours[(ifeat // 2) % len(rp.colours)]
             linestyle   =  1 + (ifeat % 2)
             markerstyle = 20 + (ifeat % 2) * 4

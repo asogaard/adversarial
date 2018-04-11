@@ -35,7 +35,7 @@ import rootplotting as rp
 @profile
 def main (args):
 
-    # Initialising
+    # Initialise
     # --------------------------------------------------------------------------
     args, cfg = initialise(args)
 
@@ -53,11 +53,9 @@ def main (args):
     from adversarial.models import classifier_model, adversary_model, combined_model, decorrelation_model
 
 
-    # Loading data
+    # Load data
     # --------------------------------------------------------------------------
-    data, features, _ = load_data(args.input + 'data.h5')
-    data = data[data['train'] == 0]
-    #data = data.sample(frac=0.01)  # @TEMP!
+    data, features, _ = load_data(args.input + 'data.h5', test=True, sample=0.01)
 
 
     # Common definitions
@@ -65,13 +63,13 @@ def main (args):
     eps = np.finfo(float).eps
     msk_mass = (data['m'] > 60.) & (data['m'] < 100.)  # W mass window
     msk_sig  = data['signal'] == 1
-    kNN_eff = 10
-    D2_kNN_var = 'D2-kNN({:d}%)'.format(kNN_eff)
+    kNN_eff = 19
+    kNN_var = 'N2-kNN'
 
     # -- Adversarial neural network (ANN) scan
     lambda_reg  = 20.
     #lambda_regs = sorted([0.1, 1, 10, 100])
-    lambda_regs = sorted([0.02, 0.2, 2., 20., 200.])
+    lambda_regs = sorted([0.2, 2., 20., 90.])
     ann_vars    = list()
     lambda_strs = list()
     for lambda_reg_ in lambda_regs:
@@ -94,18 +92,8 @@ def main (args):
     uboost_vars = ['uBoost(#alpha={:.2f})'.format(ur) for ur in uboost_urs]
     uboost_pattern = 'uboost_05TotStat_ur_{{:4.2f}}_te_{:.0f}_WTopnote_hypsel_500est'.format(uboost_eff)
 
-    '''
-    nn_mass_var = "NN(m-weight)"
-    nn_linear_vars = list()
-    for lambda_reg_ in lambda_regs:
-        nn_linear_var_ = "NN(rho,#lambda={:.0f})".format(lambda_reg_)
-        nn_linear_vars.append(nn_linear_var_)
-        pass
-    nn_linear_var = nn_linear_vars[lambda_regs.index(lambda_reg)]
-    '''
-
     # -- Tagger feature collection
-    tagger_features = ['Tau21','Tau21DDT', 'D2', D2_kNN_var, 'D2CSS', 'NN', ann_var, 'Adaboost', uboost_var]
+    tagger_features = ['Tau21','Tau21DDT', 'N2', kNN_var, 'D2', 'D2CSS', 'NN', ann_var, 'Adaboost', uboost_var]
 
 
     # Adding variables
@@ -113,27 +101,16 @@ def main (args):
     with Profile("Adding variables"):
 
         # Tau21DDT
-        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-        with Profile("Tau21DDT"):
-            from run.ddt.common import add_ddt
-            add_ddt(data, path='models/ddt/ddt.pkl.gz')
-            pass
-
+        from run.ddt.common import add_ddt
+        add_ddt(data, path='models/ddt/ddt.pkl.gz')
 
         # D2-kNN
-        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-        with Profile("D2-kNN"):
-            from run.knn.common import add_knn, VAR as knn_var
-            add_knn(data, newfeat=D2_kNN_var, path='models/knn/knn_{}_{}.pkl.gz'.format(knn_var, kNN_eff))
-            pass
-
+        from run.knn.common import add_knn, VAR as kNN_basevar
+        add_knn(data, newfeat=kNN_var, path='models/knn/knn_{}_{}.pkl.gz'.format(kNN_basevar, kNN_eff))
 
         # D2-CSS
-        # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-        with Profile("D2-CSS"):
-            from run.css.common import AddCSS
-            AddCSS("D2", data)
-            pass
+        from run.css.common import AddCSS
+        AddCSS("D2", data)
 
 
         # NN
@@ -166,41 +143,19 @@ def main (args):
 
         # Adaboost/uBoost
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-        from sklearn.externals.joblib.parallel import cpu_count, Parallel, delayed
-
-        def _predict(estimator, X, method, start, stop):
-            return getattr(estimator, method)(X[start:stop])
-
-        def parallel_predict(estimator, X, n_jobs=1, method='predict', batches_per_job=3):
-            n_jobs = max(cpu_count() + 1 + n_jobs, 1)  # XXX: this should really be done by joblib
-            n_batches = batches_per_job * n_jobs
-            n_samples = len(X)
-            batch_size = int(np.ceil(n_samples / n_batches))
-            parallel = Parallel(n_jobs=n_jobs, backend="threading")
-            results = parallel(delayed(_predict, check_pickle=False)(estimator, X, method, i, i + batch_size)
-                               for i in range(0, n_samples, batch_size))
-            return np.concatenate(results)
-
         with Profile("Adaboost/uBoost"):
-
+            from run.uboost.common import add_bdt
             for var, ur in zip(uboost_vars, uboost_urs):
+                var  = ('Adaboost' if ur == 0 else var)
+                path = 'models/uboost/' + uboost_pattern.format(ur).replace('.', 'p') + '.pkl.gz'
                 print "== Loading model for {}".format(var)
-                with gzip.open('models/uboost/' + uboost_pattern.format(ur).replace('.', 'p') + '.pkl.gz', 'r') as f:
-                    clf = pickle.load(f)
-                    pass
-
-                # You parallelisation to speed-up prediction
-                result = parallel_predict(clf, data, n_jobs=16, method='predict_proba')
-
-                var = ('Adaboost' if ur == 0 else var)
-                #data[var] =
-                #pd.Series(clf.predict_proba(data)[:,1].flatten().astype(K.floatx()),
-                #index=data.index)
-                data[var] = pd.Series(result[:,1].flatten().astype(K.floatx()), index=data.index)
+                add_bdt(data, var, path)
                 pass
 
             # Remove `Adaboost` from scan list
-            uboost_vars.pop(0)
+            if uboost_vars[0][1] == 0:
+                uboost_vars.pop(0)
+                pass
 
             print "== Done loading Ababoost/uBoost models"
             pass
@@ -210,8 +165,8 @@ def main (args):
     # Perform pile-up robustness study
     # --------------------------------------------------------------------------
     with Profile("Study: Robustness (pile-up)"):
-        bins = [0, 9.5, 13.5, 16.5, 20.5, 30.5]
-        studies.robustness(data, args, tagger_features, 'EventInfo_NPV', bins)
+        bins = [0, 5.5, 10.5, 15.5, 20.5, 25.5, 30.5]
+        studies.robustness(data, args, tagger_features, 'npv', bins)
         pass
 
 
