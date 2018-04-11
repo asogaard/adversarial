@@ -368,13 +368,14 @@ def get_decorrelation_variables (data):
 
 @garbage_collect
 @profile
-def load_data (path, name='dataset'):
+def load_data (path, name='dataset', train=None, test=None, signal=None, background=None, sample=None, seed=21):
     """
     General script to load data, common to all run scripts.
 
     Arguments:
         path: The path to the HDF5 file, from which data should be loaded.
         name: Name of the dataset, as stored in the HDF5 file.
+        ...
 
     Returns:
         Tuple of pandas.DataFrame containing the loaded; list of loaded features
@@ -388,24 +389,24 @@ def load_data (path, name='dataset'):
             dataset.
     """
 
+    # Check(s)
+    if sample:                           assert 0 < sample and sample < 1.
+    if None not in [train, test]:        assert train != test
+    if None not in [signal, background]: assert signal != background
+
     # Read data from HDF5 file
     data = pd.read_hdf(path, name)
 
     # Define feature collections to use
     features_input         = ['Tau21', 'C2', 'D2', 'Angularity', 'Aplanarity', 'FoxWolfram20', 'KtDR', 'PlanarFlow', 'Split12', 'ZCut12']
     features_decorrelation = DECORRELATION_VARIABLES
-    features_auxiliary     = ['signal', 'train', 'weight_train', 'weight_test', 'N2', 'm', 'pt', 'rho', 'rhoDDT', 'truth_pt', 'npv']
 
-    # Remove duplicates
-    for feat in features_decorrelation:
-        for _ in range(features_auxiliary.count(feat)):
-            features_auxiliary.remove(feat)
-            pass
-        pass
-
-    # Select features from DataFrame
-    features = features_input + features_decorrelation + features_auxiliary
-    data = data[features]
+    # Split data
+    if train:      data = data[data['train']  == 1]
+    if test:       data = data[data['train']  == 0]
+    if signal:     data = data[data['signal'] == 1]
+    if background: data = data[data['signal'] == 0]
+    if sample:     data = data.sample(frac=sample, random_state=seed)
 
     # Return
     return data, features_input, features_decorrelation
