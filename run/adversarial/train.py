@@ -233,6 +233,7 @@ def main (args):
     # Early stopping in case of stand-alone classifier optimisation
     # --------------------------------------------------------------------------
     if args.optimise_classifier:
+
         # Kill TensorBoard
         if args.tensorboard:
             kill(tensorboard_pid, "TensorBoard")
@@ -371,16 +372,9 @@ def main (args):
                     #W = [data['weight'].values, np.multiply(data['weight_flatness'].values, 1. - data['signal'].values)]
                     #W = [data['weight'].values, np.multiply(data['weight'].values, 1. - data['signal'].values)]
 
-                    # Pre-training adversary
-                    log.info("Pre-training")
-                    classifier.trainable = False
-
                     # Compile model for pre-training
-                    #save_lr = K.get_value(cfg['combined']['compile']['optimizer'].lr)
-                    #K.set_value(cfg['combined']['compile']['optimizer'].lr, save_lr)
+                    classifier.trainable = False
                     parallelised.compile(**cfg['combined']['compile'])
-
-                    #log.info("Learning rate before pre-training:  {}".format(K.get_value(cfg['combined']['compile']['optimizer'].lr)))
 
                     # Compute initial losses
                     log.info("Computing initial loss")
@@ -390,19 +384,18 @@ def main (args):
                     initial_losses = [parallelised.evaluate(X,     Y,     sample_weight=W,     **eval_opts),
                                       parallelised.evaluate(X_val, Y_val, sample_weight=W_val, **eval_opts)]
 
+                    # Pre-training adversary
+                    log.info("Pre-training")
                     pretrain_fit_opts = dict(**cfg['combined']['fit'])
                     pretrain_fit_opts['epochs'] = pretrain_epochs
                     ret_pretrain = parallelised.fit(X, Y, sample_weight=W, validation_data=validation_data, **pretrain_fit_opts)
 
+                    # Re-compile combined model for full training
+                    classifier.trainable = True
+                    parallelised.compile(**cfg['combined']['compile'])
+
                     # Fit classifier model
                     log.info("Actual training")
-                    classifier.trainable = True
-
-                    # Re-compile combined model for full training
-                    #K.set_value(cfg['combined']['compile']['optimizer'].lr, save_lr)
-                    parallelised.compile(**cfg['combined']['compile'])
-                    #log.info("Learning rate before full training: {}".format(K.get_value(cfg['combined']['compile']['optimizer'].lr)))
-
                     ret = parallelised.fit(X, Y, sample_weight=W, validation_data=validation_data, **cfg['combined']['fit'])
 
                     # Compute final losses (check) @TEMP
@@ -438,6 +431,7 @@ def main (args):
     # Early stopping in case of adversarial network
     # --------------------------------------------------------------------------
     if args.optimise_adversarial:
+
         # Kill TensorBoard
         if args.tensorboard:
             kill(tensorboard_pid, "TensorBoard")
@@ -498,32 +492,23 @@ def main (args):
             Y = [data['signal'].values.astype(K.floatx()), np.ones_like(data['signal'].values).astype(K.floatx())]
             W = [data['weight_clf'].values, data['weight_adv'].values]
 
-            # Pre-training adversary
-            log.info("Pre-training")
-            classifier.trainable = False
 
             # Compile model for pre-training
-            #save_lr = K.get_value(cfg['combined']['compile']['optimizer'].lr)
-            #K.set_value(cfg['combined']['compile']['optimizer'].lr, save_lr)
+            classifier.trainable = False
             parallelised.compile(**cfg['combined']['compile'])
 
-            #log.info("Learning rate before pre-training:  {}".format(K.get_value(cfg['combined']['compile']['optimizer'].lr)))
-
+            # Pre-training adversary
+            log.info("Pre-training")
             pretrain_fit_opts = dict(**cfg['combined']['fit'])
             pretrain_fit_opts['epochs'] = pretrain_epochs
             ret_pretrain = parallelised.fit(X, Y, sample_weight=W, **pretrain_fit_opts)
 
-            # Fit classifier model
-            log.info("Actual training")
-            classifier.trainable = True
-
             # Re-compile combined model for full training
-            #K.set_value(cfg['combined']['compile']['optimizer'].lr, save_lr)
+            classifier.trainable = True
             parallelised.compile(**cfg['combined']['compile'])
 
-            #log.info("Learning rate before full training: {}".format(K.get_value(cfg['combined']['compile']['optimizer'].lr)))
-
             # Fit classifier model
+            log.info("Actual training")
             ret = parallelised.fit(X, Y, sample_weight=W, callbacks=callbacks, **cfg['combined']['fit'])
 
             # Save combined model and training history to file, both in unique
