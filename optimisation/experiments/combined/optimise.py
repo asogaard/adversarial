@@ -1,5 +1,6 @@
 # Basic import(s)
 import os
+import numpy as np
 
 # Project import(s)
 import adversarial
@@ -17,16 +18,25 @@ def main(job_id, params):
     print "Call to main function (#{})".format(job_id)
     print "  Parameters: {}".format(params)
 
-    # Create temporary patch file
+    # Create temporary patch dictionary
     jobname  = 'patch.{:08d}'.format(job_id)
     filename = os.path.realpath('patches/{}.json'.format(jobname))
     patch    = create_patch(params)
+
+    # Adversarial-specific change
+    lr_ratio = patch['combined']['model'].pop('lr_ratio')
+    if lr_ratio < 0:
+        lr_ratio = np.power(10., lr_ratio)
+        pass
+    patch['combined']['compile']['loss_weights'] = [lr_ratio, 1.0]
+
+    # Save patch to file
     save_patch(patch, filename)
-    
+
     # Set arguments
-    args = parse_args(['--optimise-classifier',
+    args = parse_args(['--optimise-adversarial',
                        '--patch',   filename,
-                       '--jobname', 'classifier-' + jobname,
+                       '--jobname', 'combined-' + jobname,
                        '--gpu',
                        '--devices', '3',
                        '--folds',   '3',
