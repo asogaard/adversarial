@@ -107,5 +107,8 @@ else
     fi
 fi
 
+# Set necessary flag(s)
+export CFLAGS=-D__USE_XOPEN2K8:$CFLAGS
+
 # Enable auto-complete for command-line arguments
 source scripts/autocomplete.sh
