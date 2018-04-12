@@ -63,6 +63,12 @@ def main (args):
             pass
         pass
 
+    # Check losses
+    print "Optimisation metrics, sorted by mean + 1 sigma, for robustness:"
+    for i,m,s in sorted(zip(range(len(means)), means, stds), key=lambda t: t[1] + t[2]):
+        print "  [{:3d}] {:7.4f} ± {:6.4f}".format(i + 1, m,s)
+        pass
+
     # Compute running, best mean
     means = np.array(means)
     stds  = np.array(stds)
