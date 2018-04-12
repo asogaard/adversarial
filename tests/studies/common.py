@@ -14,15 +14,15 @@ from adversarial.utils import mkdir, garbage_collect
 
 # Custom import(s)
 import rootplotting as rp
-
+rp.colours.pop(3)  # To remove unused colour from list
 
 # Global variable definition(s)
 MASSBINS = np.linspace(50, 300, (300 - 50) // 5 + 1, endpoint=True)
 
 HISTSTYLE = {  # key = signal / passing
     True: {
-        'fillcolor': rp.colours[5],
-        'linecolor': rp.colours[5],
+        'fillcolor': rp.colours[4],
+        'linecolor': rp.colours[4],
         'fillstyle': 3354,
         },
     False: {

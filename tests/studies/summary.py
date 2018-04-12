@@ -14,7 +14,7 @@ from adversarial.constants import *
 
 # Custom import(s)
 import rootplotting as rp
-rp.colours.pop(3)
+
 
 @showsave
 def summary (data, args, features, scan_features, target_tpr=0.5, num_bootstrap=5):

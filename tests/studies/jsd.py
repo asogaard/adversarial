@@ -103,7 +103,6 @@ def plot (*argv):
     for is_simple in [True, False]:
         for ifeat, feat in enumerate(features):
             if is_simple != signal_low(feat): continue
-            if ifeat > 5: ifeat += 2  # @TEMP
             colour = rp.colours[(ifeat // 2) % len(rp.colours)]
             linestyle   =  1 + (ifeat % 2)
             markerstyle = 20 + (ifeat % 2) * 4
@@ -111,7 +110,7 @@ def plot (*argv):
             pass
 
         c.legend(header=("Simple:" if is_simple else "MVA:"),
-                 width=width, xmin=0.56 + (width + 0.02) * (is_simple), ymax=0.888)  # ymax=0.782)
+                 width=width, xmin=0.56 + (width + 0.02) * (is_simple), ymax=0.888)
         pass
 
     # Redraw axes

@@ -66,13 +66,6 @@ def plot (*argv):
     HISTSTYLE[True] ['label'] = " #it{W} jets"
     HISTSTYLE[False]['label'] = " QCD jets"
 
-    #HISTSTYLE[True] ['linecolor'] = ROOT.kPink + 1
-    #HISTSTYLE[True] ['fillcolor'] = ROOT.kPink + 1
-    #HISTSTYLE[False]['linecolor'] = ROOT.kBlack
-    #HISTSTYLE[False]['fillcolor'] = ROOT.kGray
-    #HISTSTYLE[False]['fillstyle'] = 1001
-    #HISTSTYLE[False]['alpha'] = 0.4
-
     # Canvas
     c = rp.canvas(batch=not args.show)
 
@@ -93,7 +86,6 @@ def plot (*argv):
     base['linewidth'] = 2
     base.pop('alpha')
     for ifeat, feat in filter(lambda t: simple_features == signal_low(t[1]), enumerate(features)):
-        if ifeat > 5: ifeat += 2  # @TEMP
         opts = dict(
             linecolor   = rp.colours[(ifeat // 2)],
             linestyle   = 1 + (ifeat % 2),

@@ -106,7 +106,6 @@ def plot (*argv):
 
     # -- ROCs
     for ifeat, feat in enumerate(features):
-        if ifeat > 5: ifeat += 2  # @TEMP
         eff_sig, eff_bkg = ROCs[feat]
         c.graph(np.power(eff_bkg, -1.), bins=eff_sig, linestyle=1 + (ifeat % 2), linecolor=rp.colours[(ifeat // 2) % len(rp.colours)], linewidth=2, label=latex(feat, ROOT=True), option='L')
         pass
@@ -121,7 +120,6 @@ def plot (*argv):
            qualifier=QUALIFIER)
 
     c.latex("Random guessing", 0.3, 1./0.3 * 0.9, align=23, angle=-12, textsize=13, textcolor=ROOT.kGray + 2)
-    #c.xlim(0., 1.)
     c.xlim(0.2, 1.)
     c.ylim(1E+00, 1E+03)
     c.logy()
