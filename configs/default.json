@@ -2,24 +2,21 @@
     "classifier": {
       	"model": {
       	    "default": {
-            	"units":      256,
-            	"activation": "relu",
-            	"batchnorm":  true,
-            	"dropout":    0.2,
-            	"l1reg":      null,
-            	"l2reg":      null
+            	"units":      128,
+            	"activation": "tanh",
+            	"batchnorm":  true
       	    },
-      	    "architecture": 5
+      	    "architecture": 4
       	},
       	"fit": {
-      	    "epochs":     50,
+      	    "epochs":     100,
       	    "batch_size": 8192,
       	    "shuffle":    true
       	},
       	"compile" : {
       	    "loss":      "binary_crossentropy",
-      	    "lr":        1.0E-03,
-      	    "decay":     1.0E-04,
+      	    "lr":        1.0E-02,
+      	    "decay":     1.0E-02,
       	    "optimizer": "Adam"
       	}
     },
@@ -29,11 +26,7 @@
             	"units":      32,
             	"activation": "relu"
       	    },
-      	    "architecture": [
-                {},
-                {},
-		{}
-      	    ],
+      	    "architecture": 3,
       	    "gmm_components": 5
       	},
       	"fit": {},
@@ -51,9 +44,9 @@
       	},
       	"compile": {
             "loss":         ["binary_crossentropy", null],
-      	    "loss_weights": [1.0E-06, 1.0E+00],
+      	    "loss_weights": [1.0E-08, 1.0E+00],
             "lr":           1.0E-02,
-            "decay":        1.0E-03,
+            "decay":        1.0E-02,
             "optimizer":    "Adam"
       	}
     }
