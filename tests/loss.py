@@ -97,42 +97,28 @@ def plot_classifier_training_loss (num_folds, basedir='models/adversarial/classi
     
     # Plots
     categories = list()
+
+    for name, key, colour, linestyle in zip(['Validation', 'Training'], ['val', 'train'], [rp.colours[4], rp.colours[1]], [1,2]):
     
-    # -- Validation
-    loss_mean = np.mean(losses['val'], axis=0)
-    loss_std  = np.std (losses['val'], axis=0)
-    hist = ROOT.TH1F('val_loss', "", len(histbins) - 1, histbins)
-    for idx in range(len(loss_mean)):
-        hist.SetBinContent(idx + 1, loss_mean[idx])
-        hist.SetBinError  (idx + 1, loss_std [idx])
+        # Histograms
+        loss_mean = np.mean(losses[key], axis=0)
+        loss_std  = np.std (losses[key], axis=0)
+        hist = ROOT.TH1F(key + '_loss', "", len(histbins) - 1, histbins)
+        for idx in range(len(loss_mean)):
+            hist.SetBinContent(idx + 1, loss_mean[idx])
+            hist.SetBinError  (idx + 1, loss_std [idx])
+            pass
+    
+        c.hist([0], bins=[0, max(bins)], linewidth=0, linestyle=0)  # Force correct x-axis
+        c.hist(hist, fillcolor=colour, alpha=0.3, option='LE3')
+        c.hist(hist, linecolor=colour, linewidth=3, linestyle=linestyle, option='HISTL')
+    
+        categories += [(name,
+                        {'linestyle': linestyle, 'linewidth': 3,
+                         'linecolor': colour, 'fillcolor': colour,
+                         'alpha': 0.3, 'option': 'FL'})]
         pass
-    
-    c.hist([0], bins=[0, max(bins)], linewidth=0, linestyle=0)  # Force correct x-axis
-    c.hist(hist, fillcolor=rp.colours[4], alpha=0.3, option='LE3')
-    c.hist(hist, linecolor=rp.colours[4], linewidth=3, option='HISTL')
-    
-    categories += [('Validation',  # (CV avg. #pm RMS)',
-                    {'linestyle': 1, 'linewidth': 3,
-                     'linecolor': rp.colours[4], 'fillcolor': rp.colours[4],
-                     'alpha': 0.3,  'option': 'FL'})]
-    
-    # -- Training
-    loss_mean = np.mean(losses['train'], axis=0)
-    loss_std  = np.std (losses['train'], axis=0)
-    hist = ROOT.TH1F('loss', "", len(histbins) - 1, histbins)
-    for idx in range(len(loss_mean)):
-        hist.SetBinContent(idx + 1, loss_mean[idx])
-        hist.SetBinError  (idx + 1, loss_std [idx])
-        pass
-    
-    c.hist(hist, fillcolor=rp.colours[1], alpha=0.3, option='LE3')
-    c.hist(hist, linecolor=rp.colours[1], linewidth=3, linestyle=2, option='HISTL')
-    
-    categories += [('Training',  #    (CV avg. #pm RMS)',
-                    {'linestyle': 2, 'linewidth': 3,
-                     'linecolor': rp.colours[1], 'fillcolor': rp.colours[1],
-                     'alpha': 0.3,  'option': 'FL'})]
-    
+        
     # Decorations
     c.pads()[0]._yaxis().SetNdivisions(505)
     c.xlabel("Training epoch")
@@ -255,7 +241,7 @@ def plot_adversarial_training_loss (lambda_reg, num_folds, pretrain_epochs, H_pr
             pad._xaxis().SetLabelOffset(9999.)
             pad._xaxis().SetTitleOffset(9999.)
         else:
-            pad._xaxis().SetTitleOffset(4.0)
+            pad._xaxis().SetTitleOffset(5.0)
             pass
 
         ymin, ymax = list(), list()
