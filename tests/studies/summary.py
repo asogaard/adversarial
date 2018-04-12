@@ -14,7 +14,7 @@ from adversarial.constants import *
 
 # Custom import(s)
 import rootplotting as rp
-
+rp.colours.pop(3)
 
 @showsave
 def summary (data, args, features, scan_features, target_tpr=0.5, num_bootstrap=5):
@@ -98,12 +98,17 @@ def plot (*argv):
 
         # Reference lines
         nullopts = dict(linecolor=0, linewidth=0, linestyle=0, markerstyle=0, markersize=0, fillstyle=0)
+        lineopts = dict(linecolor=ROOT.kGray + 2, linewidth=1, option='L')
+        boxopts  = dict(fillcolor=ROOT.kBlack, alpha=0.05, linewidth=0, option='HIST')
         c.hist([aminy], bins=list(axisrangex), **nullopts)
-        c.plot([1, amaxy], bins=[1, 1],    linecolor=ROOT.kGray + 2, linewidth=1, option='L')
-        c.plot([1, 1],     bins=[1, amaxx], linecolor=ROOT.kGray + 2, linewidth=1, option='L')
+        c.plot([1, amaxy], bins=[1, 1],     **lineopts)
+        c.plot([1, 1],     bins=[1, amaxx], **lineopts)
+        c.hist([amaxy],    bins=[aminx, 1], **boxopts)
+        c.hist([1],        bins=[1, amaxx],     **boxopts)
 
         # Markers
         for is_simple in [True, False]:
+
             # Split the legend into simple- and MVA taggers
             for ifeat, feat in filter(lambda t: is_simple == signal_low(t[1]), enumerate(features)):
 
@@ -112,12 +117,10 @@ def plot (*argv):
                 x, y, label = points[idx]
 
                 # Overwrite default name of parameter-scan classifier
-                label = 'ANN' if label.startswith('ANN') else label
-                # @TODO: uBoost
+                label = 'ANN'    if label.startswith('ANN') else label
+                label = 'uBoost' if label.startswith('uBoost') else label
 
                 # Style
-                if ifeat > 5: ifeat += 2  # @TEMP
-
                 colour      = rp.colours[(ifeat // 2) % len(rp.colours)]
                 markerstyle = 20 + (ifeat % 2) * 4
 
@@ -136,7 +139,6 @@ def plot (*argv):
 
             # Get index in list of features
             ifeat = features.index(base_feat)
-            if ifeat > 5: ifeat += 2  # @TEMP
 
             # Style
             colour      = rp.colours[(ifeat // 2) % len(rp.colours)]
@@ -173,20 +175,6 @@ def plot (*argv):
             c.graph([y1, y2], bins=[x1, x2], linecolor=colour, linestyle=2, option='L')
             pass
 
-        # Boxes
-        print "({}, {}, {}, {})".format(aminx, aminy, 1, amaxy)
-        box1 = ROOT.TBox(aminx, aminy, 1, amaxy)
-        #box1.SetFillColorAlpha(ROOT.kBlack, 0.05)
-        box1.SetFillColor(ROOT.kGray)
-        box1.Draw("SAME")
-
-        print "({}, {}, {}, {})".format(1, aminy, amaxx, 1)
-        box2 = ROOT.TBox(1, aminy, amaxx, 1)
-        #box2.SetFillColorAlpha(ROOT.kBlack, 0.05)
-        box2.SetFillColor(ROOT.kGray)
-        box2.Draw("SAME")
-        c.pads()[0]._primitives[0].Draw('AXIS SAME')
-
         # Decorations
         c.xlabel("Background rejection, 1 / #varepsilon_{bkg} @ #varepsilon_{sig} = 50%")
         c.ylabel("Mass decorrelation, 1 / JSD @ #varepsilon_{sig} = 50%")
@@ -198,8 +186,8 @@ def plot (*argv):
         opts_text = dict(textsize=11, textcolor=ROOT.kGray + 2)
         midpointx = np.power(10, 0.5 * np.log10(amaxx))
         midpointy = np.power(10, 0.5 * np.log10(amaxy))
-        c.latex("No separation",                     0.90, midpointy, angle=90, align=21, **opts_text)
-        c.latex("Maximal sculpting",                 midpointx, 0.90, angle= 0, align=23, **opts_text)
+        c.latex("No separation",                     0.91, midpointy, angle=90, align=21, **opts_text)
+        c.latex("Maximal sculpting",                 midpointx, 0.89, angle= 0, align=23, **opts_text)
         c.latex("    Less sculpting #rightarrow",    1.1, midpointy,  angle=90, align=23,**opts_text)
         c.latex("    Greater separtion #rightarrow", midpointx, 1.1,  angle= 0, align=21,**opts_text)
 
