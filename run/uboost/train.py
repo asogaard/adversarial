@@ -43,44 +43,13 @@ def main (args):
     data.drop(drop_features, axis=1)
 
 
-    # Config, to be relegated to configuration file
-    cfg = {
-        'DecisionTreeClassifier': {
-            'criterion': 'gini',
-            'max_depth': 5,             # Optimise
-            'min_samples_split': 2,     # Optimise (?)
-            'min_samples_leaf': 1       # Optimise (?)
-        },
+    cfg['uBoost']['train_features'] = features
+    cfg['uBoost']['random_state'] = SEED
+    cfg['DecisionTreeClassifier']['random_state'] = SEED
 
-        'uBoost': {                      # @NOTE: or uBoostClassifier?
-            'n_estimators': 500,          # Optimise
-            'n_neighbors': 50,           # Optimise
-
-            'target_efficiency': 0.92,   # @NOTE: Make ~50% sig. eff.
-
-            'smoothing': 0.0,            # Optimise (?)
-            'uniforming_rate': 1.0,      # Parametrisation of decorrelation
-            'learning_rate': 1.0,        # Optimise (?)  # Default: 1.
-        }
-    }
-
-    # Common options, which shouldn't be put in config file
-    opts = {
-        'DecisionTreeClassifier': {
-            'random_state': SEED,        # For reproducibility
-        },
-        'uBoost': {
-            'uniform_label': 0,          # Want flat _background_ efficiency
-            'uniform_features': ['m'],
-            'train_features': features,
-            'random_state': SEED,        # For reproducibility
-        }
-    }
-    opts = apply_patch(opts, cfg)
 
     # Arrays
     X = data
-    print(X.head(5))
 
     w = np.array(data['weight_train']).flatten()
     y = np.array(data['signal']).flatten()
@@ -109,20 +78,20 @@ def main (args):
         #
         # @NOTE: I have gotten less sure of the above, so probably no panic.
 
-        def train_uBoost (X, y, w, opts, uniforming_rate):
+        def train_uBoost (X, y, w, cfg, uniforming_rate):
             """
             ...
             """
 
             # Create base classifier
-            base_tree = DecisionTreeClassifier(**opts['DecisionTreeClassifier'])
+            base_tree = DecisionTreeClassifier(**cfg['DecisionTreeClassifier'])
 
             # Update training configuration
-            these_opts = dict(**opts['uBoost'])
-            these_opts['uniforming_rate'] = uniforming_rate
+            these_cfg = dict(**cfg['uBoost'])
+            these_cfg['uniforming_rate'] = uniforming_rate
 
             # Create uBoost classifier
-            uboost = uBoostBDT(base_estimator=base_tree, **these_opts)
+            uboost = uBoostBDT(base_estimator=base_tree, **these_cfg)
 
             # Fit uBoost classifier
             uboost.fit(X, y, sample_weight=w)
@@ -133,7 +102,7 @@ def main (args):
         uniforming_rates = [0.0]
         n_jobs = min(2, len(uniforming_rates))  # ...(10, ...
 
-        jobs = [delayed(train_uBoost, check_pickle=False)(X, y, w, opts, uniforming_rate) for uniforming_rate in uniforming_rates]
+        jobs = [delayed(train_uBoost, check_pickle=False)(X, y, w, cfg, uniforming_rate) for uniforming_rate in uniforming_rates]
 
         result = Parallel(n_jobs=n_jobs, backend="threading")(jobs)
         pass
@@ -148,7 +117,7 @@ def main (args):
             mkdir('models/uboost/')
 
             suffix_ur = "ur_{:s}".format(("%.2f" % uniforming_rate).replace('.', 'p'))
-            suffix_te = "te_{:d}".format(int(opts['uBoost']['target_efficiency'] * 100))
+            suffix_te = "te_{:d}".format(int(cfg['uBoost']['target_efficiency'] * 100))
 
             # Save uBoost classifier
             with gzip.open('models/uboost/uboost_{}_{}.pkl.gz'.format(suffix_ur, suffix_te), 'w') as f:
