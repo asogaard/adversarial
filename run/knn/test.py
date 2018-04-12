@@ -29,7 +29,7 @@ BOUNDS = [
     ROOT.TF1('bounds_1', "TMath::Sqrt( TMath::Power(300, 2) * TMath::Exp(-x) )", AXIS[VARX][1], AXIS[VARX][2])
     ]
 
-nb_contour = 13 * 16
+NB_CONTOUR = 13 * 16
 
 # Shout out to Cynthia Brewer and Mark Harrower
 # [http://colorbrewer2.org]. Palette is colorblind-safe.
@@ -49,7 +49,7 @@ red, green, blue = map(np.array, zip(*rgbs))
 nb_cols = len(rgbs)
 stops = np.linspace(0, 1, nb_cols, endpoint=True)
 
-ROOT.TColor.CreateGradientColorTable(nb_cols, stops, red, green, blue, nb_contour)
+ROOT.TColor.CreateGradientColorTable(nb_cols, stops, red, green, blue, NB_CONTOUR)
 
 BOUNDS[0].SetLineColor(ROOT.kGray + 0)
 BOUNDS[1].SetLineColor(ROOT.kGray + 3)
@@ -152,7 +152,7 @@ def plot (profile, fit):
     if ZRANGE:
         profile.GetZaxis().SetRangeUser(*ZRANGE)
         pass
-    profile.SetContour(nb_contour)
+    profile.SetContour(NB_CONTOUR)
 
     # Draw
     profile.Draw('COLZ')
@@ -169,8 +169,6 @@ def plot (profile, fit):
     mkdir('figures/knn/')
     c.save('figures/knn/knn_{}_{:s}_{:.0f}.pdf'.format('fit' if fit else 'profile', VAR, EFF))
     pass
-
-
 
 
 # Main function call

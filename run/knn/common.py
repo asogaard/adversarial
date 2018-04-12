@@ -46,7 +46,7 @@ def standardise (array, y=None):
 
     # If DataFrame, extract relevant columns and call method again.
     if isinstance(array, pd.DataFrame):
-        X = data[[VARX, VARY]].values.astype(np.float)
+        X = array[[VARX, VARY]].values.astype(np.float)
         return standardise(X)
 
     # If receiving separate arrays
