@@ -509,6 +509,12 @@ def main (args):
             log.info("Actual training")
             ret = parallelised.fit(X, Y, sample_weight=W, callbacks=callbacks, **cfg['combined']['fit'])
 
+            # Prepend initial losses
+            for metric in parallelised.metrics_names:
+                ret.history[metric]          = ret_pretrain.history[metric]          + ret.history[metric]
+                ret.history['val_' + metric] = ret_pretrain.history['val_' + metric] + ret.history['val_' + metric]
+                pass
+
             # Save combined model and training history to file, both in unique
             # output directory and in the directory for pre-trained classifiers.
             adv = lambda s: s.replace('combined', 'adversary')
