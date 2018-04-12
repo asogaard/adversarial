@@ -11,7 +11,7 @@ import root_numpy
 
 # Project import(s)
 from .common import *
-from adversarial.utils import mkdir, latex, wpercentile
+from adversarial.utils import mkdir, latex, wpercentile, signal_low
 from adversarial.constants import *
 
 # Custom import(s)
@@ -119,7 +119,7 @@ def plot (*argv):
             (["m #in  [60, 100] GeV"] if masscut else []),
            qualifier=QUALIFIER)
 
-    c.latex("Random guessing", 0.3, 1./0.3 * 0.9, align=23, angle=-12, textsize=13, textcolor=ROOT.kGray + 2)
+    c.latex("Random guessing", 0.4, 1./0.4 * 0.9, align=23, angle=-12, textsize=13, textcolor=ROOT.kGray + 2)
     c.xlim(0.2, 1.)
     c.ylim(1E+00, 1E+03)
     c.logy()

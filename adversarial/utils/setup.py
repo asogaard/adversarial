@@ -321,6 +321,7 @@ def initialise_backend (args):
 # should go without saying, but draw target samples from a uniform prior on the
 # coordinates which are used for the decorrelation.
 DECORRELATION_VARIABLES = ['m', 'pt']
+INPUT_VARIABLES = ['Tau21', 'C2', 'D2', 'Angularity', 'Aplanarity', 'FoxWolfram20', 'KtDR', 'PlanarFlow', 'Split12', 'ZCut12']
 
 @garbage_collect
 @profile
@@ -334,6 +335,7 @@ def get_decorrelation_variables (data):
     Returns:
         Numpy array with decorrelation variables scaled to [0,1].
     """
+
     # Initialise and fill coordinate original arrays
     decorrelation = data[DECORRELATION_VARIABLES].values
 
@@ -377,7 +379,7 @@ def load_data (path, name='dataset', train=None, test=None, signal=None, backgro
     data = pd.read_hdf(path, name)
 
     # Define feature collections to use
-    features_input         = ['Tau21', 'C2', 'D2', 'Angularity', 'Aplanarity', 'FoxWolfram20', 'KtDR', 'PlanarFlow', 'Split12', 'ZCut12']
+    features_input         = INPUT_VARIABLES
     features_decorrelation = DECORRELATION_VARIABLES
 
     # Split data

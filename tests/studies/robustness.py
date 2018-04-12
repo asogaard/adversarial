@@ -6,7 +6,7 @@ import ROOT
 
 # Project import(s)
 from .common import *
-from adversarial.utils import wpercentile, wmean, latex
+from adversarial.utils import wpercentile, wmean, latex, bootstrap_metrics, signal_low
 from adversarial.constants import *
 
 # Custom import(s)

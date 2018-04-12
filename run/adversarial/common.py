@@ -6,11 +6,36 @@
 import re
 import sys
 import json
-import numpy as np
 import logging as log
 from pprint import pprint
 import subprocess
 import datetime
+
+# Scientific import(s)
+import numpy as np
+import pandas as pd
+
+# Project import(s)
+from adversarial.utils import INPUT_VARIABLES
+from adversarial.profile import profile
+
+
+@profile
+def add_nn (data, clf, newfeat=None):
+    """
+    Add neural network tagger from `clf to `data`. Modifies `data` in-place.
+
+    Arguments:
+        data: Pandas DataFrame to which to add classifier variable.
+        clf: Keras network model, from which to get classifier variable.
+        newfeat: Name of output feature.
+    """
+    # Check(s)
+    assert newfeat is not None, "Please specify an output feature name"
+
+    # Add NN-classifier variable to DataFrame
+    data[newfeat] = pd.Series(clf.predict(data[INPUT_VARIABLES].values, batch_size=8192).flatten(), index=data.index)
+    return
 
 
 def parallelise_model (model, args):

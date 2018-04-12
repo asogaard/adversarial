@@ -47,11 +47,12 @@ def main (args):
     decorrelation = get_decorrelation_variables(data)
     H_prior = entropy(decorrelation, weights=data['weight_train'])
     print "Entropy of prior: {}".format(H_prior)
-    
+
     # Perform adversarial loss study
-    basedir='models/adversarial/combined/full/'
-    for lambda_reg in [10.]:
-        plot_adversarial_training_loss(lambda_reg, None, 20, H_prior, basedir=basedir)
+    #basedir='models/adversarial/combined/full/'
+    basedir='models/adversarial/combined/crossval/'
+    for lambda_reg in [10]:
+        plot_adversarial_training_loss(lambda_reg, num_folds, 20, H_prior, basedir=basedir)
         pass
 
     return 0
@@ -74,32 +75,32 @@ def plot_classifier_training_loss (num_folds, basedir='models/adversarial/classi
     if len(paths) == 0:
         print "No models found for classifier CV study."
         return
-    
+
     # Read losses from files
     losses = {'train': list(), 'val': list()}
     for path in paths:
         with open(path, 'r') as f:
             d = json.load(f)
             pass
-        
+
         loss = np.array(d['val_loss'])
         losses['val'].append(loss)
         loss = np.array(d['loss'])
         losses['train'].append(loss)
         pass
-    
+
     # Define variable(s)
     bins     = np.arange(len(loss))
     histbins = np.arange(len(loss) + 1) + 0.5
-    
+
     # Canvas
     c = rp.canvas(batch=True)
-    
+
     # Plots
     categories = list()
 
     for name, key, colour, linestyle in zip(['Validation', 'Training'], ['val', 'train'], [rp.colours[4], rp.colours[1]], [1,2]):
-    
+
         # Histograms
         loss_mean = np.mean(losses[key], axis=0)
         loss_std  = np.std (losses[key], axis=0)
@@ -108,17 +109,17 @@ def plot_classifier_training_loss (num_folds, basedir='models/adversarial/classi
             hist.SetBinContent(idx + 1, loss_mean[idx])
             hist.SetBinError  (idx + 1, loss_std [idx])
             pass
-    
+
         c.hist([0], bins=[0, max(bins)], linewidth=0, linestyle=0)  # Force correct x-axis
         c.hist(hist, fillcolor=colour, alpha=0.3, option='LE3')
         c.hist(hist, linecolor=colour, linewidth=3, linestyle=linestyle, option='HISTL')
-    
+
         categories += [(name,
                         {'linestyle': linestyle, 'linewidth': 3,
                          'linecolor': colour, 'fillcolor': colour,
                          'alpha': 0.3, 'option': 'FL'})]
         pass
-        
+
     # Decorations
     c.pads()[0]._yaxis().SetNdivisions(505)
     c.xlabel("Training epoch")
@@ -152,7 +153,7 @@ def plot_adversarial_training_loss (lambda_reg, num_folds, pretrain_epochs, H_pr
 
     # Get paths to all cross-validation adversarially trained classifiers
     if num_folds:
-        paths = sorted(glob.glob(basedir + 'history__combined_lambda{}_*of{}.json'.format(lambda_str, num_folds)))
+        paths = sorted(glob.glob(basedir + 'history__combined_lambda{}__*of{}.json'.format(lambda_str, num_folds)))
     else:
         paths = glob.glob(basedir + 'history__combined_lambda{}.json'.format(lambda_str))
         pass
@@ -211,11 +212,11 @@ def plot_adversarial_training_loss (lambda_reg, num_folds, pretrain_epochs, H_pr
                     hist.SetBinContent(ibin + 1, loss_mean[ibin])
                     hist.SetBinError  (ibin + 1, loss_std [ibin])
                     pass
-                
+
                 c.pads()[igrp].hist(hist, fillcolor=colour, linestyle=ityp + 1, linewidth=0, alpha=0.3, option='LE3')
                 c.pads()[igrp].hist(hist, fillcolor=0,     fillstyle=0,         linecolor=colour, linestyle=ityp + 1, linewidth=3,            option='HISTL')
             except TypeError: pass  # No validation
-            
+
             if igrp == 0:
                 categories += [('Training' if typ == 'train' else 'Validation',
                                 {'linestyle': ityp + 1, 'linewidth': 3,
@@ -245,13 +246,13 @@ def plot_adversarial_training_loss (lambda_reg, num_folds, pretrain_epochs, H_pr
 
         ymin, ymax = list(), list()
         for hist in pad._primitives:
-            if not isinstance(hist, ROOT.TGraph):                
+            if not isinstance(hist, ROOT.TGraph):
                 ymin.append(get_min(hist))
                 ymax.append(get_max(hist))
                 pass
             pass
 
-        # Get reference-line value 
+        # Get reference-line value
         clf_opt_val = clf_opt_val or c.pads()[0]._primitives[1].GetBinContent(1)
         ref = clf_opt_val if ipad == 0 else (H_prior if ipad == 1 else clf_opt_val - lambda_reg * H_prior)
 
@@ -353,7 +354,7 @@ def get_min (h):
         return min(get_nonzero_bin_contents(h))
     except ValueError:  # No non-zero bins
         return + np.inf
-    
+
 
 
 def entropy (data, num_bins=None, weights=None):

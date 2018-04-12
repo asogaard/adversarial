@@ -9,7 +9,7 @@ import ROOT
 
 # Project import(s)
 from .common import *
-from adversarial.utils import mkdir, latex
+from adversarial.utils import mkdir, latex, metrics, signal_low
 from adversarial.constants import *
 
 # Custom import(s)
@@ -57,11 +57,9 @@ def summary (data, args, features, scan_features, target_tpr=0.5, num_bootstrap=
 
         # Compute metrics
         rej, jsd = metrics(data, feat)
-        #mean_std_rej, mean_std_jsd = bootstrap_metrics(data, feat, num_bootstrap=num_bootstrap)
 
         # Add point to array
         points.append((rej, jsd, feat))
-        #points.append((mean_std_rej, mean_std_jsd, feat))
         pass
 
     # Perform plotting

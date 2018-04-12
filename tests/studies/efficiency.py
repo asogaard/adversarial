@@ -7,7 +7,7 @@ import root_numpy
 
 # Project import(s)
 from .common import *
-from adversarial.utils import latex, wpercentile
+from adversarial.utils import latex, wpercentile, signal_low, MASSBINS
 from adversarial.constants import *
 
 # Custom import(s)
