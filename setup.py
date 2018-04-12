@@ -13,5 +13,6 @@ setup(
               'run',
               'run.adversarial',
               'run.uboost',
+              'optimisation',
               ],
     )
