@@ -21,9 +21,10 @@ from scipy.stats import entropy
 from sklearn.metrics import roc_curve, roc_auc_score
 
 # Project import(s)
-from adversarial.utils import initialise_backend, wpercentile, latex, parse_args, initialise, load_data, mkdir
+from adversarial.utils import initialise, initialise_backend, parse_args, load_data, mkdir, wpercentile, latex
 from adversarial.profile import profile, Profile
 from adversarial.constants import *
+from run.adversarial.common import initialise_config
 from .studies.common import *
 import studies
 
@@ -36,14 +37,13 @@ import rootplotting as rp
 def main (args):
 
     # Initialise
-    # --------------------------------------------------------------------------
     args, cfg = initialise(args)
 
-
-    # Argument-dependent setup
-    # --------------------------------------------------------------------------
     # Initialise Keras backend
     initialise_backend(args)
+
+    # Neural network-specific initialisation of the configuration dict
+    initialise_config(args, cfg)
 
     # Keras import(s)
     import keras.backend as K
@@ -52,10 +52,8 @@ def main (args):
     # Project import(s)
     from adversarial.models import classifier_model, adversary_model, combined_model, decorrelation_model
 
-
     # Load data
-    # --------------------------------------------------------------------------
-    data, features, _ = load_data(args.input + 'data.h5', test=True, sample=0.01)
+    data, features, _ = load_data(args.input + 'data.h5', test=True)
 
 
     # Common definitions
@@ -64,12 +62,13 @@ def main (args):
     msk_mass = (data['m'] > 60.) & (data['m'] < 100.)  # W mass window
     msk_sig  = data['signal'] == 1
     kNN_eff = 19
-    kNN_var = 'N2-kNN'
+    kNN_var = 'N2-k#minusNN'
 
     # -- Adversarial neural network (ANN) scan
-    lambda_reg  = 20.
+    lambda_reg  = 90.
     #lambda_regs = sorted([0.1, 1, 10, 100])
-    lambda_regs = sorted([0.2, 2., 20., 90.])
+    #lambda_regs = sorted([0.2, 2., 20., 90.])
+    lambda_regs = sorted([90.])
     ann_vars    = list()
     lambda_strs = list()
     for lambda_reg_ in lambda_regs:
@@ -87,7 +86,6 @@ def main (args):
     uboost_eff = 92
     uboost_ur  = 0.1
     uboost_urs = sorted([0., 0.01, 0.1, 0.3])
-    #uboost_urs = sorted([0., 0.1])
     uboost_var  =  'uBoost(#alpha={:.2f})'.format(uboost_ur)
     uboost_vars = ['uBoost(#alpha={:.2f})'.format(ur) for ur in uboost_urs]
     uboost_pattern = 'uboost_05TotStat_ur_{{:4.2f}}_te_{:.0f}_WTopnote_hypsel_500est'.format(uboost_eff)
@@ -153,9 +151,7 @@ def main (args):
                 pass
 
             # Remove `Adaboost` from scan list
-            if uboost_vars[0][1] == 0:
-                uboost_vars.pop(0)
-                pass
+            uboost_vars.pop(0)
 
             print "== Done loading Ababoost/uBoost models"
             pass
