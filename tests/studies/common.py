@@ -204,6 +204,7 @@ def standardise (name):
     """Method to standardise a given filename, and remove special characters."""
     return name.lower() \
            .replace('#', '') \
+           .replace('minus', '') \
            .replace(',', '__') \
            .replace('.', 'p') \
            .replace('(', '__') \
