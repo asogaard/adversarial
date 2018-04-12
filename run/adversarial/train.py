@@ -314,12 +314,12 @@ def main (args):
 
     # Combined adversarial fit, cross-validation
     # --------------------------------------------------------------------------
-    """ @TEMP
     with Profile("Combined adversarial fit, cross-validation"):
         # @TODO:
         # - Checkpointing
 
         # Define variables
+        results  = []  # Holding optimisation metrics
         basename = 'combined_lambda{}'.format(lambda_str)
         basedir  = 'models/adversarial/combined/crossval/'
 
@@ -352,25 +352,14 @@ def main (args):
                     parallelised = parallelise_model(combined, args)
 
                     # Prepare arrays
-                    # @TODO:
-                    # - Properly handle non-reweighted case
-                    W2_train      = np.multiply(data[weight_var].values[train],      1. - data['signal'].values[train])
-                    W2_validation = np.multiply(data[weight_var].values[validation], 1. - data['signal'].values[validation])
-                    W2_train      /= np.mean(W2_train)       # @TEMP
-                    W2_validation /= np.mean(W2_validation)  # @TEMP
-                    #### W2_train      *= 2.  # @TEMP
-                    #### W2_validation *= 2.  # @TEMP
-
                     X = [data[features].values[train], decorrelation[train]]
-                    Y = [data['signal'].values[train], np.ones_like(data['signal'].values[train]).astype(K.floatx())]
+                    Y = [data['signal'].values[train], np.ones_like(data['signal'].values[train])]
                     W = [data['weight_clf'].values[train], data['weight_adv'].values[train]]
                     validation_data = (
                         [data[features].values[validation], decorrelation[validation]],
-                        [data['signal'].values[validation], np.ones_like(data['signal'].values[validation]).astype(K.floatx())],
+                        [data['signal'].values[validation], np.ones_like(data['signal'].values[validation])],
                         [data['weight_clf'].values[validation], data['weight_adv'].values[validation]]
                     )
-                    #W = [data['weight'].values, np.multiply(data['weight_flatness'].values, 1. - data['signal'].values)]
-                    #W = [data['weight'].values, np.multiply(data['weight'].values, 1. - data['signal'].values)]
 
                     # Compile model for pre-training
                     classifier.trainable = False
@@ -380,7 +369,6 @@ def main (args):
                     log.info("Computing initial loss")
                     X_val, Y_val, W_val = validation_data
                     eval_opts = dict(batch_size=cfg['combined']['fit']['batch_size'], verbose=0)
-                    K.set_learning_phase(1)  # Manually set to training phase, for consistent comparison
                     initial_losses = [parallelised.evaluate(X,     Y,     sample_weight=W,     **eval_opts),
                                       parallelised.evaluate(X_val, Y_val, sample_weight=W_val, **eval_opts)]
 
@@ -398,11 +386,6 @@ def main (args):
                     log.info("Actual training")
                     ret = parallelised.fit(X, Y, sample_weight=W, validation_data=validation_data, **cfg['combined']['fit'])
 
-                    # Compute final losses (check) @TEMP
-                    log.info("Computing final loss")
-                    final_losses = [parallelised.evaluate(X,     Y,     sample_weight=W,     **eval_opts),
-                                    parallelised.evaluate(X_val, Y_val, sample_weight=W_val, **eval_opts)]
-
                     # Prepend initial losses
                     for metric, loss_train, loss_val in zip(parallelised.metrics_names, *initial_losses):
                         ret_pretrain.history[metric]         .insert(0, loss_train)
@@ -414,19 +397,23 @@ def main (args):
                         ret.history['val_' + metric] = ret_pretrain.history['val_' + metric] + ret.history['val_' + metric]
                         pass
 
-                    #### for metric, loss_train, loss_val in zip(parallelised.metrics_names, *final_losses):
-                    ####     ret.history[metric]         .append(loss_train)
-                    ####     ret.history['val_' + metric].append(loss_val)
-                    ####     pass
-
                     # Save combined model and training history to file, both in unique
                     # output directory and in the directory for pre-trained classifiers.
                     save([args.output, basedir], name, combined, ret.history)
+
+                    # Add `ANN` variable
+                    add_nn(data, classifier, 'ANN')
+
+                    # Compute optimisation metric
+                    rej, jsd = metrics(data.iloc[validation], 'ANN')
+                    print "Background rejection: {}".format(rej)
+                    print "1/JSD:                {}".format(jsd)
+                    results.append(rej + jsd)
                     pass
                 pass
             pass
         pass
-        """
+
 
     # Early stopping in case of adversarial network
     # --------------------------------------------------------------------------
@@ -437,11 +424,9 @@ def main (args):
             kill(tensorboard_pid, "TensorBoard")
             pass
 
-        # @TODO:
-        # - Decide on proper metric!
-        #   - clf_loss - lambda * <JSD( pass(m) || fail(m) )>?
-        #   - (rej + lambda * jsd)/(1 + lambda)
-        return None
+        # Return optimisation metric: - (rej + 1/jsd)
+        print "rej + 1/jsd: {} ± {}".format(np.mean(results), np.std(results))
+        return - np.mean(results)
 
 
     # Combined adversarial fit, full
@@ -487,9 +472,8 @@ def main (args):
 
             # Prepare arrays
             X = [data[features].values, decorrelation]
-            Y = [data['signal'].values.astype(K.floatx()), np.ones_like(data['signal'].values).astype(K.floatx())]
+            Y = [data['signal'].values, np.ones_like(data['signal'].values)]
             W = [data['weight_clf'].values, data['weight_adv'].values]
-
 
             # Compile model for pre-training
             classifier.trainable = False
@@ -512,7 +496,6 @@ def main (args):
             # Prepend initial losses
             for metric in parallelised.metrics_names:
                 ret.history[metric]          = ret_pretrain.history[metric]          + ret.history[metric]
-                ret.history['val_' + metric] = ret_pretrain.history['val_' + metric] + ret.history['val_' + metric]
                 pass
 
             # Save combined model and training history to file, both in unique
