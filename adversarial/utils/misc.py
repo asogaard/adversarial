@@ -40,7 +40,7 @@ def latex (variable_name, ROOT=True):
     name = name.replace('ddt', '^{DDT}')
     name = name.replace('css', '^{CSS}')
     name = re.sub('\_([0-9]+)$', '^{(\\1)}', name)
-    name = re.sub('-knn(.*)$', '^{kNN\\1}', name)
+    name = re.sub('-k(.*)nn(.*)$', '^{#it{k}\\1NN\\2}', name)
 
     # ML taggers
     if 'boost' in name or re.search('nn$', name) or re.search('^nn', name) or 'ann' in name:
