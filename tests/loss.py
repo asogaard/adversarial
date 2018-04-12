@@ -19,7 +19,7 @@ import root_numpy
 import matplotlib.pyplot as plt
 
 # Project import(s)
-from adversarial.utils import parse_args, initialise, mkdir
+from adversarial.utils import parse_args, initialise, mkdir, load_data, get_decorrelation_variables
 from adversarial.layers import PosteriorLayer
 from adversarial.profile import profile, Profile
 from adversarial.constants import *
@@ -42,11 +42,16 @@ def main (args):
     # Perform classifier loss study
     plot_classifier_training_loss(num_folds)
 
+    # Compute entropy of decorrelation variable posterior
+    data, _, _ = load_data(args.input + 'data.h5', train=True, background=True)
+    decorrelation = get_decorrelation_variables(data)
+    H_prior = entropy(decorrelation, weights=data['weight_train'])
+    print "Entropy of prior: {}".format(H_prior)
+    
     # Perform adversarial loss study
     basedir='models/adversarial/combined/full/'
-    H_normal = -0.34
-    for lambda_reg in [10.]:#3, 10, 30, 100]:
-        plot_adversarial_training_loss(lambda_reg, None, 20, H_normal, basedir=basedir)
+    for lambda_reg in [10.]:
+        plot_adversarial_training_loss(lambda_reg, None, 20, H_prior, basedir=basedir)
         pass
 
     return 0
@@ -226,7 +231,6 @@ def plot_adversarial_training_loss (lambda_reg, num_folds, pretrain_epochs, H_pr
                 c.pads()[igrp].hist(hist, fillcolor=0,     fillstyle=0,         linecolor=colour, linestyle=ityp + 1, linewidth=3,            option='HISTL')
             except TypeError: pass  # No validation
             
-            
             if igrp == 0:
                 categories += [('Training' if typ == 'train' else 'Validation',
                                 {'linestyle': ityp + 1, 'linewidth': 3,
@@ -239,6 +243,7 @@ def plot_adversarial_training_loss (lambda_reg, num_folds, pretrain_epochs, H_pr
     # Formatting pads
     margin = 0.2
     ymins, ymaxs = list(), list()
+    clf_opt_val = None
     for ipad, pad in enumerate(c.pads()):
         tpad = pad._bare()  # ROOT.TPad
         f = ipad / float(len(c.pads()) - 1)
@@ -250,38 +255,23 @@ def plot_adversarial_training_loss (lambda_reg, num_folds, pretrain_epochs, H_pr
             pad._xaxis().SetLabelOffset(9999.)
             pad._xaxis().SetTitleOffset(9999.)
         else:
-            pad._xaxis().SetTitleOffset(3.5)
+            pad._xaxis().SetTitleOffset(4.0)
             pass
-
-        def get_max (h):
-            ymax = - np.inf
-            for ibin in range(h.GetXaxis().GetNbins()):
-                y = h.GetBinContent(ibin + 1)  # + h.GetBinError(ibin + 1)
-                if y == 0: continue
-                ymax = max(ymax, y)
-                pass
-            return ymax
-
-        def get_min (h):
-            ymin = np.inf
-            for ibin in range(h.GetXaxis().GetNbins()):
-                y = h.GetBinContent(ibin + 1)  # - h.GetBinError(ibin + 1)
-                if y == 0: continue
-                ymin = min(ymin, y)
-                pass
-            return ymin
-
 
         ymin, ymax = list(), list()
         for hist in pad._primitives:
-            if not isinstance(hist, ROOT.TGraph):
+            if not isinstance(hist, ROOT.TGraph):                
                 ymin.append(get_min(hist))
                 ymax.append(get_max(hist))
                 pass
             pass
 
-        ymin = min(ymin)
-        ymax = max(ymax)
+        # Get reference-line value 
+        clf_opt_val = clf_opt_val or c.pads()[0]._primitives[1].GetBinContent(1)
+        ref = clf_opt_val if ipad == 0 else (H_prior if ipad == 1 else clf_opt_val - lambda_reg * H_prior)
+
+        ymin = min(ymin + [ref])
+        ymax = max(ymax + [ref])
 
         ydiff = ymax - ymin
         ymin -= ydiff * 0.2
@@ -314,8 +304,6 @@ def plot_adversarial_training_loss (lambda_reg, num_folds, pretrain_epochs, H_pr
         pass
 
     # Horizontal lines
-    clf_opt_val = c.pads()[0]._primitives[1].GetBinContent(1)
-    clf_opt_err = c.pads()[0]._primitives[1].GetBinError  (1)
     c.pads()[0].yline(clf_opt_val)
     if H_prior is not None:
         c.pads()[1].yline(H_prior)
@@ -345,7 +333,7 @@ def plot_adversarial_training_loss (lambda_reg, num_folds, pretrain_epochs, H_pr
 
     c.pads()[1].text(["#sqrt{s} = 13 TeV",
                       "Baseline selection",
-                      "Adversarial training (#lambda=%s)" % (lambda_str.replace('p', '.'))
+                      "Adversarial training (#lambda = %s)" % (lambda_str.replace('p', '.'))
                       ], ATLAS=False, ymax=0.70, xmin=0.35)
     c.pads()[0].legend(xmin=0.60, ymax=0.70, categories=categories)
 
@@ -353,6 +341,34 @@ def plot_adversarial_training_loss (lambda_reg, num_folds, pretrain_epochs, H_pr
     mkdir('figures/')
     c.save('figures/loss_adversarial_lambda{}_{}.pdf'.format(lambda_str, 'full' if num_folds is None else 'cv'))
     return
+
+
+def get_nonzero_bin_contents (h):
+    """
+    Return list of non-zero bin contents of histogram `h`.
+    """
+    return filter(lambda x:x, map(h.GetBinContent, range(1, h.GetXaxis().GetNbins() + 1)))
+
+
+def get_max (h):
+    """
+    Return maximal non-zero bin content of histogram `h`.
+    """
+    try:
+        return max(get_nonzero_bin_contents(h))
+    except ValueError:  # No non-zero bins
+        return - np.inf
+
+
+def get_min (h):
+    """
+    Return minimal non-zero bin content of histogram `h`.
+    """
+    try:
+        return min(get_nonzero_bin_contents(h))
+    except ValueError:  # No non-zero bins
+        return + np.inf
+    
 
 
 def entropy (data, num_bins=None, weights=None):
