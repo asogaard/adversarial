@@ -33,278 +33,114 @@ import rootplotting as rp
 @profile
 def main (args):
 
-    # Initialising
-    # --------------------------------------------------------------------------
+    # Initialise
     args, cfg = initialise(args)
 
-
     # Common definitions
-    # --------------------------------------------------------------------------
-    experiment  = 'classifier'
     num_folds   = 3
-    lambda_reg  = 0.1 # 10
 
-
-    # Perform classifier CV study
-    # --------------------------------------------------------------------------
-    paths = sorted(glob.glob('models/adversarial/classifier/crossval/history__crossval_{}__*of{}.json'.format(experiment, num_folds)))
-
-    if len(paths) == 0:
-        print "No models found for classifier CV study."
-    else:
-        with Profile("Study: Classifier CV loss"):
-
-            # Read losses from files
-            losses = {'train': list(), 'val': list()}
-            for path in paths:
-                with open(path, 'r') as f:
-                    d = json.load(f)
-                    pass
-
-                loss = np.array(d['val_loss'])
-                losses['val'].append(loss)
-                loss = np.array(d['loss'])
-                losses['train'].append(loss)
-                pass
-
-            # Define variable(s)
-            bins     = np.arange(len(loss))
-            histbins = np.arange(len(loss) + 1) + 0.5
-            
-            # Canvas
-            c = rp.canvas(batch=True)
-
-            # Plots
-            categories = list()
-
-            # -- Validation
-            loss_mean = np.mean(losses['val'], axis=0)
-            loss_std  = np.std (losses['val'], axis=0)
-            hist = ROOT.TH1F('val_loss', "", len(histbins) - 1, histbins)
-            for idx in range(len(loss_mean)):
-                hist.SetBinContent(idx + 1, loss_mean[idx])
-                hist.SetBinError  (idx + 1, loss_std [idx])
-                pass
-
-            c.hist([0], bins=[0, max(bins)], linewidth=0, linestyle=0)  # Force correct x-axis
-            c.hist(hist, fillcolor=rp.colours[5], alpha=0.3, option='LE3')
-            c.hist(hist, linecolor=rp.colours[5], linewidth=3, option='HISTL')
-
-            categories += [('Validation',  # (CV avg. #pm RMS)',
-                            {'linestyle': 1, 'linewidth': 3,
-                             'linecolor': rp.colours[5], 'fillcolor': rp.colours[5],
-                             'alpha': 0.3,  'option': 'FL'})]
-
-            # -- Training
-            loss_mean = np.mean(losses['train'], axis=0)
-            loss_std  = np.std (losses['train'], axis=0)
-            hist = ROOT.TH1F('loss', "", len(histbins) - 1, histbins)
-            for idx in range(len(loss_mean)):
-                hist.SetBinContent(idx + 1, loss_mean[idx])
-                hist.SetBinError  (idx + 1, loss_std [idx])
-                pass
-
-            c.hist(hist, fillcolor=rp.colours[1], alpha=0.3, option='LE3')
-            c.hist(hist, linecolor=rp.colours[1], linewidth=3, linestyle=2, option='HISTL')
-
-            categories += [('Training',  #    (CV avg. #pm RMS)',
-                            {'linestyle': 2, 'linewidth': 3,
-                             'linecolor': rp.colours[1], 'fillcolor': rp.colours[1],
-                             'alpha': 0.3,  'option': 'FL'})]
-
-            # Decorations
-            c.pads()[0]._yaxis().SetNdivisions(505)
-            c.xlabel("Training epoch")
-            c.ylabel("Cross-validation classifier loss, L_{clf}")
-            c.xlim(0, max(bins))
-            c.ylim(0.3, 0.5)
-            c.legend(categories=categories, width=0.25)  # ..., xmin=0.475
-            c.text(TEXT + ["#it{W} jet tagging", "Neural network (NN) classifier"],
-                   qualifier=QUALIFIER)
-            # Save
-            mkdir('figures/')
-            c.save('figures/loss_{}.pdf'.format(experiment))
-            pass
-        pass
-
-
-    # Compute entropy if decorrelation prior
-    # --------------------------------------------------------------------------
-
-
-    """
-    # Computing differential entropy of distribution
-    from adversarial.new_utils import load_data
-    data, features, _ = load_data('data/data.h5')
-
-    print "signal, background = {}, {}".format(np.sum(data['signal'] == 1), np.sum(data['signal'] == 0))
-    data = data[data['train']  == 1]  # @TEMP
-    data = data[data['signal'] == 0]
-
-    from run.reweight.common import get_input as reweighter_input
-    from run.reweight.common import Scenario as ReweightedScenario
-    decorrelation, weight_decorrelation = reweighter_input(data, ReweightedScenario.FLATNESS)
-
-    # Flatness reweighting
-    import gzip, pickle
-    from run.reweight.common import Scenario, get_input
-
-    with gzip.open('models/reweight/reweighter_flatness.pkl.gz', 'r') as f:
-        reweighter = pickle.load(f)
-        pass
-
-    weight_flatness  = reweighter.predict_weights(decorrelation, original_weight=weight_decorrelation)
-    weight_flatness *= np.sum(data['weight']) / np.sum(weight_flatness)
-
-    weight_decorrelation /= weight_decorrelation.mean()  # Normalise to <w> = 1
-
-    # Plot priors
-    xmin, xmax = decorrelation.min(), decorrelation.max()
-    nbins = 100
-    bins = np.linspace(xmin, xmax, nbins + 1, endpoint=True)
-
-
-    c = rp.canvas(batch=True)
-    hist_normal   = c.hist(decorrelation[:,0], bins=bins, weights=weight_decorrelation, display=False)
-    hist_flatness = c.hist(decorrelation[:,0], bins=bins, weights=weight_flatness,      display=False)
-
-    # -- Normalise
-    int_normal   = float(hist_normal  .Integral())
-    int_flatness = float(hist_flatness.Integral())
-    for ibin in range(1, nbins + 1):
-        bin_width = float(hist_normal.GetBinWidth(ibin))
-        hist_normal  .SetBinContent(ibin, hist_normal  .GetBinContent(ibin) / int_normal   / bin_width)
-        hist_flatness.SetBinContent(ibin, hist_flatness.GetBinContent(ibin) / int_flatness / bin_width)
-        pass
-
-    sigma = 0.15
-    bincentres = bins[:-1] + np.diff(bins) * 0.5
-    prior_gaus = 1. / np.sqrt(2. * np.pi * np.square(sigma)) * np.exp(- np.square(bincentres - .5) / 2. / np.square(sigma))
-
-    # Compute differential entropy of distributions
-    prior_normal   = root_numpy.hist2array(hist_normal)
-    prior_flatness = root_numpy.hist2array(hist_flatness)
-    H_normal   = - np.sum(prior_normal   * np.log(prior_normal)   * bin_width)
-    H_flatness = - np.sum(prior_flatness * np.log(prior_flatness) * bin_width)
-    H_gaus     = - np.sum(prior_gaus     * np.log(prior_gaus)     * bin_width)
-
-
-    # Robustly estimate the entropy of the prior
-    num_bins = 50
-    H_mean = entropy(decorrelation[:,0], num_bins=num_bins, weights=weight_decorrelation)
-    H_err_syst = max(abs(H_mean - entropy(decorrelation[:,0], num_bins=num_bins // 2, weights=weight_decorrelation)),
-                     abs(H_mean - entropy(decorrelation[:,0], num_bins=num_bins *  2, weights=weight_decorrelation)))
-    H_bootstrap = list()
-    N = decorrelation.shape[0]
-    for _ in range(10):
-        indices = np.random.choice(N,N,replace=True)
-        H_bootstrap.append(entropy(decorrelation[indices,0], num_bins=num_bins, weights=weight_decorrelation[indices]))
-        pass
-    H_err_stat = np.std(H_bootstrap)
-
-    print "Entropy of prior: {:7.4f} ± {:6.4f} (stat.) ± {:6.4f} (syst)".format(H_mean, H_err_stat, H_err_syst)
-
-    print "H_normal:   {:7.4f} ({:6.4f})"     .format(H_normal,   np.sum(prior_normal   * bin_width))
-    print "H_flatness: {:7.4f} ({:6.4f} / {:7.4f})".format(H_flatness, np.sum(prior_flatness * bin_width), np.log(xmax - xmin))
-    print "H_gaus:     {:7.4f} ({:6.4f} / {:7.4f})".format(H_gaus,     np.sum(prior_gaus     * bin_width), np.log(sigma * np.sqrt(2. * np.pi * np.e)))
-    #"""
-
-    #P_X_factorised = list()
-    #cols = [np.array(col) for col in X.T.tolist()]
-
-
-    #return
-
-    # ...
-
-    #print "X.shape:", P_X.shape
-
-
-    #H_XY =
-    #H_X =
-    #H_Y_given_X = H_XY - HX
-
-
-    """
-    # Posteriors
-    PL1 = PosteriorLayer(1,1)
-    PL2 = PosteriorLayer(2,1)
-
-    x = bincentres.flatten().reshape(-1,1)
-    ones = np.ones_like(x)
-
-    import tensorflow as tf
-    sess = tf.InteractiveSession()
-
-    coeffs =  ones
-    means  = [ones * 0.50]
-    widths = [ones * 10.]
-    input1 = [tf.constant(coeffs)] + \
-             [tf.constant(mean)  for mean  in means]  + \
-             [tf.constant(width) for width in widths] + \
-             [tf.constant(x)]
-
-    coeffs =  np.hstack((ones * 0.40, ones * 0.60))
-    means  = [np.hstack((ones * 0.25, ones * 0.65))]
-    widths = [np.hstack((ones * 0.10, ones * 0.25))]
-    input2 = [tf.constant(coeffs)] + \
-             [tf.constant(mean)  for mean  in means]  + \
-             [tf.constant(width) for width in widths] + \
-             [tf.constant(x)]
-
-    print "input1:", input1
-    print "input2:", input2
-
-    post1 = PL1.call(input1).eval()
-    post2 = PL2.call(input2).eval()
-
-    print "post1.shape:", post1.shape
-    """
-
-    """
-    num_trials = 10
-    num_sample = 10000
-    print "Sampling KL loss on prior ({} x {}).".format(num_trials, num_sample)
-    prior_losses = list()
-
-    for _ in range(num_trials):
-        sample = np.random.choice(bincentres, num_sample, p=prior_normal / np.sum(prior_normal))
-
-        indices = np.argmin(np.abs(bincentres - np.repeat(sample.reshape((-1,1)), len(bincentres), axis=1)), axis=1)
-        probs = prior_normal[indices]
-        prior_losses.append(np.mean(-np.log(probs)))
-        pass
-    print "Avg. loss for prior: {:7.4f} ± {:6.4f}".format(np.mean(prior_losses), np.std(prior_losses))
-
-
-    c.hist(hist_normal,   linecolor=rp.colours[0], label='normal')
-    c.hist(hist_flatness, linecolor=rp.colours[1], label='flatness')
-    c.hist(prior_gaus,    bins=bins,  linecolor=rp.colours[2], label='gauss')
-    #### c.hist(post1,         bins=bins,  linecolor=rp.colours[4], linestyle=2, label='post1', option='HISTL')
-    #### c.hist(post2,         bins=bins,  linecolor=rp.colours[3], linestyle=2, label='post2', option='HISTL')
-    c.legend()
-    c.save('figures/tmp_prior.pdf')
-    """
-
-
-    #return
-
+    # Perform classifier loss study
+    plot_classifier_training_loss(num_folds)
 
     # Perform adversarial loss study
-    # --------------------------------------------------------------------------
-    #### for lambda_reg in [0.1, 0.3, 1, 3, 10, 30, 100]:
-    ####     plot_adversarial_training_loss(lambda_reg, 5, 20, H_normal)
-    ####     pass
-
-    return 0  # @TEMP
-
     basedir='models/adversarial/combined/full/'
-    H_normal = -0.47
-    for lambda_reg in [3, 10, 30, 100]:
+    H_normal = -0.34
+    for lambda_reg in [10.]:#3, 10, 30, 100]:
         plot_adversarial_training_loss(lambda_reg, None, 20, H_normal, basedir=basedir)
         pass
 
     return 0
+
+
+@profile
+def plot_classifier_training_loss (num_folds, basedir='models/adversarial/classifier/crossval/'):
+    """
+    Plot the classifier training loss.
+    """
+
+    # Check(s)
+    if not basedir.endswith('/'):
+        basedir += '/'
+        pass
+
+    # Get paths to classifier training losses
+    paths = sorted(glob.glob(basedir + '/history__crossval_classifier__*of{}.json'.format(num_folds)))
+
+    if len(paths) == 0:
+        print "No models found for classifier CV study."
+        return
+    
+    # Read losses from files
+    losses = {'train': list(), 'val': list()}
+    for path in paths:
+        with open(path, 'r') as f:
+            d = json.load(f)
+            pass
+        
+        loss = np.array(d['val_loss'])
+        losses['val'].append(loss)
+        loss = np.array(d['loss'])
+        losses['train'].append(loss)
+        pass
+    
+    # Define variable(s)
+    bins     = np.arange(len(loss))
+    histbins = np.arange(len(loss) + 1) + 0.5
+    
+    # Canvas
+    c = rp.canvas(batch=True)
+    
+    # Plots
+    categories = list()
+    
+    # -- Validation
+    loss_mean = np.mean(losses['val'], axis=0)
+    loss_std  = np.std (losses['val'], axis=0)
+    hist = ROOT.TH1F('val_loss', "", len(histbins) - 1, histbins)
+    for idx in range(len(loss_mean)):
+        hist.SetBinContent(idx + 1, loss_mean[idx])
+        hist.SetBinError  (idx + 1, loss_std [idx])
+        pass
+    
+    c.hist([0], bins=[0, max(bins)], linewidth=0, linestyle=0)  # Force correct x-axis
+    c.hist(hist, fillcolor=rp.colours[4], alpha=0.3, option='LE3')
+    c.hist(hist, linecolor=rp.colours[4], linewidth=3, option='HISTL')
+    
+    categories += [('Validation',  # (CV avg. #pm RMS)',
+                    {'linestyle': 1, 'linewidth': 3,
+                     'linecolor': rp.colours[4], 'fillcolor': rp.colours[4],
+                     'alpha': 0.3,  'option': 'FL'})]
+    
+    # -- Training
+    loss_mean = np.mean(losses['train'], axis=0)
+    loss_std  = np.std (losses['train'], axis=0)
+    hist = ROOT.TH1F('loss', "", len(histbins) - 1, histbins)
+    for idx in range(len(loss_mean)):
+        hist.SetBinContent(idx + 1, loss_mean[idx])
+        hist.SetBinError  (idx + 1, loss_std [idx])
+        pass
+    
+    c.hist(hist, fillcolor=rp.colours[1], alpha=0.3, option='LE3')
+    c.hist(hist, linecolor=rp.colours[1], linewidth=3, linestyle=2, option='HISTL')
+    
+    categories += [('Training',  #    (CV avg. #pm RMS)',
+                    {'linestyle': 2, 'linewidth': 3,
+                     'linecolor': rp.colours[1], 'fillcolor': rp.colours[1],
+                     'alpha': 0.3,  'option': 'FL'})]
+    
+    # Decorations
+    c.pads()[0]._yaxis().SetNdivisions(505)
+    c.xlabel("Training epoch")
+    c.ylabel("Cross-validation classifier loss, L_{clf}")
+    c.xlim(0, max(bins))
+    c.ylim(0.3, 0.5)
+    c.legend(categories=categories, width=0.25)  # ..., xmin=0.475
+    c.text(TEXT + ["#it{W} jet tagging", "Neural network (NN) classifier"],
+           qualifier=QUALIFIER)
+    # Save
+    mkdir('figures/')
+    c.save('figures/loss_classifier.pdf')
+    return
 
 
 @profile
@@ -349,11 +185,13 @@ def plot_adversarial_training_loss (lambda_reg, num_folds, pretrain_epochs, H_pr
         losses['train_comb'].append(losses['train_clf'][-1] - lambda_reg * losses['train_adv'][-1])
 
         # Validation
-        loss = np.array(d['val_classifier_loss'])
-        losses['val_clf'].append(loss)
-        loss = np.array(d['val_adversary_loss'])
-        losses['val_adv'].append(loss)
-        losses['val_comb'].append(losses['val_clf'][-1] - lambda_reg * losses['val_adv'][-1])
+        try:
+            loss = np.array(d['val_classifier_loss'])
+            losses['val_clf'].append(loss)
+            loss = np.array(d['val_adversary_loss'])
+            losses['val_adv'].append(loss)
+            losses['val_comb'].append(losses['val_clf'][-1] - lambda_reg * losses['val_adv'][-1])
+        except KeyError: pass  # No validation
         pass
 
 
@@ -372,21 +210,23 @@ def plot_adversarial_training_loss (lambda_reg, num_folds, pretrain_epochs, H_pr
     for ityp, typ in enumerate(['val', 'train']):
         for igrp, grp in enumerate(['clf', 'adv', 'comb']):
             key = '{}_{}'.format(typ,grp)
-            colour = rp.colours[1 if typ == 'train' else 5]
+            colour = rp.colours[1 if typ == 'train' else 4]
 
             # Create histogram
-            loss_mean = np.mean(losses[key], axis=0)
-            loss_std  = np.std (losses[key], axis=0)
-            hist = ROOT.TH1F(key, "", len(histbins) - 1, histbins)
-            for ibin in range(len(loss_mean)):
-                hist.SetBinContent(ibin + 1, loss_mean[ibin])
-                hist.SetBinError  (ibin + 1, loss_std [ibin])
-                pass
-
-            c.pads()[igrp].hist(hist, fillcolor=colour, linestyle=ityp + 1, linewidth=0, alpha=0.3, option='LE3')
-            c.pads()[igrp].hist(hist, fillcolor=0,     fillstyle=0,         linecolor=colour, linestyle=ityp + 1, linewidth=3,            option='HISTL')
-
-
+            try:
+                loss_mean = np.mean(losses[key], axis=0)
+                loss_std  = np.std (losses[key], axis=0)
+                hist = ROOT.TH1F(key, "", len(histbins) - 1, histbins)
+                for ibin in range(len(loss_mean)):
+                    hist.SetBinContent(ibin + 1, loss_mean[ibin])
+                    hist.SetBinError  (ibin + 1, loss_std [ibin])
+                    pass
+                
+                c.pads()[igrp].hist(hist, fillcolor=colour, linestyle=ityp + 1, linewidth=0, alpha=0.3, option='LE3')
+                c.pads()[igrp].hist(hist, fillcolor=0,     fillstyle=0,         linecolor=colour, linestyle=ityp + 1, linewidth=3,            option='HISTL')
+            except TypeError: pass  # No validation
+            
+            
             if igrp == 0:
                 categories += [('Training' if typ == 'train' else 'Validation',
                                 {'linestyle': ityp + 1, 'linewidth': 3,
