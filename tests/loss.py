@@ -161,6 +161,7 @@ def plot_adversarial_training_loss (lambda_reg, num_folds, pretrain_epochs, H_pr
     if len(paths) == 0:
         return
 
+    # Store losses
     keys = ['train_comb', 'train_clf', 'train_adv', 'val_comb', 'val_clf', 'val_adv']
     losses = {key: list() for key in keys}
     for path in paths:
@@ -168,23 +169,21 @@ def plot_adversarial_training_loss (lambda_reg, num_folds, pretrain_epochs, H_pr
             d = json.load(f)
             pass
 
-        # Training
-        loss = np.array(d['classifier_loss'])
-        losses['train_clf'].append(loss)
-        loss = np.array(d['adversary_loss'])
-        losses['train_adv'].append(loss)
-        losses['train_comb'].append(losses['train_clf'][-1] - lambda_reg * losses['train_adv'][-1])
+        # Loop loss classes
+        for name, prefix in zip(['train', 'val'], ['', 'val_']):
+            try:
+                # Classifier
+                loss = np.array(d[prefix + 'classifier_loss'])
+                losses[name + '_clf'].append(loss)
 
-        # Validation
-        try:
-            loss = np.array(d['val_classifier_loss'])
-            losses['val_clf'].append(loss)
-            loss = np.array(d['val_adversary_loss'])
-            losses['val_adv'].append(loss)
-            losses['val_comb'].append(losses['val_clf'][-1] - lambda_reg * losses['val_adv'][-1])
-        except KeyError: pass  # No validation
-        pass
+                # Adversary
+                loss = np.array(d[prefix + 'adversary_loss'])
+                losses[name + '_adv'].append(loss)
 
+                # Combined
+                losses[name + '_comb'].append(losses[name + '_clf'][-1] - lambda_reg * losses[name + '_adv'][-1])
+            except KeyError: pass  # No validation
+            pass
 
     # Plot results
     c = rp.canvas(batch=True, num_pads=3, ratio=False, size=(600,800))
