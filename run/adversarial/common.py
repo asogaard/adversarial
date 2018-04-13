@@ -166,21 +166,15 @@ def initialise_tensorboard (args, cfg):
     """
 
     # Start TensorBoard instance
-    tensorboard_pid, tensorboard_dir = None, None
+    tensorboard_dir = None
     if args.tensorboard:
         assert not args.theano, "TensorBoard requires TensorFlow backend."
 
         tensorboard_dir = 'logs/tensorboard/{}/'.format('-'.join(re.split('-|:| ', str(datetime.datetime.now()).replace('.', 'T'))) if args.jobname == "" else args.jobname)
         log.info("Writing TensorBoard logs to '{}'".format(tensorboard_dir))
-        log.info("Starting TensorBoard instance in background.")
-        log.info("The output will be available at:")
-        log.info("  http://localhost:6006")
-        tensorboard_pid = subprocess.Popen(["tensorboard", "--logdir", tensorboard_dir]).pid
-        log.info("TensorBoard has PID {}.".format(tensorboard_pid))
-        pass
         pass
 
-    return tensorboard_pid, tensorboard_dir
+    return tensorboard_dir
 
 
 def print_env (args, cfg):

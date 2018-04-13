@@ -81,7 +81,7 @@ def main (args):
         initialise_config(args, cfg)
 
         # Setup TensorBoard, if applicable
-        tensorboard_pid, tensorboard_dir = initialise_tensorboard(args, cfg)
+        tensorboard_dir = initialise_tensorboard(args, cfg)
 
         # Print the current environment setup
         print_env(args, cfg)
@@ -142,7 +142,7 @@ def main (args):
         histories   = list()
 
         # Train or load classifiers
-        if args.train or args.train_classifier:
+        if args.optimise_classifier:  # args.train or args.train_classifier:
             log.info("Training cross-validation classifiers")
 
             # Loop `k` folds
@@ -234,11 +234,6 @@ def main (args):
     # --------------------------------------------------------------------------
     if args.optimise_classifier:
 
-        # Kill TensorBoard
-        if args.tensorboard:
-            kill(tensorboard_pid, "TensorBoard")
-            pass
-
         # Compute average validation loss
         val_avg = np.mean([hist['val_loss'] for hist in histories], axis=0)
         return np.min(val_avg)
@@ -328,7 +323,7 @@ def main (args):
         skf = StratifiedKFold(n_splits=args.folds).split(data[features].values,
                                                          data['signal'].values)
 
-        if args.train or args.train_adversarial:
+        if args.optimise_adversarial:  # args.train or args.train_adversarial:
             log.info("Training combined model cross-validation")
 
             # Loop `k` folds
@@ -418,11 +413,6 @@ def main (args):
     # Early stopping in case of adversarial network
     # --------------------------------------------------------------------------
     if args.optimise_adversarial:
-
-        # Kill TensorBoard
-        if args.tensorboard:
-            kill(tensorboard_pid, "TensorBoard")
-            pass
 
         # Return optimisation metric: - (rej + 1/jsd)
         print "rej + 1/jsd: {} ± {}".format(np.mean(results), np.std(results))
@@ -519,13 +509,6 @@ def main (args):
     # Saving adversarially trained classifier in lwtnn-friendly format.
     # --------------------------------------------------------------------------
     lwtnn_save(classifier, 'ann')
-
-
-    # Clean-up
-    # --------------------------------------------------------------------------
-    if args.tensorboard:
-        kill(tensorboard_pid, "TensorBoard")
-        pass
 
     return 0
 

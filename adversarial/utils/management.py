@@ -92,40 +92,6 @@ def mkdir (path):
     return
 
 
-def kill (pid, name=None):
-    """Query user to kill system process `pid`.
-
-    Arguments:
-        pid: ID of process to be killed assumed to be owned by user.
-        name: Name of process.
-    """
-
-    # Get username
-    username = subprocess.check_output(['whoami']).strip()
-
-    # Get processes belonging to user
-    lines = subprocess.check_output(["ps", "-u", username]).split('\n')[1:-1]
-
-    # Get PIDs of processes belonging to user
-    pids = [int(line.strip().split()[0]) for line in lines]
-
-    # Check PID is suitable for deletion
-    if int(pid) not in pids:
-        print "[WARN]  No process with PID {} belonging to user {} was found running. Exiting.".format(pid, username)
-        return
-
-    # Query user
-    print "[INFO]  {1} process ({0}) is running in background. Enter `q` to close it. Enter anything else to quit the program while leaving {1} running.".format(pid, name)
-    response = raw_input(">> ")
-    if response.strip() == 'q':
-        subprocess.call(["kill", str(pid)])
-    else:
-        print "[INFO]  {} process is left running. To manually kill it later, do:".format(name)
-        print "[INFO]    $ kill {}".format(pid)
-        pass
-    return
-
-
 def save (basedir, name, model, history=None):
     """Standardised method to save Keras models to file.
 
