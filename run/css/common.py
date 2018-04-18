@@ -12,11 +12,11 @@ import gzip
 import pickle
 
 # Project import(s)
+from adversarial.utils import loadclf, saveclf
 from adversarial.profile import profile
 
 
 # Common definition(s)
-
 SHAPEVAL_RANGE = np.linspace(1., 3., 3)
 OMEGA_RANGE = np.linspace(0.01, 1.4, 40)
 MASS_BINS = np.linspace(40., 310., 20)
@@ -25,72 +25,124 @@ TAU21BINS = np.linspace(0., 2., 501, endpoint=True)
 D2BINS = np.linspace(0., 5., 501, endpoint=True)
 
 # Adds the CSS variable to the data (assuming Ginv, F files exist)
-def AddCSS(jssVar, data):
-  data['%sCSS'%jssVar] = GetCSSSeries(jssVar, data)
+def add_css (jssVar, data):
+    data['%sCSS'%jssVar] = get_css_series(jssVar, data)
+    return
 
 # Applies CSS, given a value, and the convolution functions
-def ApplyCSS(jssVar, Ginv, F):
+def apply_css (jssVar, Ginv, F):
   newJSSVar = Ginv.Eval(F.Eval(jssVar))
   return newJSSVar
 
 
 @profile
 def fill_2d_profile (data, jssVar, jssBins, massVar, massBins):
-    """Fill ROOT.TProfile with the average `jssVar` as a function of rhoCSS."""
+    """
+    Fill ROOT.TProfile with the average `jssVar` as a function of rhoCSS.
+    """
     profile2d = ROOT.TH2F('profile2d_{}'.format(jssVar), "", len(massBins)-1, massBins, len(jssBins) - 1, jssBins)
 
     jssVarData = data[jssVar].as_matrix().flatten()
     massData = data[massVar].as_matrix().flatten()
-    weightData = data['weight'].as_matrix().flatten()
+    weightData = data['weight_test'].as_matrix().flatten()
 
     for cmass,ctau,cweight in zip(massData, jssVarData, weightData):
-      profile2d.Fill(cmass, ctau, cweight)
+        profile2d.Fill(cmass, ctau, cweight)
+        pass
 
     return profile2d
 
-def GetCSSSeries(jssVar, data):
-  massData = data['m'].as_matrix().flatten()
-  jssData = data[jssVar].as_matrix().flatten()
-  massbins = np.digitize(massData, MASS_BINS)-1
 
-  F_massbins = getFunction(jssVar, "F")
-  Ginv_massbins = getFunction(jssVar, "Ginv")
+def get_css_series (jssVar, data):
+    """
+    Perform the CSS transform on substructure variables `jssVar` in Pandas
+    Dataframe `data`.
 
-  newJSSVars = []
-  for jssVal, massBin in zip(jssData, massbins):
-    if massBin>= len(MASS_BINS):
-      massBin = len(MASS_BINS)
+    Arguments:
+        jssvar: Name of substructure variable to be transformed.
+        data: Pandas.Dataframe holding the substructure variable and jet mass.
 
-    newJSSVal = ApplyCSS(jssVal, Ginv_massbins[massBin], F_massbins[massBin])
-    newJSSVars.append(newJSSVal)
+    Returns:
+        Pandas.Series containing transformed variable.
+    """
 
-  jssSeries = pd.Series(newJSSVars, index=data.index)
-  return jssSeries
+    massData = data['m'].as_matrix().flatten()
+    jssData = data[jssVar].as_matrix().flatten()
+    massbins = np.digitize(massData, MASS_BINS)-1
+
+    F_massbins    = get_function(jssVar, "F")
+    Ginv_massbins = get_function(jssVar, "Ginv")
+
+    newJSSVars = []
+    for jssVal, massBin in zip(jssData, massbins):
+        if massBin>= len(MASS_BINS):
+            massBin = len(MASS_BINS)
+            pass
+
+        newJSSVal = apply_css(jssVal, Ginv_massbins[massBin], F_massbins[massBin])
+        newJSSVars.append(newJSSVal)
+        pass
+
+    jssSeries = pd.Series(newJSSVars, index=data.index)
+    return jssSeries
 
 
-#Returns the convolution of hist and shapefunc
-def getConvolution(hist, shapefunc):
-  hist_conv = hist.Clone("%s_conv"%hist.GetName())
-  for i in range(0,shapefunc.GetNbinsX()+1):
-    mysum = 0.
-    for j in range(0,shapefunc.GetNbinsX()+1):
-      if (i-j >= 0):
-        mysum+=hist.GetXaxis().GetXmax() / shapefunc.GetNbinsX() * hist.GetBinContent(i-j+1)*shapefunc.GetBinContent(j+1)
-    hist_conv.SetBinContent(i+1,mysum)
-  return hist_conv
+def get_cdf (h):
+    """
+    Returns the cumulative distribution of `hist`.
+    """
 
-# Gets the cumulative distribution of hist
-def getCDF(hist):
-  hist_CDF = hist.Clone("%s_CDF"%hist.GetName())
+    # Prepare array(s)
+    y = root_numpy.hist2array(h)
 
-  for i in range(1,hist.GetNbinsX()+1):
-    hist_CDF.SetBinContent(i, hist.Integral(1,i))
-  return hist_CDF
+    # Compute CDF
+    cdf = np.cumsum(y)
 
-def getFunction(jssVar, funcName):
-  css_func_all = []
-  for m in range(len(MASS_BINS)-1):
-    with gzip.open('models/css/css_%s_%s_%i.pkl.gz'%(jssVar,funcName,m), 'r') as func:
-      css_func_all.append(pickle.load(func))
+    # Convert to ROOT.TH1F
+    hcdf = h.Clone("%s_CDF" % h.GetName())
+    root_numpy.array2hist(cdf, hcdf)
 
-  return css_func_all
+    return hcdf
+
+
+def get_convolution (h, Fcss):
+    """
+    Returns the convolution of `h` and `Fcss`.
+    """
+
+    # Check(s)
+    N = Fcss.GetNbinsX()
+    assert N == h.GetNbinsX()
+
+    # Prepare array(s)
+    f1 = root_numpy.hist2array(h)
+    f2 = root_numpy.hist2array(Fcss)
+
+    # Perform convolution
+    conv = np.convolve(f1, f2)[:N]
+
+    # Convert to ROOT.TH1F
+    hconv = h.Clone("%s_conv" % h.GetName())
+    root_numpy.array2hist(conv, hconv)
+
+    return hconv
+
+
+def get_function (jssVar, funcName):
+    css_func_all = []
+    for m in range(len(MASS_BINS)-1):
+        clf = loadclf('models/css/css_%s_%s_%i.pkl.gz' % (jssVar, funcName, m))
+        css_func_all.append(clf)
+        pass
+
+    return css_func_all
+
+
+def normalise (p, density=False):
+    """
+    Normalise ROOT.TProfile `p` to p.d.f. in-place
+    """
+    if p.Integral():
+        p.Scale(1. / p.Integral('width' if density else ''))
+        pass
+    return
