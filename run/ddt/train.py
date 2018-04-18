@@ -30,13 +30,10 @@ def main (args):
     args, cfg = initialise(args)
 
     # Load data
-    data, features, _ = load_data(args.input + 'data.h5')
-    data = data[(data['train'] == 1) & (data['signal'] == 0)]
-
+    data, features, _ = load_data(args.input + 'data.h5', train=True, background=True)
 
     # Fill Tau21 profile
     profile = fill_profile(data, 'Tau21')
-
 
     # Fit profile
     fit = ROOT.TF1('fit', 'pol1', *FIT_RANGE)

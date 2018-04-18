@@ -4,21 +4,34 @@
 """Script for testing DDT transform."""
 
 # Basic import(s)
+import math
 from array import array
 
 # Scientific import(s)
 import numpy as np
+from sklearn.linear_model import LinearRegression
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 
 # Project import(s)
-from adversarial.utils import parse_args, initialise, load_data, mkdir, saveclf
+from adversarial.utils import parse_args, initialise, load_data, mkdir, saveclf, latex, garbage_collect
 from adversarial.profile import profile, Profile
 from adversarial.constants import *
 
 # Local import(s)
 from .common import *
+from tests.studies.common import TemporaryStyle
 
 # Custom import(s)
 import rootplotting as rp
+
+
+# @TEMP: For Rel. 20.7
+'''
+data = data[(data['m']  >  50) & (data['m']  <  300)]
+data = data[(data['pt'] > 200) & (data['pt'] < 2000)]
+data['rhoDDT'] = pd.Series(np.log(np.square(data['m'])/data['pt']/1.), index=data.index)
+data['weight_test'] = pd.Series(data['weight'], index=data.index)
+#'''
 
 
 # Main function definition
@@ -29,19 +42,24 @@ def main (args):
     args, cfg = initialise(args)
 
     # Load data
-    data, features, _ = load_data(args.input + 'data.h5')
-    data = data[(data['train'] == 0) & (data['signal'] == 0)]
-
-    # Load transform
-    ddt = loadclf('models/ddt/ddt.pkl.gz')
+    data, _, _ = load_data(args.input + 'data.h5', test=True)
 
     # Add Tau21DDT variable
     add_ddt(data, 'Tau21')
 
+    # Load transform
+    ddt = loadclf('models/ddt/ddt.pkl.gz')
+
+    # --------------------------------------------------------------------------
+    # 1D plot
+
+    # Define variable(s)
+    msk = data['signal'] == 0
+
     # Fill profiles
     profiles = dict()
     for var in ['Tau21', 'Tau21DDT']:
-        profiles[var] = fill_profile(data, var)
+        profiles[var] = fill_profile(data[msk], var)
         pass
 
     # Convert to graphs
@@ -62,15 +80,62 @@ def main (args):
         graphs[key] = ROOT.TGraphErrors(len(arr_x), arr_x, arr_y, arr_ex, arr_ey)
         pass
 
-    # Plot
-    plot(graphs, ddt, arr_x)
+    # Plot 1D transform
+    plot1D(graphs, ddt, arr_x)
 
+
+    # --------------------------------------------------------------------------
+    # 2D plot
+
+    # Create contours
+    binsx = np.linspace(1.5, 5.0, 40 + 1, endpoint=True)
+    binsy = np.linspace(0.0, 1.4, 40 + 1, endpoint=True)
+
+    contours = dict()
+    for sig in [0,1]:
+
+        # Get signal/background mask
+        msk = data['signal'] == sig
+
+        # Normalise jet weights
+        w  = data.loc[msk, 'weight_test'].values
+        w /= math.fsum(w)
+
+        # Prepare inputs
+        X = data.loc[msk, ['rhoDDT', 'Tau21']].values
+
+        # Fill, store contour
+        contour = ROOT.TH2F('2d_{}'.format(sig), "", len(binsx) - 1, binsx, len(binsy) - 1, binsy)
+        root_numpy.fill_hist(contour, X, weights=w)
+        contours[sig] = contour
+        pass
+
+    # Linear discriminant analysis (LDA)
+    lda = LinearDiscriminantAnalysis()
+    X = data[['rhoDDT', 'Tau21']].values
+    y = data['signal'].values
+    w = data['weight_test'].values
+    p = w / math.fsum(w)
+    indices = np.random.choice(y.shape[0], size=int(1E+06), p=p, replace=True)
+    lda.fit(X[indices], y[indices])  # Fit weighted sample
+
+    # -- Linear fit to decision boundary
+    xx, yy = np.meshgrid(binsx, binsy)
+    Z = lda.predict_proba(np.c_[xx.ravel(), yy.ravel()])
+    Z = Z[:, 1].reshape(xx.shape)
+    yboundary = binsy[np.argmin(np.abs(Z - 0.5), axis=0)]
+    xboundary = binsx
+    lda = LinearRegression()
+    lda.fit(xboundary.reshape(-1,1), yboundary)
+
+    # Plot 2D scatter
+    plot2D(data, ddt, lda, contours, binsx, binsy)
     return
 
 
-def plot (*argv):
+def plot1D (*argv):
     """
-    Method for delegating plotting.
+    Method for delegating 1D plotting.
     """
 
     # Unpack arguments
@@ -89,7 +154,7 @@ def plot (*argv):
     pad.SetTopMargin(0.10)
 
     # Profiles
-    c.graph(graphs['Tau21'],    label="Original, #tau_{21}",          linecolor=rp.colours[5], markercolor=rp.colours[5], markerstyle=24, legend_option='PE')
+    c.graph(graphs['Tau21'],    label="Original, #tau_{21}",          linecolor=rp.colours[4], markercolor=rp.colours[4], markerstyle=24, legend_option='PE')
     c.graph(graphs['Tau21DDT'], label="Transformed, #tau_{21}^{DDT}", linecolor=rp.colours[1], markercolor=rp.colours[1], markerstyle=20, legend_option='PE')
 
     # Fit
@@ -115,6 +180,56 @@ def plot (*argv):
     # Save
     mkdir('figures/ddt/')
     c.save('figures/ddt/ddt.pdf')
+    return
+
+
+def plot2D (*argv):
+    """
+    Method for delegating 2D plotting.
+    """
+
+    # Unpack arguments
+    data, ddt, lda, contours, binsx, binsy = argv
+
+    with TemporaryStyle() as style:
+
+        # Style
+        style.SetNumberContours(10)
+
+        # Canvas
+        c = rp.canvas(batch=True)
+
+        # Axes
+        c.hist([binsy[0]], bins=[binsx[0], binsx[-1]], linestyle=0, linewidth=0)
+
+        # Plotting contours
+        for sig in [0,1]:
+            c.hist2d(contours[sig], linecolor=rp.colours[1 + 3 * sig], label="Signal" if sig else "Background", option='CONT3', legend_option='L')
+            pass
+
+        # Linear fit
+        x1, x2 = 1.5, 5.0
+        intercept, coef = ddt.intercept_ + ddt.offset_, ddt.coef_
+        y1 = intercept + x1 * coef
+        y2 = intercept + x2 * coef
+        c.plot([y1,y2], bins=[x1,x2], color=rp.colours[-1], label='DDT transform fit', linewidth=1, linestyle=1, option='L')
+
+        # LDA decision boundary
+        y1 = lda.intercept_ + x1 * lda.coef_
+        y2 = lda.intercept_ + x2 * lda.coef_
+        c.plot([y1,y2], bins=[x1,x2],  label='LDA boundary', linewidth=1, linestyle=2, option='L')
+
+        # Decorations
+        c.text(["#sqrt{s} = 13 TeV"], qualifier=QUALIFIER)
+        c.legend()
+        c.ylim(binsy[0], binsy[-1])
+        c.xlabel("Large-#it{R} jet " + latex('rhoDDT', ROOT=True))
+        c.ylabel("Large-#it{R} jet " + latex('Tau21',  ROOT=True))
+
+        # Save
+        mkdir('figures/ddt')
+        c.save('figures/ddt/ddt_2d.pdf')
+        pass
     return
 
 
