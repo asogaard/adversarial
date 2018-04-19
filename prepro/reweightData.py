@@ -115,18 +115,8 @@ def main ():
             reweighter = BinsReweighter(n_bins=100, n_neighs=1)
             reweighter.fit(original, target=target)
             
-
             # Predict new, flat-pT weight
-            original = data['pt'][msk]
             data['weight_train'][msk] = reweighter.predict_weights(original)
-            data['weight_train'][msk] /= data['weight_train'][msk].mean()
-
-            print "data['weight_train'][msk] | min, 1-perc., mean, 99-perc., max: {}, {}, {}, {}, {}".format(
-                data['weight_train'][msk].min(),
-                np.percentile(data['weight_train'][msk], 1), 
-                data['weight_train'][msk].mean(), 
-                np.percentile(data['weight_train'][msk], 99), 
-                data['weight_train'][msk].max())
 
 
             # (Flat-pT, physical-m) reweighted
@@ -149,13 +139,16 @@ def main ():
             reweighter.fit(original, target=target)
 
             # Compute new weights
-            data['weight_adv'][msk]  = reweighter.predict_weights(original)
-            data['weight_adv'][msk] /= data['weight_adv'][msk].mean()
+            data['weight_adv'][msk] = reweighter.predict_weights(original)
 
 
-            # Physical testing weights
+            # Standardise weight variables
             # ------------------------------------------------------------------
-            data['weight_test'][msk] /= data['weight_test'][msk].mean()
+            weight_variables = filter(lambda name: name.startswith('weight_'), data.dype.names)
+            for var in weight_variables:
+                print "  Ensuring unit mean for {}".format(var)
+                data[var][msk] /= data[var][msk].mean()
+                pass
 
             pass
         pass
@@ -168,7 +161,7 @@ def main ():
         num_bkg = (~msk_sig).sum()
         num_train = int(args.train * 1E+06)
         print "Found {:.1e} signal and {:.1e} background samples.".format(num_sig, num_bkg)
-        print "Using {:.1e} samples for training, leaving {:.1e} signal and {:.1e} background samples for testing.".format(num_train, num_sig - num_train, num_bkg - num_train)
+        print "Using {:.1e} samples for training for each class, leaving {:.1e} signal and {:.1e} background samples for testing.".format(num_train, num_sig - num_train, num_bkg - num_train)
 
         idx_sig = np.where( msk_sig)[0]
         idx_bkg = np.where(~msk_sig)[0]
