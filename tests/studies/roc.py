@@ -74,7 +74,7 @@ def roc (data, args, features, masscut=False):
     c = plot(args, data, features, ROCs, AUCs, masscut)
 
     # Output
-    path = 'figures/roc.pdf'
+    path = 'figures/roc{}.pdf'.format('_masscut' if masscut else '')
 
     return c, args, path
 
@@ -92,24 +92,26 @@ def plot (*argv):
 
     # Plots
     # -- Random guessing
-    bins = np.linspace(0, 1., 100 + 1, endpoint=True)
-    bins = bins[1:-1]
-    c.graph(np.power(bins, -1.), bins=bins, linecolor=ROOT.kGray + 2, linewidth=1, option='AL')
-
-    # -- AUCs
-    categories = list()
-    for feat in features:
-         line = "#scale[0.6]{#color[13]{AUC: %.3f}}" % AUCs[feat]
-         categories += [(line, {'linestyle': 0, 'fillstyle': 0, 'markerstyle': 0, 'option': ''})]
-         pass
-    c.legend(categories=categories, xmin=0.80, width=0.04)
+    bins = np.linspace(0.2, 1., 100 + 1, endpoint=True)
+    bins = np.array([0.2, 0.2 + 0.001] + list(bins[1:]))
+    edges = bins[1:-1]
+    centres = edges[:-1] + 0.5 * np.diff(edges)
+    c.hist(np.power(centres, -1.), bins=edges, linecolor=ROOT.kGray + 2, fillcolor=ROOT.kBlack, alpha=0.05, linewidth=1, option='HISTC')
 
     # -- ROCs
-    for ifeat, feat in enumerate(features):
-        eff_sig, eff_bkg = ROCs[feat]
-        c.graph(np.power(eff_bkg, -1.), bins=eff_sig, linestyle=1 + (ifeat % 2), linecolor=rp.colours[(ifeat // 2) % len(rp.colours)], linewidth=2, label=latex(feat, ROOT=True), option='L')
+    for is_simple in [True, False]:
+
+        # Split the legend into simple- and MVA taggers
+        for ifeat, feat in filter(lambda t: is_simple == signal_low(t[1]), enumerate(features)):
+            eff_sig, eff_bkg = ROCs[feat]
+            c.graph(np.power(eff_bkg, -1.), bins=eff_sig, linestyle=1 + (ifeat % 2), linecolor=rp.colours[(ifeat // 2) % len(rp.colours)], linewidth=2, label=latex(feat, ROOT=True), option='L')
+            pass
+
+        # Draw class-specific legend
+        width = 0.18
+        c.legend(header=("Simple:" if is_simple else "MVA:"),
+                 width=width, xmin=0.54 + (width + 0.02) * (is_simple))
         pass
-    c.legend(xmin=0.58, width=0.22)
 
     # Decorations
     c.xlabel("Signal efficiency #varepsilon_{sig}")
