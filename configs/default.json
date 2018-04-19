@@ -2,20 +2,20 @@
     "classifier": {
       	"model": {
       	    "default": {
-            	"units":      128,
-            	"activation": "tanh",
+            	"units":      64,
+            	"activation": "relu",
             	"batchnorm":  true
       	    },
-      	    "architecture": 4
+      	    "architecture": 3
       	},
       	"fit": {
       	    "epochs":     100,
-      	    "batch_size": 8192,
+      	    "batch_size": 1024,
       	    "shuffle":    true
       	},
       	"compile" : {
       	    "loss":      "binary_crossentropy",
-      	    "lr":        1.0E-02,
+      	    "lr":        1.0E-01,
       	    "decay":     1.0E-02,
       	    "optimizer": "Adam"
       	}
@@ -23,10 +23,10 @@
     "adversary": {
       	"model": {
       	    "default": {
-            	"units":      32,
+            	"units":      64,
             	"activation": "relu"
       	    },
-      	    "architecture": 3,
+      	    "architecture": 4,
       	    "gmm_components": 5
       	},
       	"fit": {},
@@ -44,9 +44,9 @@
       	},
       	"compile": {
             "loss":         ["binary_crossentropy", null],
-      	    "loss_weights": [1.0E-08, 1.0E+00],
+      	    "loss_weights": [1.0E-06, 1.0E+00],
             "lr":           1.0E-02,
-            "decay":        1.0E-02,
+            "decay":        1.0E-04,
             "optimizer":    "Adam"
       	}
     }
