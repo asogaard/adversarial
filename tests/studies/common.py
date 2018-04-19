@@ -22,6 +22,7 @@ HISTSTYLE = {  # key = signal / passing
         'fillcolor': rp.colours[4],
         'linecolor': rp.colours[4],
         'fillstyle': 3354,
+        'alpha': 0.5,
         },
     False: {
         'fillcolor': rp.colours[1],

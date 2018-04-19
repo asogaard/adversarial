@@ -36,19 +36,17 @@ def robustness (data, args, features, var, bins, masscut=False, num_bootstrap=5)
 
     # Scan `var`
     for bin in zip(bins[:-1], bins[1:]):
+
         # Perform selection
         msk_bin  = (data[var] >= bin[0]) & (data[var] < bin[1])
-        #data_bin = data[msk_bin].copy()
-        #msk_bkg  = data_bin['signal'] == 0
         msk_bkg  = data['signal'] == 0
 
         # Compute weighted mean if x-axis variable
-        #meanx.append(wmean(data_bin.loc[msk_bkg, var], data_bin.loc[msk_bkg, 'weight_test']))
         meanx.append(wmean(data.loc[msk_bin & msk_bkg, var], data.loc[msk_bin & msk_bkg, 'weight_test']))
 
         # Compute bootstrapped metrics for all features
         for feat in features:
-            mean_std_rej, mean_std_jsd = bootstrap_metrics(data[msk_bin], feat, num_bootstrap=num_bootstrap)
+            mean_std_rej, mean_std_jsd = bootstrap_metrics(data[msk_bin], feat, num_bootstrap=num_bootstrap, masscut=masscut)
 
             # Store in output containers
             rejs[feat].append(mean_std_rej)
@@ -63,7 +61,7 @@ def robustness (data, args, features, var, bins, masscut=False, num_bootstrap=5)
     c = plot(data, args, features, bins, rejs, jsds, meanx, masscut, var)
 
     # Output
-    path = 'figures/robustness_{}.pdf'.format(var)
+    path = 'figures/robustness_{}{}.pdf'.format(var, '_masscut' if masscut else '')
 
     return c, args, path
 
