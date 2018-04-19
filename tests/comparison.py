@@ -55,18 +55,26 @@ def main (args):
     # Load data
     data, features, _ = load_data(args.input + 'data.h5', test=True)
 
+    #data = data[(data['m']  >  50) & (data['m']  <  300)]
+    #data = data[(data['pt'] > 200) & (data['pt'] < 2000)]
+    #data['rho']    = pd.Series(np.log(np.square(data['m'])/np.square(data['pt'])), index=data.index)
+    #data['rhoDDT'] = pd.Series(np.log(np.square(data['m'])/data['pt']/1.), index=data.index)
+
+    #data = data[(data['rhoDDT'] > 1.5) & (data['rhoDDT'] < 4.0)]  # @TEMP
+
+    #data['weight_test'] = pd.Series(data['weight'], index=data.index)
+    #data['train'] = pd.Series(np.zeros_like(data['weight'].values), index=data.index)
+
 
     # Common definitions
     # --------------------------------------------------------------------------
-    eps = np.finfo(float).eps
-    msk_mass = (data['m'] > 60.) & (data['m'] < 100.)  # W mass window
-    msk_sig  = data['signal'] == 1
+    # -- k-nearest neighbour
     kNN_eff = 19
     kNN_var = 'N2-k#minusNN'
 
     # -- Adversarial neural network (ANN) scan
     lambda_reg  = 10.
-    lambda_regs = sorted([10.])
+    lambda_regs = sorted([1., 10., 100., 1000.])
     ann_vars    = list()
     lambda_strs = list()
     for lambda_reg_ in lambda_regs:
@@ -83,18 +91,18 @@ def main (args):
     # -- uBoost scan
     uboost_eff = 92
     uboost_ur  = 0.1
-    uboost_urs = sorted([0., 0.01, 0.1, 0.3])
+    uboost_urs = sorted([0., 0.1])  # sorted([0., 0.01, 0.1, 0.3, 0.5, 1.0])
     uboost_var  =  'uBoost(#alpha={:.2f})'.format(uboost_ur)
     uboost_vars = ['uBoost(#alpha={:.2f})'.format(ur) for ur in uboost_urs]
-    uboost_pattern = 'uboost_05TotStat_ur_{{:4.2f}}_te_{:.0f}_WTopnote_hypsel_500est'.format(uboost_eff)
+    uboost_pattern = 'uboost_ur_{{:4.2f}}_te_{:.0f}'.format(uboost_eff)
 
-    # -- Tagger feature collection
+    # Tagger feature collection
     tagger_features = ['Tau21','Tau21DDT', 'N2', kNN_var, 'D2', 'D2CSS', 'NN', ann_var, 'Adaboost', uboost_var]
 
 
-    # Adding variables
+    # Add variables
     # --------------------------------------------------------------------------
-    with Profile("Adding variables"):
+    with Profile("Add variables"):
 
         # Tau21DDT
         from run.ddt.common import add_ddt
@@ -105,8 +113,8 @@ def main (args):
         add_knn(data, newfeat=kNN_var, path='models/knn/knn_{}_{}.pkl.gz'.format(kNN_basevar, kNN_eff))
 
         # D2-CSS
-        from run.css.common import AddCSS
-        AddCSS("D2", data)
+        from run.css.common import add_css
+        add_css("D2", data)
 
         # NN
         from run.adversarial.common import add_nn
@@ -147,24 +155,37 @@ def main (args):
         pass
 
 
-    # Studies
-    # --------------------------------------------------------------------------
+    # Perform performance studies
+    perform_studies (data, args, tagger_features, ann_vars, uboost_vars)
+
+    return 0
+
+
+def perform_studies (data, args, tagger_features, ann_vars, uboost_vars):
+    """
+    Method delegating performance studies.
+    """
+    masscuts = [False]  # [True, False]
 
     # Perform pile-up robustness study
     with Profile("Study: Robustness (pile-up)"):
         bins = [0, 5.5, 10.5, 15.5, 20.5, 25.5, 30.5]
-        studies.robustness(data, args, tagger_features, 'npv', bins)
+        for masscut in masscuts:
+            #studies.robustness(data, args, tagger_features, 'npv', bins, masscut=masscut)
+            pass
         pass
 
     # Perform pT robustness study
     with Profile("Study: Robustness (pT)"):
         bins = [200, 260, 330, 430, 560, 720, 930, 1200, 1550, 2000]
-        studies.robustness(data, args, tagger_features, 'pt', bins)
+        for masscut in masscuts:
+            studies.robustness(data, args, tagger_features, 'pt', bins, masscut=masscut)
+            pass
         pass
 
     # Perform jet mass distribution comparison study
     with Profile("Study: Jet mass comparison"):
-        for simple_features in [True, False]:
+        for simple_features in masscuts:
             studies.jetmasscomparison(data, args, tagger_features, simple_features)
             pass
         pass
@@ -174,10 +195,12 @@ def main (args):
         regex_nn = re.compile('\#lambda=[\d\.]+')
         regex_ub = re.compile('\#alpha=[\d\.]+')
 
-        scan_features = {'NN': map(lambda feat: (feat, regex_nn.search(feat).group(0)), ann_vars),
+        scan_features = {'NN':       map(lambda feat: (feat, regex_nn.search(feat).group(0)), ann_vars),
                          'Adaboost': map(lambda feat: (feat, regex_ub.search(feat).group(0)), uboost_vars)}
 
-        studies.summary(data, args, tagger_features, scan_features)
+        for masscut in masscuts:
+            studies.summary(data, args, tagger_features, scan_features, masscut=masscut)
+            pass
         pass
 
     # Perform distributions study
@@ -196,7 +219,9 @@ def main (args):
 
     # Perform ROC study
     with Profile("Study: ROC"):
-        studies.roc(data, args, tagger_features)
+        for masscut in masscuts:
+            studies.roc(data, args, tagger_features, masscut=masscut)
+            pass
         pass
 
     # Perform JSD study
@@ -211,7 +236,7 @@ def main (args):
             pass
         pass
 
-    return 0
+    return
 
 
 # Main function call
