@@ -90,17 +90,7 @@ def main (args):
 
     # Loading data
     # --------------------------------------------------------------------------
-    data, features, _ = load_data(args.input + 'data.h5')
-
-    for signal, name in zip([1, 0], ['signal', 'background']):
-        log.info("Found {:7.0f} training and {:7.0f} test samples for {}".format(
-            sum((data['signal'] == signal) & (data['train'] == 1)),
-            sum((data['signal'] == signal) & (data['train'] == 0)),
-            name
-        ))
-        pass
-
-    data = data[data['train'] == 1]
+    data, features, features_decorrelation = load_data(args.input + 'data.h5', train=True)
     num_features = len(features)
 
     # Regulsarisation parameter
@@ -110,15 +100,15 @@ def main (args):
 
     # Get standard-formatted decorrelation inputs
     decorrelation = get_decorrelation_variables(data)
-
+    aux_var = 'logpt'
+    
     # Specify common weights
     # -- Classifier
     weight_var = 'weight_train'
     data['weight_clf'] = pd.Series(data[weight_var].values, index=data.index)
 
     # -- Adversary
-    weight_var = 'weight_train'
-    data['weight_adv'] = pd.Series(np.multiply(data[weight_var].values, 1. - data['signal'].values), index=data.index)
+    data['weight_adv'] = pd.Series(np.multiply(data['weight_adv'].values,  1. - data['signal'].values), index=data.index)
 
 
     # Classifier-only fit, cross-validation
@@ -236,7 +226,8 @@ def main (args):
 
         # Compute average validation loss
         val_avg = np.mean([hist['val_loss'] for hist in histories], axis=0)
-        return np.min(val_avg)
+        val_std = np.std ([hist['val_loss'] for hist in histories], axis=0)
+        return val_avg[-1] + val_std[-1]
 
 
     # Classifier-only fit, full
@@ -307,6 +298,9 @@ def main (args):
     pretrain_epochs = 20  # @TODO: Make configurable
 
 
+    # @TODO: Make `train_{classifier,adverarial}` methods for used with _both_
+    #        cross-val.- and full trianing
+
     # Combined adversarial fit, cross-validation
     # --------------------------------------------------------------------------
     with Profile("Combined adversarial fit, cross-validation"):
@@ -337,9 +331,9 @@ def main (args):
                     classifier, _ = load('models/adversarial/classifier/full/', 'classifier')
 
                     # Set up adversary
-                    adversary = adversary_model(gmm_dimensions=decorrelation.shape[1],
+                    adversary = adversary_model(gmm_dimensions=len(DECORRELATION_VARIABLES),
                                                 **cfg['adversary']['model'])
-
+                    
                     # Set up combined, adversarial model
                     combined = combined_model(classifier, adversary, **cfg['combined']['model'])
 
@@ -347,15 +341,16 @@ def main (args):
                     parallelised = parallelise_model(combined, args)
 
                     # Prepare arrays
-                    X = [data[features].values[train], decorrelation[train]]
-                    Y = [data['signal'].values[train], np.ones_like(data['signal'].values[train])]
-                    W = [data['weight_clf'].values[train], data['weight_adv'].values[train]]
-                    validation_data = (
-                        [data[features].values[validation], decorrelation[validation]],
-                        [data['signal'].values[validation], np.ones_like(data['signal'].values[validation])],
-                        [data['weight_clf'].values[validation], data['weight_adv'].values[validation]]
-                    )
+                    X = [data[features]    .values[train]] + [data[aux_var].values[train], decorrelation[train]]
+                    Y = [data['signal']    .values[train]] + [np.ones_like(data['signal'].values[train])]
+                    W = [data['weight_clf'].values[train]] + [data['weight_adv'].values[train]]
 
+                    validation_data = (
+                        [data[features]    .values[validation]] + [data[aux_var].values[validation], decorrelation[validation]],
+                        [data['signal']    .values[validation]] + [np.ones_like(data['signal'].values[validation])],
+                        [data['weight_clf'].values[validation]] + [data['weight_adv'].values[validation]]
+                        )
+                        
                     # Compile model for pre-training
                     classifier.trainable = False
                     parallelised.compile(**cfg['combined']['compile'])
@@ -400,10 +395,16 @@ def main (args):
                     add_nn(data, classifier, 'ANN')
 
                     # Compute optimisation metric
-                    rej, jsd = metrics(data.iloc[validation], 'ANN')
-                    print "Background rejection: {}".format(rej)
-                    print "1/JSD:                {}".format(jsd)
-                    results.append(rej + jsd)
+                    try:
+                        rej, jsd = metrics(data.iloc[validation], 'ANN')
+                        print "Background rejection: {}".format(rej)
+                        print "1/JSD:                {}".format(jsd)
+                        if np.inf in [rej,jsd] or np.nan in [rej,jsd]:
+                            return 0
+                        results.append(rej + lambda_reg * jsd)
+                    except ValueError:
+                        print "Got a NaN. Returning 0"
+                        return 0
                     pass
                 pass
             pass
@@ -416,7 +417,7 @@ def main (args):
 
         # Return optimisation metric: - (rej + 1/jsd)
         print "rej + 1/jsd: {} ± {}".format(np.mean(results), np.std(results))
-        return - np.mean(results)
+        return - (np.mean(results) - np.std(results))
 
 
     # Combined adversarial fit, full
@@ -431,9 +432,9 @@ def main (args):
         classifier, _ = load('models/adversarial/classifier/full/', 'classifier')
 
         # Set up adversary
-        adversary = adversary_model(gmm_dimensions=decorrelation.shape[1],
+        adversary = adversary_model(gmm_dimensions=len(DECORRELATION_VARIABLES),
                                     **cfg['adversary']['model'])
-
+        
         # Save adversarial model diagram
         plot_model(adversary, to_file=args.output + 'model_adversary.png', show_shapes=True)
 
@@ -461,9 +462,9 @@ def main (args):
             parallelised.compile(**cfg['combined']['compile'])
 
             # Prepare arrays
-            X = [data[features].values, decorrelation]
-            Y = [data['signal'].values, np.ones_like(data['signal'].values)]
-            W = [data['weight_clf'].values, data['weight_adv'].values]
+            X = [data[features]    .values] + [data[aux_var].values, decorrelation]
+            Y = [data['signal']    .values] + [np.ones_like(data['signal'].values)]
+            W = [data['weight_clf'].values] + [data['weight_adv'].values]
 
             # Compile model for pre-training
             classifier.trainable = False
