@@ -82,9 +82,12 @@ def get_parser (**kwargs):
                  'max-processes': \
                      dict(action='store', type=int, default=5,
                           help='Maximum number of concurrent processes to use.'),
-                 'size': \
+                 'train': \
                      dict(action='store', type=int, required=True,
-                          help='Size of datasets in millions of events.')}
+                          help='Size of training datasets in millions of events.'),
+                 'test': \
+                     dict(action='store', type=int, required=True,
+                          help='Size of testing datasets in millions of events.')}
 
     # Validate
     kwargs = {k.replace('_','-'): v for (k,v) in kwargs.iteritems()}

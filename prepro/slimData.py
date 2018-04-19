@@ -123,6 +123,9 @@ class FileSlimmer (multiprocessing.Process):
 
         data = data[BRANCHES].copy()
 
+        # @FIXME: Filter out NaN N2's
+        data = data[~np.isnan(data['N2'])]
+
         # Add new, necessary fields
         data = append_fields(data, 'rho',    np.log(np.square(data['m']) / np.square(data['pt'])))
         data = append_fields(data, 'rhoDDT', np.log(np.square(data['m']) / data['pt'] / 1.))

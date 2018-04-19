@@ -18,6 +18,7 @@ import ROOT
 ROOT.PyConfig.IgnoreCommandLineOptions = True
 
 # Scientific import(s)
+import math
 import numpy as np
 from numpy.lib.recfunctions import append_fields
 from hep_ml.reweight import BinsReweighter
@@ -28,7 +29,7 @@ from adversarial.profile import Profile, profile
 from .common import load_hdf5, save_hdf5, get_parser, run_batched
 
 # Command-line arguments parser
-parser = get_parser(size=True, dir=True, max_processes=True)
+parser = get_parser(train=True, test=True, dir=True, max_processes=True)
 parser.description = "Re-weight HDF5 file to flat pT-spectrum."
 
 # Main function definition
@@ -61,7 +62,8 @@ def main ():
         # Concatenate data in sorted order, for reproducibility
         data = np.concatenate(zip(*sorted(parts, key=lambda t: t[0]))[1])
         pass
-
+    
+    print "Found {} samples.".format(data.shape[0])
 
     # Subsample
     with Profile("Subsample"):
@@ -74,9 +76,15 @@ def main ():
             other = np.array(~msk).astype(bool)
 
             # Subsample current category
-            idx = np.random.choice(np.where(msk)[0], int(2 * args.size * 1E+06), replace=False)
-            sample = np.zeros_like(msk).astype(bool)
-            sample[idx] = True
+            num_sample = int((args.train + args.test) * 1E+06)
+            if num_sample <= msk.sum():
+                idx = np.random.choice(np.where(msk)[0], num_sample, replace=False)
+                sample = np.zeros_like(msk).astype(bool)
+                sample[idx] = True
+            else:
+                print "[WARNING] Requested {:.1e} samples, but only {:.1e} are availabe in current mask. Using all available samples.".format(num_sample, msk.sum())
+                sample = np.ones_like(msk).astype(bool)
+                pass
 
             # Select subsample, and all samples from other categories
             data = data[sample | other]
@@ -89,12 +97,16 @@ def main ():
 
         # Add new data columns
         data = append_fields(data, 'weight_train', np.ones_like(data['weight_test']))
+        data = append_fields(data, 'weight_adv',   np.ones_like(data['weight_test']))
 
         # Reweight signal and background separately
         for sig in [0,1]:
 
             # Prepare data arrays
             msk = data['signal'] == sig
+
+            # Flat pT
+            # ------------------------------------------------------------------
             original = data['pt'][msk]
             xmin, xmax = original.min(), original.max()
             target = np.random.rand(original.size) * (xmax - xmin) + xmin
@@ -102,25 +114,59 @@ def main ():
             # Fit bins-reweighter
             reweighter = BinsReweighter(n_bins=100, n_neighs=1)
             reweighter.fit(original, target=target)
+            
 
-            # Predict new, flat-pT weights
-            weight_train  = reweighter.predict_weights(original)
-            weight_train /= weight_train.mean()
+            # Predict new, flat-pT weight
+            original = data['pt'][msk]
+            data['weight_train'][msk] = reweighter.predict_weights(original)
+            data['weight_train'][msk] /= data['weight_train'][msk].mean()
 
-            # Store new, flat-pT weights
-            data['weight_train'][msk] = weight_train
-            print "weight_train | min, 1-per., mean, 99-perc, max: {}, {}, {}, {}, {}".format(weight_train.min(), np.percentile(weight_train, 1), weight_train.mean(), np.percentile(weight_train, 99), weight_train.max())
+            print "data['weight_train'][msk] | min, 1-perc., mean, 99-perc., max: {}, {}, {}, {}, {}".format(
+                data['weight_train'][msk].min(),
+                np.percentile(data['weight_train'][msk], 1), 
+                data['weight_train'][msk].mean(), 
+                np.percentile(data['weight_train'][msk], 99), 
+                data['weight_train'][msk].max())
+
+
+            # (Flat-pT, physical-m) reweighted
+            # ------------------------------------------------------------------
+            original_m  = data['m'] [msk]
+            original_pt = data['pt'][msk]
+            original = np.vstack((original_m, original_pt)).T
+
+            p  = data['weight_test'][msk]
+            p /= math.fsum(p)
+
+            ptmin, ptmax = data['pt'].min(), data['pt'].max()
+
+            target_m  = np.random.choice(data['m'][msk], msk.sum(), p=p, replace=True)
+            target_pt = np.random.rand(msk.sum()) * (ptmax - ptmin) + ptmin
+            target = np.vstack((target_m, target_pt)).T
+
+            # Fit bins-reweighter
+            reweighter = BinsReweighter(n_bins=100, n_neighs=1)
+            reweighter.fit(original, target=target)
+
+            # Compute new weights
+            data['weight_adv'][msk]  = reweighter.predict_weights(original)
+            data['weight_adv'][msk] /= data['weight_adv'][msk].mean()
+
+
+            # Physical testing weights
+            # ------------------------------------------------------------------
+            data['weight_test'][msk] /= data['weight_test'][msk].mean()
+
             pass
         pass
 
 
     # Train/test split
     with Profile("Performing train/test split"):
-        frac_train = 0.5
         msk_sig = data['signal'] == 1
         num_sig =   msk_sig .sum()
         num_bkg = (~msk_sig).sum()
-        num_train = int(frac_train * min(num_sig, num_bkg))
+        num_train = int(args.train * 1E+06)
         print "Found {:.1e} signal and {:.1e} background samples.".format(num_sig, num_bkg)
         print "Using {:.1e} samples for training, leaving {:.1e} signal and {:.1e} background samples for testing.".format(num_train, num_sig - num_train, num_bkg - num_train)
 
@@ -145,7 +191,7 @@ def main ():
 
     # Writing output HDF5 file
     with Profile("Writing output HDF5 file"):
-        save_hdf5(data, args.dir + 'data_{}M.h5'.format(args.size))
+        save_hdf5(data, args.dir + 'data_{}M_{}M.h5'.format(args.train, args.test))
         pass
 
     return
