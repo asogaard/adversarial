@@ -121,30 +121,23 @@ def main ():
 
             # (Flat-pT, physical-m) reweighted
             # ------------------------------------------------------------------
-            original_m  = data['m'] [msk]
-            original_pt = data['pt'][msk]
-            original = np.vstack((original_m, original_pt)).T
-
-            p  = data['weight_test'][msk]
-            p /= math.fsum(p)
+            original        = data['pt'][msk]
+            original_weight = data['weight_test'][msk]
 
             ptmin, ptmax = data['pt'].min(), data['pt'].max()
-
-            target_m  = np.random.choice(data['m'][msk], msk.sum(), p=p, replace=True)
-            target_pt = np.random.rand(msk.sum()) * (ptmax - ptmin) + ptmin
-            target = np.vstack((target_m, target_pt)).T
+            target = np.random.rand(msk.sum()) * (ptmax - ptmin) + ptmin
 
             # Fit bins-reweighter
             reweighter = BinsReweighter(n_bins=100, n_neighs=1)
-            reweighter.fit(original, target=target)
+            reweighter.fit(original, original_weight=original_weight, target=target)
 
             # Compute new weights
-            data['weight_adv'][msk] = reweighter.predict_weights(original)
+            data['weight_adv'][msk] = reweighter.predict_weights(original, original_weight=original_weight)
 
 
             # Standardise weight variables
             # ------------------------------------------------------------------
-            weight_variables = filter(lambda name: name.startswith('weight_'), data.dype.names)
+            weight_variables = filter(lambda name: name.startswith('weight_'), data.dtype.names)
             for var in weight_variables:
                 print "  Ensuring unit mean for {}".format(var)
                 data[var][msk] /= data[var][msk].mean()
