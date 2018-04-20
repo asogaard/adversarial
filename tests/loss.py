@@ -50,8 +50,9 @@ def main (args):
 
     # Perform adversarial loss study
     #basedir='models/adversarial/combined/full/'
-    basedir='models/adversarial/combined/crossval/'
-    for lambda_reg in [10]:
+    #basedir='models/adversarial/combined/crossval/'
+    basedir='output/lambda10/'
+    for lambda_reg in [10]:  # [1, 10, 100]:
         plot_adversarial_training_loss(lambda_reg, num_folds, 20, H_prior, basedir=basedir)
         pass
 
@@ -176,11 +177,11 @@ def plot_adversarial_training_loss (lambda_reg, num_folds, pretrain_epochs, H_pr
                 # Classifier
                 loss = np.array(d[prefix + 'classifier_loss'])
                 losses[name + '_clf'].append(loss)
-
+                
                 # Adversary
                 loss = np.array(d[prefix + 'adversary_loss'])
                 losses[name + '_adv'].append(loss)
-
+                
                 # Combined
                 losses[name + '_comb'].append(losses[name + '_clf'][-1] - lambda_reg * losses[name + '_adv'][-1])
             except KeyError: pass  # No validation

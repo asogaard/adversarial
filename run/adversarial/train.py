@@ -104,7 +104,7 @@ def main (args):
     
     # Specify common weights
     # -- Classifier
-    weight_var = 'weight_train'
+    weight_var = 'weight_train'  # 'weight_adv'
     data['weight_clf'] = pd.Series(data[weight_var].values, index=data.index)
 
     # -- Adversary

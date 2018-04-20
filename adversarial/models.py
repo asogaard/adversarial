@@ -176,7 +176,8 @@ def adversary_model (gmm_dimensions, gmm_components=None, architecture=[], defau
     adversary_input_par = Input(shape=(gmm_dimensions,), name=layer_name('input_par'))
 
     # Re-scale input pt
-    pt = BatchNormalization()(adversary_input_pt)
+    pt = Lambda(lambda pt: (pt - 200.)/(2000. - 200.))(adversary_input_pt)
+    #pt = BatchNormalization()(adversary_input_pt)
 
     # Intermediate layer(s)
     inputs = Concatenate(name=layer_name('concatenate'))([adversary_input_clf, pt])

@@ -55,16 +55,6 @@ def main (args):
     # Load data
     data, features, _ = load_data(args.input + 'data.h5', test=True)
 
-    #data = data[(data['m']  >  50) & (data['m']  <  300)]
-    #data = data[(data['pt'] > 200) & (data['pt'] < 2000)]
-    #data['rho']    = pd.Series(np.log(np.square(data['m'])/np.square(data['pt'])), index=data.index)
-    #data['rhoDDT'] = pd.Series(np.log(np.square(data['m'])/data['pt']/1.), index=data.index)
-
-    #data = data[(data['rhoDDT'] > 1.5) & (data['rhoDDT'] < 4.0)]  # @TEMP
-
-    #data['weight_test'] = pd.Series(data['weight'], index=data.index)
-    #data['train'] = pd.Series(np.zeros_like(data['weight'].values), index=data.index)
-
 
     # Common definitions
     # --------------------------------------------------------------------------
@@ -74,7 +64,7 @@ def main (args):
 
     # -- Adversarial neural network (ANN) scan
     lambda_reg  = 10.
-    lambda_regs = sorted([1., 10., 100., 1000.])
+    lambda_regs = sorted([1., 10.])
     ann_vars    = list()
     lambda_strs = list()
     for lambda_reg_ in lambda_regs:
@@ -171,7 +161,7 @@ def perform_studies (data, args, tagger_features, ann_vars, uboost_vars):
     with Profile("Study: Robustness (pile-up)"):
         bins = [0, 5.5, 10.5, 15.5, 20.5, 25.5, 30.5]
         for masscut in masscuts:
-            #studies.robustness(data, args, tagger_features, 'npv', bins, masscut=masscut)
+            studies.robustness(data, args, tagger_features, 'npv', bins, masscut=masscut)
             pass
         pass
 
