@@ -43,8 +43,9 @@ def metrics (data, feat, target_tpr=0.5, masscut=False, verbose=False):
 
     Arguments:
         data: Pandas dataframe, assumed to hold all necessary columns (signal,
-            weight, m, and `feat`) and to have been subjected to the nessecary
-            selection up-stream (training/test split, phase space restriction.)
+            weight_test, m, and `feat`) and to have been subjected to the
+            nessecary selection up-stream (training/test split, phase space
+            restriction.)
         feat: Name of feateure for which to compute the standard metrics.
         target_tpr: Signal efficiency at which to compute the standard metrics.
         masscut: Whether to impose additional 60 GeV < m < 100 GeV cut.
@@ -97,8 +98,8 @@ def metrics (data, feat, target_tpr=0.5, masscut=False, verbose=False):
     msk_pass = pred > cut
     msk_bkg  = data['signal'] == 0
 
-    p, _ = np.histogram(data.loc[ msk_pass & msk_bkg, 'm'].values, bins=MASSBINS, weights=data.loc[ msk_pass & msk_bkg, 'weight_test'].values, density=True)
-    f, _ = np.histogram(data.loc[~msk_pass & msk_bkg, 'm'].values, bins=MASSBINS, weights=data.loc[~msk_pass & msk_bkg, 'weight_test'].values, density=True)
+    p, _ = np.histogram(data.loc[ msk_pass & msk_bkg, 'm'].values, bins=MASSBINS, weights=data.loc[ msk_pass & msk_bkg, 'weight_test'].values, density=1.)
+    f, _ = np.histogram(data.loc[~msk_pass & msk_bkg, 'm'].values, bins=MASSBINS, weights=data.loc[~msk_pass & msk_bkg, 'weight_test'].values, density=1.)
 
     jsd = JSD(p, f)
 
@@ -114,8 +115,6 @@ def bootstrap_metrics (data, feat, num_bootstrap=10, **kwargs):
     # Compute metrics using bootstrapping
     bootstrap_rej, bootstrap_jsd = list(), list()
     for _ in range(num_bootstrap):
-        #data_bootstrap = data.sample(frac=1.0, replace=True)
-        #rej, jsd = metrics(data_bootstrap, feat, **kwargs)
         idx = np.random.choice(data.shape[0], data.shape[0], replace=True)
         rej, jsd = metrics(data.iloc[idx], feat, **kwargs)
         bootstrap_rej.append(rej)

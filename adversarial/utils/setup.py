@@ -10,6 +10,7 @@ import json
 import gzip
 import pickle
 import argparse
+import itertools
 import subprocess
 import collections
 import logging as log
@@ -320,7 +321,7 @@ def initialise_backend (args):
 # re-weighted background _won't_ be flat in (log m, log pt), and vice versa. It
 # should go without saying, but draw target samples from a uniform prior on the
 # coordinates which are used for the decorrelation.
-DECORRELATION_VARIABLES = ['m', 'pt']
+DECORRELATION_VARIABLES = ['m']
 INPUT_VARIABLES = ['Tau21', 'C2', 'D2', 'Angularity', 'Aplanarity', 'FoxWolfram20', 'KtDR', 'PlanarFlow', 'Split12', 'ZCut12']
 
 @garbage_collect
@@ -348,7 +349,7 @@ def get_decorrelation_variables (data):
 
 @garbage_collect
 @profile
-def load_data (path, name='dataset', train=None, test=None, signal=None, background=None, sample=None, seed=21):
+def load_data (path, name='dataset', train=None, test=None, signal=None, background=None, sample=None, seed=21, replace=True):
     """
     General script to load data, common to all run scripts.
 
@@ -371,23 +372,57 @@ def load_data (path, name='dataset', train=None, test=None, signal=None, backgro
 
     # Check(s)
     assert False not in [train, test, signal, background]
-    if sample:                           assert 0 < sample and sample < 1.
-    if None not in [train, test]:        assert train != test
-    if None not in [signal, background]: assert signal != background
+    if sample: assert 0 < sample and sample < 1.
 
     # Read data from HDF5 file
     data = pd.read_hdf(path, name)
+
+    # Logging
+    try:
+        for sig, name in zip([1, 0], ['signal', 'background']):
+            log.info("Found {:7.0f} training and {:7.0f} test samples for {}".format(
+                sum((data['signal'] == sig) & (data['train'] == 1)),
+                sum((data['signal'] == sig) & (data['train'] == 0)),
+                name
+                ))
+            pass
+    except KeyError:
+        log.info("Some key(s) in data were not found")
+        pass
+
+    # @TEMP Add log(x) features
+    data['logm']  = pd.Series(np.log(data['m']),  index=data.index)
+    data['logpt'] = pd.Series(np.log(data['pt']), index=data.index)
 
     # Define feature collections to use
     features_input         = INPUT_VARIABLES
     features_decorrelation = DECORRELATION_VARIABLES
 
     # Split data
-    if train:      data = data[data['train']  == 1]
-    if test:       data = data[data['train']  == 0]
-    if signal:     data = data[data['signal'] == 1]
-    if background: data = data[data['signal'] == 0]
-    if sample:     data = data.sample(frac=sample, random_state=seed)
+    if train:
+        log.info("load_data: Selecting only training data.")
+        data = data[data['train']  == 1]
+        pass
+
+    if test:
+        log.info("load_data: Selecting only testing data.")
+        data = data[data['train']  == 0]
+        pass
+
+    if signal:
+        log.info("load_data: Selecting only signal data.")
+        data = data[data['signal'] == 1]
+        pass
+
+    if background:
+        log.info("load_data: Selecting only background data.")
+        data = data[data['signal'] == 0]
+        pass
+
+    if sample:
+        log.info("load_data: Selecting a random fraction {:.2f} of data (replace = {}, seed = {}).".format(sample, replace, seed))
+        data = data.sample(frac=sample, random_state=seed, replace=False)
+        pass
 
     # Return
     return data, features_input, features_decorrelation

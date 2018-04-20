@@ -172,15 +172,16 @@ def adversary_model (gmm_dimensions, gmm_components=None, architecture=[], defau
 
     # Input(s)
     adversary_input_clf = Input(shape=(1,),              name=layer_name('input_clf'))
+    adversary_input_pt  = Input(shape=(1,),              name=layer_name('input_pt'))
     adversary_input_par = Input(shape=(gmm_dimensions,), name=layer_name('input_par'))
 
-    # Intermediate layer(s)
-    features = stack_layers(adversary_input_clf, architecture, default, scope=scope)
+    # Re-scale input pt
+    pt = Lambda(lambda pt: (pt - 200.)/(2000. - 200.))(adversary_input_pt)
+    #pt = BatchNormalization()(adversary_input_pt)
 
-    # Minibatch discrimination
-    #### minibatch = GradientReversalLayer(0)(features)
-    #### minibatch = MinibatchDiscrimination(10, 5, name=layer_name('minibatch_discrimination'))(minibatch)
-    #### features = Concatenate(name=layer_name('concatenate'))([features, minibatch])
+    # Intermediate layer(s)
+    inputs = Concatenate(name=layer_name('concatenate'))([adversary_input_clf, pt])
+    features = stack_layers(inputs, architecture, default, scope=scope)
 
     # Posterior p.d.f. parameters
     r_coeffs = Dense(gmm_components, name=layer_name('coeffs'), activation='softmax')(features)
@@ -199,7 +200,7 @@ def adversary_model (gmm_dimensions, gmm_components=None, architecture=[], defau
     adversary_output = PosteriorLayer(gmm_components, gmm_dimensions, name=layer_name('output'))([r_coeffs] + r_means + r_widths + [adversary_input_par])
 
     # Build model
-    model = Model(inputs=[adversary_input_clf, adversary_input_par],
+    model = Model(inputs=[adversary_input_clf, adversary_input_pt, adversary_input_par],
                   outputs=adversary_output,
                   name=scope)
     # Return
@@ -233,10 +234,6 @@ def combined_model (classifier, adversary, lambda_reg=None, lr_ratio=None, scope
     keras_layer_name = keras_layer_name_factory(scope)
     layer_name       = layer_name_factory(scope)
 
-    # Toggling sub-models
-    #classifier.trainable = True
-    #adversary .trainable = True
-
     # Reconstruct classifier
     classifier_input = classifier.layers[0]
 
@@ -248,14 +245,18 @@ def combined_model (classifier, adversary, lambda_reg=None, lr_ratio=None, scope
 
     # Reconstruct adversary
     input_layers   = filter(lambda l: type(l) == InputLayer, adversary.layers)
-    _, adversary_input_par = input_layers # Assuming classifier output is first input
-
-    combined_input_adv = Input(shape=adversary_input_par.input_shape[1:], name=layer_name(adversary_input_par.name.replace('/', '_')))
-    combined_output_adv = adversary([gradient_reversal, combined_input_adv])
+    adversary_input_pt  = filter(lambda l: l.name.endswith('_pt'),  input_layers)[0]
+    adversary_input_par = filter(lambda l: l.name.endswith('_par'), input_layers)[0]
+    
+    inputs_adv = [
+        Input(shape=adversary_input_pt .input_shape[1:], name=layer_name(adversary_input_pt .name.replace('/', '_'))),
+        Input(shape=adversary_input_par.input_shape[1:], name=layer_name(adversary_input_par.name.replace('/', '_'))),
+        ]
+    outputs_adv = [adversary([gradient_reversal] + inputs_adv)]
 
     # Build model
-    model = Model(inputs =[combined_input_clf,  combined_input_adv],
-                  outputs=[combined_output_clf, combined_output_adv],
+    model = Model(inputs =[combined_input_clf]  + inputs_adv,
+                  outputs=[combined_output_clf] + outputs_adv,
                   name=scope)
 
     # Return

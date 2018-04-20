@@ -9,7 +9,7 @@ import ROOT
 
 # Project import(s)
 from .common import *
-from adversarial.utils import mkdir, latex, metrics, signal_low
+from adversarial.utils import mkdir, latex, metrics, signal_low, JSD, MASSBINS
 from adversarial.constants import *
 
 # Custom import(s)
@@ -17,7 +17,7 @@ import rootplotting as rp
 
 
 @showsave
-def summary (data, args, features, scan_features, target_tpr=0.5, num_bootstrap=5):
+def summary (data, args, features, scan_features, target_tpr=0.5, num_bootstrap=5, masscut=False):
     """
     Perform study of combined classification- and decorrelation performance.
 
@@ -56,17 +56,75 @@ def summary (data, args, features, scan_features, target_tpr=0.5, num_bootstrap=
             continue
 
         # Compute metrics
-        rej, jsd = metrics(data, feat)
+        rej, jsd = metrics(data, feat, masscut=masscut)
 
         # Add point to array
         points.append((rej, jsd, feat))
         pass
 
+    # Compute meaningful limit for 1/JSD based on bootstrapping
+    num_bootstrap = 10
+    jsd_limits = list()
+    for bkg_rej in np.logspace(np.log10(2.), np.log10(100), 2 * 10 + 1, endpoint=True):
+        frac = 1. / float(bkg_rej)
+        jsd = list()
+        for _ in range(num_bootstrap):
+            df1 = data[['m', 'weight_test']].sample(frac=     frac, replace=True)
+            df2 = data[['m', 'weight_test']].sample(frac=1. - frac, replace=True)
+
+            p, _ = np.histogram(df1['m'].values, bins=MASSBINS, weights=df1['weight_test'].values, density=1.)
+            f, _ = np.histogram(df2['m'].values, bins=MASSBINS, weights=df2['weight_test'].values, density=1.)
+
+            jsd.append(1./JSD(p, f))
+            pass
+
+        # Clip outliers
+        def centralRMS (v_, sigma):
+            """
+            Iteratively compute the RMS of the events within `sigma` standard
+            deviations.
+            """
+            v = np.array(v_, dtype=np.float)
+
+            while len(v) > 1:
+
+                # Compute number of outliers for inclusive set
+                outliers = np.sum(np.abs(v - v.mean()) / v.std() > sigma)
+                if outliers == 0: break
+
+                # Compute z-distance from N-1 mean
+                dist = np.zeros(len(v))
+                for idx in range(len(v)):
+                    vtemp = np.delete(v, idx)
+                    std  = np.std(vtemp)
+                    mean = np.mean(vtemp)
+                    dist[idx] = np.abs(v[idx] - mean) / std
+                    pass
+
+                # Delete furthest outlier
+                idx = np.argmax(dist)
+                v = np.delete(v, idx)
+                pass
+
+            if len(v) / float(len(v_)) >= 0.5:
+                return v
+
+            print "[WARNING] No stable, central RMS was found."
+            return v_
+
+        print "frac: {} | jsd: {} ± {} -->".format(frac, np.mean(jsd), np.std(jsd))
+
+        jsd = centralRMS(jsd, sigma=2.)
+
+        print "frac: {} | jsd: {} ± {}".format(frac, np.mean(jsd), np.std(jsd))
+        jsd_limits.append((bkg_rej, np.mean(jsd), np.std(jsd)))
+        pass
+
     # Perform plotting
-    c = plot(data, args, features, scan_features, points)
+    c = plot(data, args, features, scan_features, points, jsd_limits, masscut)
 
     # Output
-    path = 'figures/summary.pdf'
+    path = 'figures/summary{}.pdf'.format('_masscut' if masscut else '')
 
     return c, args, path
 
@@ -77,12 +135,12 @@ def plot (*argv):
     """
 
     # Unpack arguments
-    data, args, features, scan_features, points = argv
+    data, args, features, scan_features, points, jsd_limits, masscut = argv
 
     with TemporaryStyle() as style:
 
         # Define variable(s)
-        axisrangex = (0.6,   500.)
+        axisrangex = (1.4,   100.)
         axisrangey = (0.4, 50000.)
         aminx, amaxx = axisrangex
         aminy, amaxy = axisrangey
@@ -99,10 +157,10 @@ def plot (*argv):
         lineopts = dict(linecolor=ROOT.kGray + 2, linewidth=1, option='L')
         boxopts  = dict(fillcolor=ROOT.kBlack, alpha=0.05, linewidth=0, option='HIST')
         c.hist([aminy], bins=list(axisrangex), **nullopts)
-        c.plot([1, amaxy], bins=[1, 1],     **lineopts)
-        c.plot([1, 1],     bins=[1, amaxx], **lineopts)
-        c.hist([amaxy],    bins=[aminx, 1], **boxopts)
-        c.hist([1],        bins=[1, amaxx],     **boxopts)
+        c.plot([1, amaxy], bins=[2, 2],     **lineopts)
+        c.plot([1, 1],     bins=[2, amaxx], **lineopts)
+        c.hist([amaxy],    bins=[aminx, 2], **boxopts)
+        c.hist([1],        bins=[2, amaxx],     **boxopts)
 
         # Markers
         for is_simple in [True, False]:
@@ -153,6 +211,7 @@ def plot (*argv):
 
             # Connecting lines (scan)
             feats = [base_feat] + map(lambda t: t[0], group)
+            print "Drawing lines between the following:", feats
             for feat1, feat2 in zip(feats[:-1], feats[1:]):
                 idx1 = map(lambda t: t[2], points).index(feat1)
                 idx2 = map(lambda t: t[2], points).index(feat2)
@@ -164,7 +223,6 @@ def plot (*argv):
                 pass
             pass
 
-
         # Connecting lines (simple)
         for i in range(3):
             x1, y1, _ = points[2 * i + 0]
@@ -172,6 +230,12 @@ def plot (*argv):
             colour = rp.colours[i]
             c.graph([y1, y2], bins=[x1, x2], linecolor=colour, linestyle=2, option='L')
             pass
+
+        # Meaningful limits on 1/JSD
+        x,y,ey = map(np.array, zip(*jsd_limits))
+        ex = np.zeros_like(ey)
+        gr = ROOT.TGraphErrors(len(x), x, y, ex, ey)
+        c.graph(gr, linestyle=2, linecolor=ROOT.kGray + 1, fillcolor=ROOT.kBlack, alpha=0.03, option='L3')
 
         # Decorations
         c.xlabel("Background rejection, 1 / #varepsilon_{bkg} @ #varepsilon_{sig} = 50%")
@@ -184,12 +248,16 @@ def plot (*argv):
         opts_text = dict(textsize=11, textcolor=ROOT.kGray + 2)
         midpointx = np.power(10, 0.5 * np.log10(amaxx))
         midpointy = np.power(10, 0.5 * np.log10(amaxy))
-        c.latex("No separation",                     0.91, midpointy, angle=90, align=21, **opts_text)
+        c.latex("No separation",                     1.91, midpointy, angle=90, align=21, **opts_text)
         c.latex("Maximal sculpting",                 midpointx, 0.89, angle= 0, align=23, **opts_text)
-        c.latex("    Less sculpting #rightarrow",    1.1, midpointy,  angle=90, align=23,**opts_text)
-        c.latex("    Greater separtion #rightarrow", midpointx, 1.1,  angle= 0, align=21,**opts_text)
+        c.latex("    Less sculpting #rightarrow",    2.1, midpointy,  angle=90, align=23, **opts_text)
+        c.latex("    Greater separtion #rightarrow", midpointx, 1.1,  angle= 0, align=21, **opts_text)
 
-        c.text(TEXT + ["#it{W} jet tagging"], xmin=0.24, qualifier=QUALIFIER)
+        #c.text(TEXT + ["#it{W} jet tagging"], xmin=0.24, qualifier=QUALIFIER)
+        c.text(TEXT + \
+               ["#it{W} jet tagging"] + \
+               (['m #in  [60, 100] GeV'] if masscut else []),
+               xmin=0.26, qualifier=QUALIFIER)
         pass
 
     return c
