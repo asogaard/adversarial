@@ -160,6 +160,9 @@ def main ():
         paths = sorted(glob.glob(path_pattern.format('wprime' if key == 'sig' else 'JZ')))
         print "   Found {} input data files.".format(len(paths))
 
+        if len(paths) == 0:
+            continue
+
         # Run batched conversion in parallel
         run_batched(FileConverter, [(path, key, args) for path in paths], max_processes=args.max_processes)
         pass
@@ -218,20 +221,6 @@ class FileConverter (multiprocessing.Process):
         # Add `signal` column
         signal = (np.ones((data.shape[0],)) * int(1 if self.__key == 'sig' else 0)).astype(int)
         data = recfunctions.append_fields(data, 'signal', signal)
-
-        # -------------------------------------------------------------
-        # @TEMP: Due to a problem with the ntuple weights, the JZ[6–]W
-        #        slices have too large a cross-section, by a factor of 4.
-        #        This is manually patched here, but should be fixed
-        #        upstream for the next processing.
-        if self.__key == 'bkg':
-            JZxW = int(re.search('JZ(\d+)W', self.__path).groups(1)[0])
-            if JZxW >= 6:
-                print "TEMP: Dividing weight by 4 (JZ{}W).".format(JZxW)
-                data['weight_test'] /= 4.
-                pass
-            pass
-        # -------------------------------------------------------------
 
         # Writing output HDF5 file
         filename = self.__path.split('/')[-1].replace('.root', '') + '_full.h5'
