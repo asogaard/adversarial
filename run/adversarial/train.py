@@ -100,7 +100,7 @@ def main (args):
 
     # Get standard-formatted decorrelation inputs
     decorrelation = get_decorrelation_variables(data)
-    aux_var = 'logpt'
+    aux_var = 'pt'
     
     # Specify common weights
     # -- Classifier

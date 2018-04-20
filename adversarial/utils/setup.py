@@ -321,7 +321,7 @@ def initialise_backend (args):
 # re-weighted background _won't_ be flat in (log m, log pt), and vice versa. It
 # should go without saying, but draw target samples from a uniform prior on the
 # coordinates which are used for the decorrelation.
-DECORRELATION_VARIABLES = ['logm']
+DECORRELATION_VARIABLES = ['m']
 INPUT_VARIABLES = ['Tau21', 'C2', 'D2', 'Angularity', 'Aplanarity', 'FoxWolfram20', 'KtDR', 'PlanarFlow', 'Split12', 'ZCut12']
 
 @garbage_collect
