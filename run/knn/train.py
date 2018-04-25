@@ -13,9 +13,10 @@ from sklearn.neighbors import KNeighborsRegressor
 from sklearn.metrics import roc_curve
 
 # Project import(s)
-from adversarial.utils import parse_args, initialise, load_data, mkdir, saveclf
+from adversarial.utils import parse_args, initialise, load_data, mkdir, saveclf  #, initialise_backend
 from adversarial.profile import profile, Profile
 from adversarial.constants import *
+#from run.adversarial.common import initialise_config
 
 # Local import(s)
 from .common import *
@@ -29,8 +30,26 @@ def main (args):
     args, cfg = initialise(args)
 
     # Load data
-    data, _, _ = load_data(args.input + 'data.h5')
-    data = data[(data['train'] == 1)]
+    data, _, _ = load_data(args.input + 'data.h5', train=True)
+
+    # -------------------------------------------------------------------------
+    ####
+    #### # Initialise Keras backend
+    #### initialise_backend(args)
+    ####
+    #### # Neural network-specific initialisation of the configuration dict
+    #### initialise_config(args, cfg)
+    ####
+    #### # Keras import(s)
+    #### from keras.models import load_model
+    ####
+    #### # NN
+    #### from run.adversarial.common import add_nn
+    #### with Profile("NN"):
+    ####     classifier = load_model('models/adversarial/classifier/full/classifier.h5')
+    ####     add_nn(data, classifier, 'NN')
+    ####     pass
+    # -------------------------------------------------------------------------
 
     # Compute background efficiency at sig. eff. = 50%
     eff_sig = 0.5
@@ -61,7 +80,7 @@ def main (args):
 if __name__ == '__main__':
 
     # Parse command-line arguments
-    args = parse_args()
+    args = parse_args()  # (adversarial=True)
 
     # Call main function
     main(args)
