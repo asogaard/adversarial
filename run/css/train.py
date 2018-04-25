@@ -14,9 +14,10 @@ import numpy as np
 from scipy.special import gamma
 
 # Project import(s)
-from adversarial.utils import parse_args, initialise, load_data, mkdir
+from adversarial.utils import parse_args, initialise, load_data, mkdir, latex, wpercentile
 from adversarial.profile import profile, Profile
 from adversarial.constants import *
+from tests.studies.common import *
 
 # Custom import(s)
 import rootplotting as rp
@@ -24,6 +25,7 @@ import rootplotting as rp
 # Local import(s)
 from .common import *
 
+REBIN = 10
 
 # Main function definition
 @profile
@@ -88,28 +90,33 @@ def perform_optimisation (var, bins, data):
         mkdir('models/css/')
 
         # Write out the optifmal configuration for each mass bin
+        bestOmegas = list()
         for mass in range(len(MASS_BINS)-1):
             profile = profile2d.ProjectionY("%s_bin_%i_final"%(profile2d.GetName(),mass),mass+1, mass+1)
             sumChi2, bestOmega, profile_css, profile0rebin = fit(profile, bestShapeVal, profile0, "%.2f"%mass)
             print mass, bestOmega
+            bestOmegas.append(bestOmega)
             F,Ginv = get_css_fns(bestShapeVal, bestOmega, profile, "")
-
-            rebinProfiles = profile.Clone("%s_%i_rebin"%(profile.GetName(), mass))
-            rebinProfiles.Rebin(5)
-            normalise(rebinProfiles)
-
-            c1 = rp.canvas(batch=True)
-
-            c1.hist(profile0rebin, label="Low Mass", linecolor=rp.colours[1], markercolor=rp.colours[1])
-            c1.hist(profile_css, label="D2 CSS", linecolor=rp.colours[2], markercolor=rp.colours[2])
-            c1.hist(rebinProfiles, label="D2", linecolor=rp.colours[3], markercolor=rp.colours[3])
-            c1.legend()
-            c1.save('figures/css/cssProfile_{}_{}.pdf'.format(var, mass))
 
             # Save classifier
             saveclf(F,    'models/css/css_%s_F_%i.pkl.gz' % (var,mass))
             saveclf(Ginv, 'models/css/css_%s_Ginv_%i.pkl.gz' % (var,mass))
             pass
+
+        # Plot best omega vs. mass
+        # -- Canvas
+        c = rp.canvas(batch=True)
+
+        # -- Plots
+        c.hist(bestOmegas, bins=MASS_BINS, linecolor=rp.colours[1])
+
+        # -- Decorations
+        c.xlabel("Large-#it{R} jet mass [GeV]")
+        c.ylabel("Best-fit #Omega_{D}")
+        c.text(["#sqrt{s} = 13 TeV,  QCD jets", "CSS applied to D_{2}"], qualifier=QUALIFIER)
+
+        # Save
+        c.save('figures/css/cssBestOmega_{}.pdf'.format(var))
         pass
 
     return 0
@@ -128,13 +135,13 @@ def fit (profile, shapeVal, lowMassProfile, name):
     bestOmega = 0.01
     bestChi2 = 1e30
     rebinLowMass = lowMassProfile.Clone("%s_%.2f_clone"%(name, shapeVal))
-    rebinLowMass.Rebin(5)
+    rebinLowMass.Rebin(REBIN)
     normalise(rebinLowMass)
 
     # Find optimal value for omega for this mass bin
     for omega in OMEGA_RANGE:
         jssVar_css = get_css(shapeVal, omega, profile, "_%.2f"%(omega))
-        jssVar_css.Rebin(5)
+        jssVar_css.Rebin(REBIN)
         normalise(jssVar_css)
 
         chi2 = 0
@@ -154,7 +161,7 @@ def fit (profile, shapeVal, lowMassProfile, name):
 
     # Compute CSS-transformed version of `var`
     jssVar_css = get_css(shapeVal, bestOmega, profile, "_%.2f_best"%(bestOmega))
-    jssVar_css.Rebin(5)
+    jssVar_css.Rebin(REBIN)
     normalise(jssVar_css)
 
     return bestChi2, bestOmega, jssVar_css, rebinLowMass

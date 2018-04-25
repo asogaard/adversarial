@@ -19,7 +19,8 @@ from adversarial.profile import profile
 # Common definition(s)
 SHAPEVAL_RANGE = np.linspace(1., 3., 3)
 OMEGA_RANGE = np.linspace(0.01, 1.4, 40)
-MASS_BINS = np.linspace(40., 310., 20)
+#MASS_BINS = np.linspace(40., 310., 20)
+MASS_BINS = np.linspace(50., 300., 20 + 1, endpoint=True)
 
 TAU21BINS = np.linspace(0., 2., 501, endpoint=True)
 D2BINS = np.linspace(0., 5., 501, endpoint=True)

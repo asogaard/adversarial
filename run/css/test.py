@@ -13,9 +13,10 @@ import numpy as np
 import pandas as pd
 
 # Project import(s)
-from adversarial.utils import parse_args, initialise, load_data, mkdir
+from adversarial.utils import parse_args, initialise, load_data, mkdir, latex
 from adversarial.profile import profile, Profile
 from adversarial.constants import *
+from tests.studies.common import TEXT
 
 # Local import(s)
 from .common import *
@@ -23,122 +24,71 @@ from .common import *
 # Custom import(s)
 import rootplotting as rp
 
-BINS=TAU21BINS
 
 # Main function definition
-
-
-def fill_css (data, jssVar, mass, doApply):
-    profile = ROOT.TH1F('profile_{}_{}_{}'.format(jssVar,mass,doApply), "", len(BINS) - 1, BINS)
-    jssData = data[jssVar].as_matrix().flatten()
-    massData = data['m'].as_matrix().flatten()
-    weightData = data['weight'].as_matrix().flatten()
-    if doApply:
-      AddCSS(jssVar, data)
-      jssData = data["%sCSS"%jssVar]
-
-    for cmass,ctau,cweight in zip(massData, jssData, weightData):
-      if cmass > MASS_BINS[mass] and cmass < MASS_BINS[mass+1]:
-        profile.Fill(ctau,cweight)
-
-    return profile
-
-def fill_mass_profile (data, var, doApply):
-    """Fill ROOT.TProfile with the average `var` as a function of rhoCSS."""
-    profile = ROOT.TH2F('profile_{}'.format(var), "", len(BINS) - 1, BINS, len(MASS_BINS)-1, MASS_BINS)
-
-    c = rp.canvas(batch=True)
-
-    for mass in range(len(MASS_BINS)-1):
-      print "Starting mass bin ", mass
-      massProf = fill_css(data, var, mass, doApply)
-      if massProf.Integral() > 0:
-          massProf.Scale(1. / massProf.Integral())
-      massProf.Rebin(20)
-      c.hist(massProf, label="D_2", linecolor=rp.colours[mass%5], markercolor=rp.colours[mass%5])
-
-      for i in range(massProf.GetNbinsX()):
-        profile.SetBinContent(i, mass, massProf.GetBinContent(i))
-
-    mkdir('figures/css/')
-    c.save('figures/css/cssProfile_{}.pdf'.format(doApply))
-    return profile
-
-
 @profile
 def main (args):
 
-    # Initialising
-    # --------------------------------------------------------------------------
+    # Initialise
     args, cfg = initialise(args)
 
+    # Load data
+    data, features, _ = load_data(args.input + 'data.h5', test=True, background=True)
 
-    # Loading data
-    # --------------------------------------------------------------------------
-    data, features, _ = load_data(args.input + 'data.h5')
-    #data, features, _ = load_data("/afs/cern.ch/work/j/jroloff/adversarial/data.h5")
-    data = data[(data['train'] == 0) & (data['signal'] == 0)]
+    # Add CSS variable
+    var = "D2"
+    add_css(var, data)
 
+    # Plot D2(CSS) distributions for each mass bin
+    plot_distributions(data, var)
 
-    # Common definition(s)
-    # --------------------------------------------------------------------------
-    profiles, graphs = dict(), dict()
-
-    # Filling profiles
-    # --------------------------------------------------------------------------
-    myvar = 'Tau21'
-    profiles['{}CSS'.format(myvar)] = fill_mass_profile(data, myvar, True)
-    profiles[myvar] = fill_mass_profile(data, myvar, False)
-
-    # Convert to graphs
-    # --------------------------------------------------------------------------
-    with Profile("Convert to graphs"):
-
-        # Loop profiles
-        for key, profile in profiles.iteritems():
-            # Create arrays from profile
-            arr_x, arr_y, arr_ex, arr_ey = array('d'), array('d'), array('d'), array('d')
-
-            for ibin in range(1, profile.GetYaxis().GetNbins() + 1):
-                projection = profile.ProjectionX("%s_py"%profile.GetName(),ibin, ibin+1)
-                arr_x .append(profile.GetXaxis().GetBinCenter(ibin))
-                arr_y .append(projection.GetMean())
-                arr_ex.append(projection.GetBinWidth(ibin) / 2.)
-                arr_ey.append(projection.GetBinError  (ibin))
-
-            # Create graph
-            graphs[key] = ROOT.TGraphErrors(len(arr_x), arr_x, arr_y, arr_ex, arr_ey)
-            pass
-        pass
+    return 0
 
 
-    # Creating figure
-    # --------------------------------------------------------------------------
-    with Profile("Creating figure"):
+def plot_distributions (data, var):
+    """
+    Method for delegating plotting
+    """
+
+    h_D2lowmass = None
+    bins = D2BINS[::5]
+    for mass, (mass_down, mass_up) in enumerate(zip(MASS_BINS[:-1], MASS_BINS[1:])):
 
         # Canvas
         c = rp.canvas(batch=True)
 
-        # Profiles
-        c.graph(graphs[myvar],    label="Original, #tau_{21}",          linecolor=rp.colours[5], markercolor=rp.colours[5])
-        c.graph(graphs['{}CSS'.format(myvar)], label="Transformed, #tau_{21}^{CSS}", linecolor=rp.colours[1], markercolor=rp.colours[1], markerstyle=21)
+        # Fill histograms
+        msk = (data['m'] >= mass_down) & (data['m'] < mass_up)
+
+        h_D2    = c.hist(data.loc[msk, var].values,         bins=bins, weights=data.loc[msk, 'weight_test'].values, display=False, normalise=True)
+        h_D2CSS = c.hist(data.loc[msk, var + "CSS"].values, bins=bins, weights=data.loc[msk, 'weight_test'].values, display=False, normalise=True)
+
+        if h_D2lowmass is None:
+            h_D2lowmass = h_D2.Clone('h_lowmass')
+            pass
+
+        # Draw histograms
+        c.hist(h_D2lowmass, label=latex(var, ROOT=True) + ", low-mass bin",
+               linecolor=rp.colours[1], fillcolor=rp.colours[1], alpha=0.5)
+        c.hist(h_D2,        label=latex(var, ROOT=True),
+               linecolor=rp.colours[4], linestyle=2)
+        c.hist(h_D2CSS,     label=latex(var + 'CSS', ROOT=True),
+               linecolor=rp.colours[3])
 
         # Decorations
-        c.xlabel("Large-#it{R} jet #rho^{CSS} = log(m^{2}/ p_{T} / 1 GeV)")
-        c.ylabel("#LT#tau_{21}#GT, #LT#tau_{21}^{CSS}#GT")
-        c.text(["#sqrt{s} = 13 TeV,  QCD jets",
-                "Training dataset",
-                "Baseline selection",
-                ],
-               qualifier=QUALIFIER)
+        c.xlabel(latex(var, ROOT=True) + ", " + latex(var + 'CSS', ROOT=True))
+        c.ylabel("Fraction of jets")
+        c.legend()
+        c.text(["#sqrt{s} = 13 TeV,  QCD jets", "Testing dataset", "#it{{m}} #in  [{:.1f}, {:.1f}] GeV".format(MASS_BINS[mass], MASS_BINS[mass+1]).replace('.0', '')], qualifier=QUALIFIER)
+        c.pad()._xaxis().SetTitleOffset(1.3)
+        c.pad()._yaxis().SetNdivisions(505)
+        c.pad()._primitives[-1].Draw('SAME AXIS')
 
         # Save
-        mkdir('figures/css/')
-        c.save('figures/css/css.pdf')
+        c.save('figures/css/cssProfile_{}_{}.pdf'.format(var, mass))
         pass
 
-    return 0
-
+    return
 
 # Main function call
 if __name__ == '__main__':
