@@ -6,28 +6,28 @@
     "resources" : {
         "my-machine" : {
             "scheduler"         : "local",
-            "max-concurrent"    : 3,
-            "max-finished-jobs" : 100
+            "max-concurrent"    : 5,
+            "max-finished-jobs" : 200
         }
     },
     "likelihood"      : "GAUSSIAN",
     "variables" : {
         "combined/model/lr_ratio" : {
-            "type" : "INT",
+            "type" : "FLOAT",
             "size" : 1,
-            "min"  : -8,
+            "min"  : -10,
             "max"  : -1,
 	    "comment": "In the script, `lr_ratio` is transformed as `lr_ratio` -> `10^(lr_ratio)`."
         },
         "combined/compile/lr" : {
-            "type" : "INT",
+            "type" : "FLOAT",
             "size" : 1,
             "min"  : -5,
             "max"  : -1,
 	    "comment": "In the script, `lr` is transformed as `lr` -> `10^(lr)`."
         },
         "combined/compile/decay" : {
-            "type" : "INT",
+            "type" : "FLOAT",
             "size" : 1,
             "min"  : -6,
             "max"  : -2,
@@ -37,7 +37,7 @@
             "type" : "INT",
             "size" : 1,
 	    "min"  : 1,
-	    "max"  : 5
+	    "max"  : 4
         },
         "adversary/model/gmm_components" : {
             "type" : "INT",
@@ -49,7 +49,7 @@
             "type" : "INT",
             "size" : 1,
             "min"  : 1,
-            "max"  : 7,
+            "max"  : 6,
 	    "comment": "In the script, `unit` are transformed as `unit` -> `2^(unit)`."
         },
         "adversary/model/default/activation" : {

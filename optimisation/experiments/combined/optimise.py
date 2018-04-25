@@ -30,6 +30,16 @@ def main(job_id, params):
         pass
     patch['combined']['compile']['loss_weights'] = [lr_ratio, 1.0]
 
+    # -- Fixed settings
+    for field in ['fit', 'model']:
+        if field not in patch['combined']:
+            patch['combined'][field] = dict()
+            pass
+        pass
+    patch['combined']['fit']['epochs']       = 200
+    patch['combined']['fit']['batch_size']   = 8192
+    patch['combined']['model']['lambda_reg'] = 10.
+
     # Save patch to file
     save_patch(patch, filename)
 
@@ -38,7 +48,7 @@ def main(job_id, params):
                        '--patch',   filename,
                        '--jobname', 'combined-' + jobname,
                        '--gpu',
-                       '--devices', '3',
+                       '--devices', '7',
                        '--folds',   '3',
                        '--tensorboard'],
                       adversarial=True)

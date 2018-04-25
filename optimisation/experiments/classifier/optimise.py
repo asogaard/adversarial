@@ -21,6 +21,14 @@ def main(job_id, params):
     jobname  = 'patch.{:08d}'.format(job_id)
     filename = os.path.realpath('patches/{}.json'.format(jobname))
     patch    = create_patch(params)
+
+    # -- Fixed settings
+    if 'fit' not in patch['classifier']:
+        patch['classifier']['fit'] = dict()
+        pass
+    patch['classifier']['fit']['epochs']     = 50
+    patch['classifier']['fit']['batch_size'] = 8192
+    
     save_patch(patch, filename)
     
     # Set arguments
@@ -28,7 +36,7 @@ def main(job_id, params):
                        '--patch',   filename,
                        '--jobname', 'classifier-' + jobname,
                        '--gpu',
-                       '--devices', '3',
+                       '--devices', '7',
                        '--folds',   '3',
                        '--tensorboard'],
                       adversarial=True)
