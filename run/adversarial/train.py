@@ -100,11 +100,12 @@ def main (args):
 
     # Get standard-formatted decorrelation inputs
     decorrelation = get_decorrelation_variables(data)
-    aux_var = 'pt'
+    aux_vars = ['logpt']
+    data['logpt'] = pd.Series(np.log(data['pt'].values), index=data.index)
     
     # Specify common weights
     # -- Classifier
-    weight_var = 'weight_train'  # 'weight_adv'
+    weight_var = 'weight_adv'  # 'weight_adv' / 'weight_train'
     data['weight_clf'] = pd.Series(data[weight_var].values, index=data.index)
 
     # -- Adversary
@@ -295,8 +296,6 @@ def main (args):
 
     cfg['combined']['compile']['loss'][1] = kullback_leibler
 
-    pretrain_epochs = 20  # @TODO: Make configurable
-
 
     # @TODO: Make `train_{classifier,adverarial}` methods for used with _both_
     #        cross-val.- and full trianing
@@ -341,12 +340,12 @@ def main (args):
                     parallelised = parallelise_model(combined, args)
 
                     # Prepare arrays
-                    X = [data[features]    .values[train]] + [data[aux_var].values[train], decorrelation[train]]
+                    X = [data[features]    .values[train]] + [data[aux_vars].values[train], decorrelation[train]]
                     Y = [data['signal']    .values[train]] + [np.ones_like(data['signal'].values[train])]
                     W = [data['weight_clf'].values[train]] + [data['weight_adv'].values[train]]
 
                     validation_data = (
-                        [data[features]    .values[validation]] + [data[aux_var].values[validation], decorrelation[validation]],
+                        [data[features]    .values[validation]] + [data[aux_vars].values[validation], decorrelation[validation]],
                         [data['signal']    .values[validation]] + [np.ones_like(data['signal'].values[validation])],
                         [data['weight_clf'].values[validation]] + [data['weight_adv'].values[validation]]
                         )
@@ -365,7 +364,7 @@ def main (args):
                     # Pre-training adversary
                     log.info("Pre-training")
                     pretrain_fit_opts = dict(**cfg['combined']['fit'])
-                    pretrain_fit_opts['epochs'] = pretrain_epochs
+                    pretrain_fit_opts['epochs'] = cfg['combined']['pretrain']
                     ret_pretrain = parallelised.fit(X, Y, sample_weight=W, validation_data=validation_data, **pretrain_fit_opts)
 
                     # Re-compile combined model for full training
@@ -462,7 +461,7 @@ def main (args):
             parallelised.compile(**cfg['combined']['compile'])
 
             # Prepare arrays
-            X = [data[features]    .values] + [data[aux_var].values, decorrelation]
+            X = [data[features]    .values] + [data[aux_vars].values, decorrelation]
             Y = [data['signal']    .values] + [np.ones_like(data['signal'].values)]
             W = [data['weight_clf'].values] + [data['weight_adv'].values]
 
@@ -473,7 +472,7 @@ def main (args):
             # Pre-training adversary
             log.info("Pre-training")
             pretrain_fit_opts = dict(**cfg['combined']['fit'])
-            pretrain_fit_opts['epochs'] = pretrain_epochs
+            pretrain_fit_opts['epochs'] = cfg['combined']['pretrain']
             ret_pretrain = parallelised.fit(X, Y, sample_weight=W, **pretrain_fit_opts)
 
             # Re-compile combined model for full training

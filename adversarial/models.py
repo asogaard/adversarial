@@ -172,15 +172,18 @@ def adversary_model (gmm_dimensions, gmm_components=None, architecture=[], defau
 
     # Input(s)
     adversary_input_clf = Input(shape=(1,),              name=layer_name('input_clf'))
-    adversary_input_pt  = Input(shape=(1,),              name=layer_name('input_pt'))
+    adversary_input_pt  = Input(shape=(1,),              name=layer_name('input_pt'))  # @TEMP
     adversary_input_par = Input(shape=(gmm_dimensions,), name=layer_name('input_par'))
 
+    # Batch-normalise classifier output
+    clf = adversary_input_clf  # BatchNormalization()(adversary_input_clf)
+
     # Re-scale input pt
-    pt = Lambda(lambda pt: (pt - 200.)/(2000. - 200.))(adversary_input_pt)
     #pt = BatchNormalization()(adversary_input_pt)
+    pt = Lambda(lambda pt: (pt - np.log(200.))/(np.log(2000.) - np.log(200.)))(adversary_input_pt)
 
     # Intermediate layer(s)
-    inputs = Concatenate(name=layer_name('concatenate'))([adversary_input_clf, pt])
+    inputs = Concatenate(name=layer_name('concatenate'))([clf, pt])
     features = stack_layers(inputs, architecture, default, scope=scope)
 
     # Posterior p.d.f. parameters
