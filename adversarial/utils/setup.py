@@ -377,10 +377,22 @@ def load_data (path, name='dataset', train=None, test=None, signal=None, backgro
     # Read data from HDF5 file
     data = pd.read_hdf(path, name)
 
+    # @TEMP Subsamples signal by x10
+    np.random.seed(7)
+    msk_test  = data['train'] == 0
+    msk_train = ~msk_test
+    msk_bkg = data['signal'] == 0
+    msk_sig = ~msk_bkg
+    idx_sig = np.where(msk_sig)[0]
+    idx_sig = np.random.choice(idx_sig, int(msk_sig.sum() * 0.1), replace=False)
+    msk_sig = np.zeros_like(msk_bkg).astype(bool)
+    msk_sig[idx_sig] = True
+    data = data[msk_train | (msk_test & (msk_sig | msk_bkg))]
+    
     # Logging
     try:
         for sig, name in zip([1, 0], ['signal', 'background']):
-            log.info("Found {:7.0f} training and {:7.0f} test samples for {}".format(
+            log.info("Found {:8.0f} training and {:8.0f} test samples for {}".format(
                 sum((data['signal'] == sig) & (data['train'] == 1)),
                 sum((data['signal'] == sig) & (data['train'] == 0)),
                 name
@@ -389,10 +401,6 @@ def load_data (path, name='dataset', train=None, test=None, signal=None, backgro
     except KeyError:
         log.info("Some key(s) in data were not found")
         pass
-
-    # @TEMP Add log(x) features
-    data['logm']  = pd.Series(np.log(data['m']),  index=data.index)
-    data['logpt'] = pd.Series(np.log(data['pt']), index=data.index)
 
     # Define feature collections to use
     features_input         = INPUT_VARIABLES
