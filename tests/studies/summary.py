@@ -67,57 +67,9 @@ def summary (data, args, features, scan_features, target_tpr=0.5, num_bootstrap=
     jsd_limits = list()
     for bkg_rej in np.logspace(np.log10(2.), np.log10(100), 2 * 10 + 1, endpoint=True):
         frac = 1. / float(bkg_rej)
-        jsd = list()
-        for _ in range(num_bootstrap):
-            df1 = data[['m', 'weight_test']].sample(frac=     frac, replace=True)
-            df2 = data[['m', 'weight_test']].sample(frac=1. - frac, replace=True)
 
-            p, _ = np.histogram(df1['m'].values, bins=MASSBINS, weights=df1['weight_test'].values, density=1.)
-            f, _ = np.histogram(df2['m'].values, bins=MASSBINS, weights=df2['weight_test'].values, density=1.)
-
-            jsd.append(1./JSD(p, f))
-            pass
-
-        # Clip outliers
-        def centralRMS (v_, sigma):
-            """
-            Iteratively compute the RMS of the events within `sigma` standard
-            deviations.
-            """
-            v = np.array(v_, dtype=np.float)
-
-            while len(v) > 1:
-
-                # Compute number of outliers for inclusive set
-                outliers = np.sum(np.abs(v - v.mean()) / v.std() > sigma)
-                if outliers == 0: break
-
-                # Compute z-distance from N-1 mean
-                dist = np.zeros(len(v))
-                for idx in range(len(v)):
-                    vtemp = np.delete(v, idx)
-                    std  = np.std(vtemp)
-                    mean = np.mean(vtemp)
-                    dist[idx] = np.abs(v[idx] - mean) / std
-                    pass
-
-                # Delete furthest outlier
-                idx = np.argmax(dist)
-                v = np.delete(v, idx)
-                pass
-
-            if len(v) / float(len(v_)) >= 0.5:
-                return v
-
-            print "[WARNING] No stable, central RMS was found."
-            return v_
-
-        print "frac: {} | jsd: {} ± {} -->".format(frac, np.mean(jsd), np.std(jsd))
-
-        jsd = centralRMS(jsd, sigma=2.)
-
-        print "frac: {} | jsd: {} ± {}".format(frac, np.mean(jsd), np.std(jsd))
-        jsd_limits.append((bkg_rej, np.mean(jsd), np.std(jsd)))
+        limits = 1./np.array(jsd_limit(data, frac, num_bootstrap=5))
+        jsd_limits.append((bkg_rej, np.mean(limits), np.std(limits)))
         pass
 
     # Perform plotting
@@ -140,8 +92,8 @@ def plot (*argv):
     with TemporaryStyle() as style:
 
         # Define variable(s)
-        axisrangex = (1.4,   100.)
-        axisrangey = (0.4, 50000.)
+        axisrangex = (1.4,    100.)
+        axisrangey = (0.3, 500000.)
         aminx, amaxx = axisrangex
         aminy, amaxy = axisrangey
 
@@ -206,12 +158,15 @@ def plot (*argv):
 
                 # Draw
                 c.graph([y], bins=[x], markercolor=colour, markerstyle=markerstyle, option='P')
-                c.latex("   " + label, x, y, textsize=11, align=12, textcolor=ROOT.kGray + 2)
+                if base_feat == 'NN':
+                    c.latex("   " + label, x, y, textsize=11, align=12, textcolor=ROOT.kGray + 2)
+                else:
+                    c.latex(label + "   ", x, y, textsize=11, align=32, textcolor=ROOT.kGray + 2)
+                    pass
                 pass
 
             # Connecting lines (scan)
             feats = [base_feat] + map(lambda t: t[0], group)
-            print "Drawing lines between the following:", feats
             for feat1, feat2 in zip(feats[:-1], feats[1:]):
                 idx1 = map(lambda t: t[2], points).index(feat1)
                 idx2 = map(lambda t: t[2], points).index(feat2)
@@ -235,7 +190,15 @@ def plot (*argv):
         x,y,ey = map(np.array, zip(*jsd_limits))
         ex = np.zeros_like(ey)
         gr = ROOT.TGraphErrors(len(x), x, y, ex, ey)
+        smooth_tgrapherrors(gr, ntimes=2)
         c.graph(gr, linestyle=2, linecolor=ROOT.kGray + 1, fillcolor=ROOT.kBlack, alpha=0.03, option='L3')
+
+        x_, y_, ex_, ey_ = ROOT.Double(0), ROOT.Double(0), ROOT.Double(0), ROOT.Double(0)
+        idx = 4
+        gr.GetPoint(idx, x_,  y_)
+        ey_ = gr.GetErrorY(idx)
+        x_, y_ = map(float, (x_, y_))
+        c.latex("Statistical limit", x_, y_ + ey_ / 2., align=21, textsize=11, angle=-7, textcolor=ROOT.kGray + 2)
 
         # Decorations
         c.xlabel("Background rejection, 1 / #varepsilon_{bkg} @ #varepsilon_{sig} = 50%")

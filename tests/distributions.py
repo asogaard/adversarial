@@ -52,27 +52,39 @@ def main (args):
         'rho':  (50,  -8,    0),
         'logm': (50,  np.log(50),  np.log(300)),
     }
-    weight = 'weight_train'  # 'weight_test' / 'weight'
-
+    weight = 'weight_adv'  # 'weight_test' / 'weight'
+    pt_range = (200., 2000.)
+    msk_pt = (data['pt'] > pt_range[0]) & (data['pt'] < pt_range[1])
     for var in axes:
 
         # Canvas
-        c = rp.canvas(batch=True)
+        c = rp.canvas(num_pads=2, batch=True)
 
         # Plot
         bins = np.linspace(axes[var][1], axes[var][2], axes[var][0] + 1, endpoint=True)
-        for signal in [0,1]:
-            msk = data['signal'] == signal
-            opts = dict(normalise=True, **HISTSTYLE[signal])
-            c.hist(data.loc[msk, var].values, bins=bins, weights=data.loc[msk, weight].values, **opts)
+        for adv in [0,1]:
+            msk  = data['signal'] == 0   # @TEMP signal
+            msk &= msk_pt
+            opts = dict(normalise=True, **HISTSTYLE[adv])  # @TEMP signal
+            opts['label'] = 'adv' if adv else 'test'
+            if adv:
+                h1 = c.hist(data.loc[msk, var].values, bins=bins, weights=data.loc[msk, weight].values, **opts)
+            else:
+                h2 = c.hist(data.loc[msk, var].values, bins=bins, weights=data.loc[msk, 'weight_test'].values, **opts)
+                pass
             pass
+
+        # Ratio
+        c.pads()[1].ylim(0,2)
+        c.ratio_plot((h1,h2), oob=True)
 
         # Decorations
         c.legend()
         c.xlabel(latex(var, ROOT=True))
         c.ylabel("Fraction of jets")
+        c.pads()[1].ylabel("adv/test")
         #c.logy()
-        c.text(TEXT, qualifier=QUALIFIER)
+        c.text(TEXT + ['p_{{T}} #in  [{:.0f}, {:.0f}] GeV'.format(pt_range[0], pt_range[1])], qualifier=QUALIFIER)
 
         # Save
         mkdir('figures/distributions')

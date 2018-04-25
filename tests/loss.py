@@ -8,6 +8,7 @@ import os
 import glob
 import json
 import itertools
+from pprint import pprint
 
 # Set Keras backend
 os.environ['KERAS_BACKEND'] = 'tensorflow'
@@ -45,15 +46,13 @@ def main (args):
     # Compute entropy of decorrelation variable posterior
     data, _, _ = load_data(args.input + 'data.h5', train=True, background=True)
     decorrelation = get_decorrelation_variables(data)
-    H_prior = entropy(decorrelation, weights=data['weight_train'])
+    H_prior = entropy(decorrelation, weights=data['weight_adv'])
     print "Entropy of prior: {}".format(H_prior)
 
     # Perform adversarial loss study
-    #basedir='models/adversarial/combined/full/'
-    #basedir='models/adversarial/combined/crossval/'
-    basedir='output/lambda10/'
-    for lambda_reg in [10]:  # [1, 10, 100]:
-        plot_adversarial_training_loss(lambda_reg, num_folds, 20, H_prior, basedir=basedir)
+    basedir='output/2018-04-25'
+    for lambda_reg in [10, 100]:
+        plot_adversarial_training_loss(lambda_reg, num_folds, 10, H_prior, basedir=basedir)
         pass
 
     return 0
@@ -85,6 +84,7 @@ def plot_classifier_training_loss (num_folds, basedir='models/adversarial/classi
             pass
 
         loss = np.array(d['val_loss'])
+        loss[np.abs(loss - 0.72) < 0.02] = np.nan  # @FIXME: This probably isn't completely kosher
         losses['val'].append(loss)
         loss = np.array(d['loss'])
         losses['train'].append(loss)
@@ -103,8 +103,8 @@ def plot_classifier_training_loss (num_folds, basedir='models/adversarial/classi
     for name, key, colour, linestyle in zip(['Validation', 'Training'], ['val', 'train'], [rp.colours[4], rp.colours[1]], [1,2]):
 
         # Histograms
-        loss_mean = np.mean(losses[key], axis=0)
-        loss_std  = np.std (losses[key], axis=0)
+        loss_mean = np.nanmean(losses[key], axis=0)
+        loss_std  = np.nanstd (losses[key], axis=0)
         hist = ROOT.TH1F(key + '_loss', "", len(histbins) - 1, histbins)
         for idx in range(len(loss_mean)):
             hist.SetBinContent(idx + 1, loss_mean[idx])
@@ -170,12 +170,13 @@ def plot_adversarial_training_loss (lambda_reg, num_folds, pretrain_epochs, H_pr
         with open(path, 'r') as f:
             d = json.load(f)
             pass
-
+                
         # Loop loss classes
         for name, prefix in zip(['train', 'val'], ['', 'val_']):
             try:
                 # Classifier
                 loss = np.array(d[prefix + 'classifier_loss'])
+                loss[loss > 7.0] = np.nan
                 losses[name + '_clf'].append(loss)
                 
                 # Adversary
@@ -191,7 +192,7 @@ def plot_adversarial_training_loss (lambda_reg, num_folds, pretrain_epochs, H_pr
     c = rp.canvas(batch=True, num_pads=3, ratio=False, size=(600,800))
     bins     = np.arange(len(loss))
     histbins = np.arange(len(loss) + 1) - 0.5
-
+    
     # Axes
     for idx in range(3):
         c.pads()[idx].hist([0], bins=[0,len(bins) - 1], linewidth=0, linestyle=0)  # Force correct x-axis
@@ -206,8 +207,8 @@ def plot_adversarial_training_loss (lambda_reg, num_folds, pretrain_epochs, H_pr
 
             # Create histogram
             try:
-                loss_mean = np.mean(losses[key], axis=0)
-                loss_std  = np.std (losses[key], axis=0)
+                loss_mean = np.nanmean(losses[key], axis=0)
+                loss_std  = np.nanstd (losses[key], axis=0)
                 hist = ROOT.TH1F(key, "", len(histbins) - 1, histbins)
                 for ibin in range(len(loss_mean)):
                     hist.SetBinContent(ibin + 1, loss_mean[ibin])
@@ -237,12 +238,13 @@ def plot_adversarial_training_loss (lambda_reg, num_folds, pretrain_epochs, H_pr
         tpad.SetLeftMargin(0.20)
         tpad.SetBottomMargin(f * margin)
         tpad.SetTopMargin((1 - f) * margin)
+        pad._xaxis().SetNdivisions(505)
         pad._yaxis().SetNdivisions(505)
         if ipad < len(c.pads()) - 1:  # Not bottom pad
             pad._xaxis().SetLabelOffset(9999.)
             pad._xaxis().SetTitleOffset(9999.)
         else:
-            pad._xaxis().SetTitleOffset(5.0)
+            pad._xaxis().SetTitleOffset(3.5)
             pass
 
         ymin, ymax = list(), list()
@@ -264,6 +266,11 @@ def plot_adversarial_training_loss (lambda_reg, num_folds, pretrain_epochs, H_pr
         ymin -= ydiff * 0.2
         ymax += ydiff * (0.7 if ipad == 0 else (0.7 if ipad == 1 else 0.2))
 
+        if ipad == 0:
+        #    ymin = 0.25
+            ymax *= 1.2
+            pass
+
         pad.ylim(ymin, ymax)
 
         ymins.append(ymin)
@@ -283,10 +290,10 @@ def plot_adversarial_training_loss (lambda_reg, num_folds, pretrain_epochs, H_pr
 
     # Vertical lines
     for ipad in range(len(c.pads())):
-        align = 'TL' if ipad < 2 else 'BL'
+        align = 'TR' if ipad < 2 else 'BR'
         c.pads()[ipad].xline(pretrain_epochs,
                              ymin=ymins[ipad], ymax=ymaxs[ipad],
-                             text='Adversary pre-training  ' if ipad == 0 else None,
+                             text='  Adv. pre-training  ' if ipad == 0 else None,
                              text_align=align, linestyle=1, linecolor=ROOT.kGray + 2)
         pass
 
@@ -298,7 +305,7 @@ def plot_adversarial_training_loss (lambda_reg, num_folds, pretrain_epochs, H_pr
         pass
 
     opts = dict(align=31, textcolor=ROOT.kGray + 2, textsize=14)
-    c.pads()[0].latex("Standalone NN  ", bins[-1] * 0.98, clf_opt_val                           + (ymaxs[0] - ymins[0]) * 0.03, **opts)
+    c.pads()[0].latex("Stand-alone NN  ", bins[-1] * 0.98, clf_opt_val                           + (ymaxs[0] - ymins[0]) * 0.03, **opts)
 
     if H_prior is not None:
         c.pads()[1].latex("#it{H}(prior)  ", bins[-1] * 0.98, H_prior                              + (ymaxs[1] - ymins[1]) * 0.03, **opts)
@@ -319,9 +326,9 @@ def plot_adversarial_training_loss (lambda_reg, num_folds, pretrain_epochs, H_pr
     c.pads()[0].text([], xmin=0.2, ymax=0.85, qualifier=QUALIFIER)
 
     c.pads()[1].text(["#sqrt{s} = 13 TeV",
-                      "Baseline selection",
+                      "#it{W} jet tagging",
                       "Adversarial training (#lambda = %s)" % (lambda_str.replace('p', '.'))
-                      ], ATLAS=False, ymax=0.70, xmin=0.35)
+                      ], ATLAS=False, ymax=0.70, xmin=0.27)
     c.pads()[0].legend(xmin=0.60, ymax=0.70, categories=categories)
 
     # Save

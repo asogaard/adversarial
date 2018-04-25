@@ -5,6 +5,7 @@
 
 # Basic import(s)
 import re
+import gc
 import gzip
 
 # Get ROOT to stop hogging the command-line options
@@ -53,23 +54,28 @@ def main (args):
     from adversarial.models import classifier_model, adversary_model, combined_model, decorrelation_model
 
     # Load data
-    data, features, _ = load_data(args.input + 'data.h5', test=True)
+    data, features, _ = load_data(args.input + 'data.h5', test=True, sample=0.1) #@TEMP
 
 
     # Common definitions
     # --------------------------------------------------------------------------
     # -- k-nearest neighbour
-    kNN_eff = 19
     kNN_var = 'N2-k#minusNN'
+
+    def meaningful_digits (number):
+        digits = 0
+        if number > 0:
+            digits = int(np.ceil(max(-np.log10(number), 0)))
+            pass
+        return '{l:.{d:d}f}'.format(d=digits,l=number)
 
     # -- Adversarial neural network (ANN) scan
     lambda_reg  = 10.
-    lambda_regs = sorted([1., 10.])
+    lambda_regs = sorted([0.1, 1., 10., 100.])
     ann_vars    = list()
     lambda_strs = list()
     for lambda_reg_ in lambda_regs:
-        digits = int(np.ceil(max(-np.log10(lambda_reg_), 0)))
-        lambda_str = '{l:.{d:d}f}'.format(d=digits,l=lambda_reg_).replace('.', 'p')
+        lambda_str = meaningful_digits(lambda_reg_).replace('.', 'p')
         lambda_strs.append(lambda_str)
 
         ann_var_ = "ANN(#lambda={:s})".format(lambda_str.replace('p', '.'))
@@ -80,11 +86,11 @@ def main (args):
 
     # -- uBoost scan
     uboost_eff = 92
-    uboost_ur  = 0.1
-    uboost_urs = sorted([0., 0.1])  # sorted([0., 0.01, 0.1, 0.3, 0.5, 1.0])
-    uboost_var  =  'uBoost(#alpha={:.2f})'.format(uboost_ur)
-    uboost_vars = ['uBoost(#alpha={:.2f})'.format(ur) for ur in uboost_urs]
-    uboost_pattern = 'uboost_ur_{{:4.2f}}_te_{:.0f}'.format(uboost_eff)
+    uboost_ur  = 0.3
+    uboost_urs = sorted([0., 0.01, 0.1, 0.3, 1.0])
+    uboost_var  =  'uBoost(#alpha={:s})'.format(meaningful_digits(uboost_ur))
+    uboost_vars = ['uBoost(#alpha={:s})'.format(meaningful_digits(ur)) for ur in uboost_urs]
+    uboost_pattern = 'uboost_ur_{{:4.2f}}_te_{:.0f}_rel21_fixed'.format(uboost_eff)
 
     # Tagger feature collection
     tagger_features = ['Tau21','Tau21DDT', 'N2', kNN_var, 'D2', 'D2CSS', 'NN', ann_var, 'Adaboost', uboost_var]
@@ -98,8 +104,8 @@ def main (args):
         from run.ddt.common import add_ddt
         add_ddt(data, path='models/ddt/ddt.pkl.gz')
 
-        # D2-kNN
-        from run.knn.common import add_knn, VAR as kNN_basevar
+        # N2-kNN
+        from run.knn.common import add_knn, VAR as kNN_basevar, EFF as kNN_eff
         add_knn(data, newfeat=kNN_var, path='models/knn/knn_{}_{}.pkl.gz'.format(kNN_basevar, kNN_eff))
 
         # D2-CSS
@@ -142,8 +148,14 @@ def main (args):
             # Remove `Adaboost` from scan list
             uboost_vars.pop(0)
             pass
+
         pass
 
+    # Remove unused variables
+    used_variables = set(tagger_features + ann_vars + uboost_vars + ['m', 'pt', 'npv', 'weight_test'])
+    unused_variables = [var for var in list(data) if var not in used_variables]
+    data.drop(columns=unused_variables)
+    gc.collect()
 
     # Perform performance studies
     perform_studies (data, args, tagger_features, ann_vars, uboost_vars)
@@ -155,11 +167,14 @@ def perform_studies (data, args, tagger_features, ann_vars, uboost_vars):
     """
     Method delegating performance studies.
     """
-    masscuts = [False]  # [True, False]
+    masscuts = [False]  # [True, False]  # @TEMP
 
     # Perform pile-up robustness study
     with Profile("Study: Robustness (pile-up)"):
-        bins = [0, 5.5, 10.5, 15.5, 20.5, 25.5, 30.5]
+        #bins = [0, 5.5, 10.5, 15.5, 20.5, 25.5, 30.5]
+        #bins = np.percentile(data['npv'].values, np.linspace(0, 100, 6 + 1, endpoint=True))
+        bins = [0,  9.5, 11.5, 13.5, 15.5, 18.5, 30.5]
+        print "NPV bins:", bins
         for masscut in masscuts:
             studies.robustness(data, args, tagger_features, 'npv', bins, masscut=masscut)
             pass
@@ -172,10 +187,10 @@ def perform_studies (data, args, tagger_features, ann_vars, uboost_vars):
             studies.robustness(data, args, tagger_features, 'pt', bins, masscut=masscut)
             pass
         pass
-
+    return  # @TEMP
     # Perform jet mass distribution comparison study
     with Profile("Study: Jet mass comparison"):
-        for simple_features in masscuts:
+        for simple_features in [True, False]:
             studies.jetmasscomparison(data, args, tagger_features, simple_features)
             pass
         pass

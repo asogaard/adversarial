@@ -48,6 +48,12 @@ def robustness (data, args, features, var, bins, masscut=False, num_bootstrap=5)
         for feat in features:
             mean_std_rej, mean_std_jsd = bootstrap_metrics(data[msk_bin], feat, num_bootstrap=num_bootstrap, masscut=masscut)
 
+            # @TODO: Compute JSD limit
+            #frac = ...
+            #jsds = jsd_limit(data[msk_bin], frac)
+            #np.mean(1/jsds) ± np.std(1/jsds)
+            # ...
+
             # Store in output containers
             rejs[feat].append(mean_std_rej)
             jsds[feat].append(mean_std_jsd)
@@ -142,7 +148,16 @@ def plot (*argv):
         for pad in c.pads():
             pad._xaxis().SetNdivisions(504)
             pass
-        c.xlabel(latex(var, ROOT=True))  # @TODO: Improve
+
+        # -- x-axis label
+        if var == 'pt':
+            xlabel = "Large-#it{R} jet p_{T} [GeV]"
+        elif var == 'npv':
+            xlabel = "Number of reconstructed vertices N_{PV}"
+        else:
+            raise NotImplementedError("Variable {} is not supported.".format(xlabel))
+
+        c.xlabel(xlabel)
         c.pads()[0].ylabel("1/#varepsilon_{bkg} @ #varepsilon_{sig} = 50%")
         c.pads()[1].ylabel("1/JSD @ #varepsilon_{sig} = 50%")
 
@@ -156,7 +171,11 @@ def plot (*argv):
         c.pads()[1].text(["QCD jets"], ATLAS=False)
 
         #c.pads()[0].padding(0.5)
-        c.pads()[1].ylim(0.5, 5000)
+        c.pads()[0].ymin(1)
+
+        c.pads()[1].ymin(0.5)
+        c.pads()[1].padding(0.2)
+
         c.pads()[0].logy()
         c.pads()[1].logy()
         pass  # Temporary style scope

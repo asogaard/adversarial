@@ -93,8 +93,10 @@ def plot (*argv):
     # Plots
     # -- Random guessing
     bins = np.linspace(0.2, 1., 100 + 1, endpoint=True)
-    bins = np.array([0.2, 0.2 + 0.001] + list(bins[1:]))
-    edges = bins[1:-1]
+    bins = np.array([bins[0], bins[0] + 0.01 * np.diff(bins[:2])[0]] + list(bins[1:]))
+    #bins = np.array([0.2] + list(bins[1:]))
+    #edges = bins[1:-1]
+    edges = bins
     centres = edges[:-1] + 0.5 * np.diff(edges)
     c.hist(np.power(centres, -1.), bins=edges, linecolor=ROOT.kGray + 2, fillcolor=ROOT.kBlack, alpha=0.05, linewidth=1, option='HISTC')
 

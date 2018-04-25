@@ -30,18 +30,13 @@ def efficiency (data, args, feat):
 
     # Define common variables
     msk  = data['signal'] == 0
-    effs = np.linspace(0, 100, 10, endpoint=False)[1:].astype(int)
+    effs = [5, 10, 20, 40, 80]
 
     # Define cuts
     cuts = list()
     for eff in effs:
-        cut = wpercentile(data.loc[msk, feat].values, eff, weights=data.loc[msk, 'weight_test'].values)
+        cut = wpercentile(data.loc[msk, feat].values, eff if signal_low(feat) else 100 - eff, weights=data.loc[msk, 'weight_test'].values)
         cuts.append(cut)
-        pass
-
-    # Ensure correct direction of cut
-    if not signal_low(feat):
-        cuts = list(reversed(cuts))
         pass
 
     # Compute cut efficiency vs. mass
@@ -67,18 +62,11 @@ def efficiency (data, args, feat):
         profiles.append(profile)
         pass
 
-    # Force style
-    ref_titleoffsety = ROOT.gStyle.GetTitleOffset('y')
-    ROOT.gStyle.SetTitleOffset(1.6, 'y')
-
     # Perform plotting
     c = plot(args, data, feat, profiles, cuts, effs)
 
     # Output
     path = 'figures/efficiency_{}.pdf'.format(standardise(feat))
-
-    # Reset style
-    ROOT.gStyle.SetTitleOffset(ref_titleoffsety, 'y')
 
     return c, args, path
 
@@ -91,35 +79,32 @@ def plot (*argv):
     # Unpack arguments
     args, data, feat, profiles, cuts, effs = argv
 
-    # Canvas
-    c = rp.canvas(batch=not args.show)
+    with TemporaryStyle() as style:
 
-    # Plots
-    for idx, (profile, cut, eff) in enumerate(zip(profiles, cuts, effs)):
-        colour = rp.colours[1]
-        linestyle = 1
-        c.hist(profile, linecolor=colour, linestyle=linestyle, option='HIST L')
-        c.hist(profile, fillcolor=colour, alpha=0.3, option='E3')
-        pass
+        # Style
+        style.SetTitleOffset(1.6, 'y')
 
-    # Text
-    for idx, (profile, cut, eff) in enumerate(zip(profiles, cuts, effs)):
-        if int(eff) in [10, 50, 90]:
-            c.latex('#bar{#varepsilon}_{bkg} = %d%%' % eff,
-                    260., profile.GetBinContent(np.argmin(np.abs(MASSBINS - 270.)) + 1) + 0.025,
-                    textsize=13,
-                    textcolor=ROOT.kGray + 2, align=11)
+        # Canvas
+        c = rp.canvas(batch=not args.show)
+
+        # Plots
+        for idx, (profile, cut, eff) in enumerate(zip(profiles, cuts, effs)):
+            colour = rp.colours[idx + 0]
+            linestyle = 1
+            c.hist(profile, linecolor=colour, linestyle=linestyle, option='HIST L')
+            c.hist(profile, linecolor=colour, fillcolor=colour, alpha=0.3, option='E3', label=(" " if eff < 10 else "") + "{:d}%".format(eff))
             pass
-        pass
 
-    # Decorations
-    c.xlabel("Large-#it{R} jet mass [GeV]")
-    c.ylabel("Background efficiency, #varepsilon_{bkg}")
-    c.text(["#sqrt{s} = 13 TeV,  QCD jets",
-            "#it{W} jet tagging",
-            "Sequential cuts on {}".format(latex(feat, ROOT=True)),
-            ],
-           qualifier=QUALIFIER)
-    c.ylim(0, 1.8)
+        # Decorations
+        c.xlabel("Large-#it{R} jet mass [GeV]")
+        c.ylabel("Background efficiency, #varepsilon_{bkg}")
+        c.text(["#sqrt{s} = 13 TeV,  QCD jets",
+                #"#it{W} jet tagging",
+                "Cuts on {}".format(latex(feat, ROOT=True)),
+                ],
+               qualifier=QUALIFIER)
+        c.ylim(0, 2.0)
+        c.legend(reverse=True, width=0.25, ymax=0.87, header="Incl. #bar{#varepsilon}_{bkg}:")
+        pass
 
     return c

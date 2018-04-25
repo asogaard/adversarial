@@ -87,9 +87,7 @@ def plot (*argv):
     c.xlabel("Large-#it{R} jet mass [GeV]")
     c.ylabel("Fraction of jets")
     c.text(["#sqrt{s} = 13 TeV,  QCD jets",
-            "Testing dataset",
-            "Baseline selection",
-            "Fixed #varepsilon_{sig} = %d%% cut on %s" % (eff_sig, latex(feat, ROOT=True)),
+            "#varepsilon_{sig} = %d%% cut on %s" % (eff_sig, latex(feat, ROOT=True)),
             ], qualifier=QUALIFIER)
 
     c.ylim(2E-04, 2E+02)

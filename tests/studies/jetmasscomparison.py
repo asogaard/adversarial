@@ -87,8 +87,9 @@ def plot (*argv):
     base.pop('alpha')
     for ifeat, feat in filter(lambda t: simple_features == signal_low(t[1]), enumerate(features)):
         opts = dict(
-            linecolor   = rp.colours[(ifeat // 2)],
-            linestyle   = 1 + (ifeat % 2),
+            linecolor = rp.colours[(ifeat // 2)],
+            linestyle = 1 + (ifeat % 2),
+            linewidth = 2,
             )
         cfg = dict(**base)
         cfg.update(opts)
@@ -96,7 +97,10 @@ def plot (*argv):
         hist[feat] = c.hist(data.loc[msk, 'm'].values, weights=data.loc[msk, 'weight_test'].values, label=" " + latex(feat, ROOT=True), **cfg)
         pass
 
-    c.legend(header=" Tagged QCD jets:", ymax=0.70, **opts_legend)
+    c.legend(header=" Tagged QCD jets:", ymax=0.70,
+             columns=2 if simple_features else 1, margin=0.5 if simple_features else 0.25,
+             **opts_legend)
+
 
     # Re-draw axes
     c.pads()[0]._primitives[0].Draw('AXIS SAME')
@@ -109,7 +113,7 @@ def plot (*argv):
     c.text(["#sqrt{s} = 13 TeV",
             "#it{W} jet tagging",
             "{} taggers".format("Simple" if simple_features else "MVA"),
-            "Tagging at #varepsilon_{sig} = %.0f%%" % eff_sig,
+            "Cuts at #varepsilon_{sig} = %.0f%%" % eff_sig,
             ], ATLAS=False)
 
     c.ylim(5E-05, 5E+02)
