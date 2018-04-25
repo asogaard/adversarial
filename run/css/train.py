@@ -35,7 +35,8 @@ def main (args):
     args, cfg = initialise(args)
 
     # Load data
-    data, features, _ = load_data(args.input + 'data.h5', background=True, train=True)
+    data, features, _ = load_data(args.input + 'data.h5', background=True)  # ,
+                                        # train=True) @TEMP!
 
     # Fill substructure profile
     D2BINS = np.linspace(0., 5., 501, endpoint=True)

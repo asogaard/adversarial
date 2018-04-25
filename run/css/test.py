@@ -59,7 +59,6 @@ def plot_distributions (data, var):
 
         # Fill histograms
         msk = (data['m'] >= mass_down) & (data['m'] < mass_up)
-
         h_D2    = c.hist(data.loc[msk, var].values,         bins=bins, weights=data.loc[msk, 'weight_test'].values, display=False, normalise=True)
         h_D2CSS = c.hist(data.loc[msk, var + "CSS"].values, bins=bins, weights=data.loc[msk, 'weight_test'].values, display=False, normalise=True)
 
@@ -81,7 +80,7 @@ def plot_distributions (data, var):
         c.legend()
         c.text(["#sqrt{s} = 13 TeV,  QCD jets", "Testing dataset", "#it{{m}} #in  [{:.1f}, {:.1f}] GeV".format(MASS_BINS[mass], MASS_BINS[mass+1]).replace('.0', '')], qualifier=QUALIFIER)
         c.pad()._xaxis().SetTitleOffset(1.3)
-        c.pad()._yaxis().SetNdivisions(505)
+        c.pad()._yaxis().SetNdivisions(105)
         c.pad()._primitives[-1].Draw('SAME AXIS')
 
         # Save
