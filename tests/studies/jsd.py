@@ -76,7 +76,6 @@ def jsd (data, args, features):
         jsd_limits.append((eff, np.mean(limits), np.std(limits)))
         pass
 
-
     # Perform plotting
     c = plot(args, data, effs, jsd, jsd_limits, features)
 
@@ -143,11 +142,15 @@ def plot (*argv):
         c.text(["#sqrt{s} = 13 TeV",  "QCD jets"],
                ymax=0.85, ATLAS=None)
 
-        c.latex("Maximal sculpting", 0.065, 1.2, align=11, textsize=11,           textcolor=ROOT.kGray + 2)
+        c.latex("Maximal sculpting", 0.065, 1.2, align=11, textsize=11, textcolor=ROOT.kGray + 2)
         c.xlim(0, 1)
         c.ymin(5E-05)
         c.padding(0.45)
         c.logy()
+
+        for leg in c.pad()._legends:
+            leg.SetMargin(0.5)
+            pass
 
         x_, y_, ex_, ey_ = ROOT.Double(0), ROOT.Double(0), ROOT.Double(0), ROOT.Double(0)
         idx = gr.GetN() - 7
