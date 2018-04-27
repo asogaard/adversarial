@@ -15,7 +15,7 @@ import rootplotting as rp
 
 
 @showsave
-def jetmasscomparison (data, args, features, simple_features, eff_sig=50):
+def jetmasscomparison (data, args, features, eff_sig=50):
     """
     Perform study of jet mass distributions before and after subtructure cut for
     different substructure taggers.
@@ -26,8 +26,6 @@ def jetmasscomparison (data, args, features, simple_features, eff_sig=50):
         data: Pandas data frame from which to read data.
         args: Namespace holding command-line arguments.
         features: Features for which to plot signal- and background distributions.
-        simple_features: Whether to plot only simple features. Alternative is
-            MVA features.
         eff_sig: Signal efficiency at which to impose cut.
     """
 
@@ -46,12 +44,13 @@ def jetmasscomparison (data, args, features, simple_features, eff_sig=50):
         pass
 
     # Perform plotting
-    c = plot(data, args, features, simple_features, msks_pass, eff_sig)
+    c = plot(data, args, features, msks_pass, eff_sig)
 
     # Output
-    path = 'figures/jetmasscomparison__eff_sig_{:d}__{}.pdf'.format(int(eff_sig), 'simple' if simple_features else 'mva')
+    path = 'figures/jetmasscomparison__eff_sig_{:d}.pdf'.format(int(eff_sig))
 
     return c, args, path
+
 
 
 def plot (*argv):
@@ -60,63 +59,133 @@ def plot (*argv):
     """
 
     # Unpack arguments
-    data, args, features, simple_features, msks_pass, eff_sig = argv
+    data, args, features, msks_pass, eff_sig = argv
 
-    # Global variable override(s)
-    HISTSTYLE[True] ['label'] = " #it{W} jets"
-    HISTSTYLE[False]['label'] = " QCD jets"
+    with TemporaryStyle() as style:
 
-    # Canvas
-    c = rp.canvas(batch=not args.show)
+        # Style
+        ymin, ymax = 5E-05, 5E+00
+        scale = 0.8
+        for coord in ['x', 'y', 'z']:
+            style.SetLabelSize(style.GetLabelSize(coord) * scale, coord)
+            style.SetTitleSize(style.GetTitleSize(coord) * scale, coord)
+            pass
+        style.SetTextSize      (style.GetTextSize()       * scale)
+        style.SetLegendTextSize(style.GetLegendTextSize() * scale)
+        style.SetTickLength(0.07,                     'x')
+        style.SetTickLength(0.07 * (5./6.) * (2./3.), 'y')
 
-    # Plots
-    hist = dict()
-    opts_legend = dict(width=0.25, xmax=0.87)
+        # Global variable override(s)
+        HISTSTYLE[True]['fillstyle'] = 3554
+        HISTSTYLE[True] ['label'] = None
+        HISTSTYLE[False]['label'] = None
+        for v in ['linecolor', 'fillcolor']:
+            HISTSTYLE[True] [v] = 16
+            HISTSTYLE[False][v] = ROOT.kBlack
+            pass
+        style.SetHatchesLineWidth(1)
 
-    # -- Inclusive
-    base = dict(bins=MASSBINS, alpha=0.3, normalise=True, linewidth=3)
-    for signal, name in zip([False, True], ['bkg', 'sig']):
-        msk = data['signal'] == signal
-        HISTSTYLE[signal].update(base)
-        hist[name] = c.hist(data.loc[msk, 'm'].values, weights=data.loc[msk, 'weight_test'].values, **HISTSTYLE[signal])
-        pass
-    c.legend(header=" Baseline selection:", ymax=0.8875, **opts_legend)
+        # Canvas
+        c = rp.canvas(batch=not args.show, num_pads=(2,3))
 
-    # -- Tagged
-    base['linewidth'] = 2
-    base.pop('alpha')
-    for ifeat, feat in filter(lambda t: simple_features == signal_low(t[1]), enumerate(features)):
-        opts = dict(
-            linecolor = rp.colours[(ifeat // 2)],
-            linestyle = 1 + (ifeat % 2),
-            linewidth = 2,
-            )
-        cfg = dict(**base)
-        cfg.update(opts)
-        msk = (data['signal'] == 0) & msks_pass[feat]
-        hist[feat] = c.hist(data.loc[msk, 'm'].values, weights=data.loc[msk, 'weight_test'].values, label=" " + latex(feat, ROOT=True), **cfg)
-        pass
+        # Plots
+        # -- Dummy, for proper axes
+        for ipad, pad in enumerate(c.pads()[1:], 1):
+            pad.hist([ymin], bins=[50, 300], linestyle=0, fillstyle=0, option=('Y+' if ipad % 2 else ''))
+            pass
 
-    c.legend(header=" Tagged QCD jets:", ymax=0.70,
-             columns=2 if simple_features else 1, margin=0.5 if simple_features else 0.25,
-             **opts_legend)
+        # -- Inclusive
+        base = dict(bins=MASSBINS, normalise=True, linewidth=2)
+        for signal, name in zip([False, True], ['bkg', 'sig']):
+            msk = data['signal'] == signal
+            HISTSTYLE[signal].update(base)
+            for ipad, pad in enumerate(c.pads()[1:], 1):
+                HISTSTYLE[signal]['option'] = 'HIST'
+                pad.hist(data.loc[msk, 'm'].values, weights=data.loc[msk, 'weight_test'].values, **HISTSTYLE[signal])
+                pass
+            pass
 
+        for sig in [True, False]:
+            HISTSTYLE[sig]['option'] = 'FL'
+            pass
 
-    # Re-draw axes
-    c.pads()[0]._primitives[0].Draw('AXIS SAME')
+        c.pads()[0].legend(header='Inclusive selection:', categories=[
+            ("QCD jets",    HISTSTYLE[False]),
+            ("#it{W} jets", HISTSTYLE[True])
+            ], xmin=0.18, ymax=0.38)
+        c.pads()[0]._legends[-1].SetTextSize(style.GetLegendTextSize())
+        c.pads()[0]._legends[-1].SetMargin(0.35)
 
-    # Decorations
-    c.xlabel("Large-#it{R} jet mass [GeV]")
-    c.ylabel("Fraction of jets")
+        # -- Tagged
+        base['linewidth'] = 2
+        for ifeat, feat in enumerate(features):
+            opts = dict(
+                linecolor = rp.colours[(ifeat // 2)],
+                linestyle = 1 + (ifeat % 2),
+                linewidth = 2,
+                )
+            cfg = dict(**base)
+            cfg.update(opts)
+            msk = (data['signal'] == 0) & msks_pass[feat]
+            pad = c.pads()[1 + ifeat//2]
+            pad.hist(data.loc[msk, 'm'].values, weights=data.loc[msk, 'weight_test'].values, label=" " + latex(feat, ROOT=True), **cfg)
+            pass
 
-    c.text([], qualifier=QUALIFIER, ymax=0.96, xmin=0.15)
-    c.text(["#sqrt{s} = 13 TeV",
-            "#it{W} jet tagging",
-            "{} taggers".format("Simple" if simple_features else "MVA"),
-            "Cuts at #varepsilon_{sig} = %.0f%%" % eff_sig,
-            ], ATLAS=False)
+        # -- Legend(s)
+        for ipad, pad in enumerate(c.pads()[1:], 1):
+            offsetx = (0.20 if ipad % 2 else 0.05)
+            offsety =  0.20 * ((2 - (ipad // 2)) / float(2.))
+            pad.legend(width=0.25, xmin=0.68 - offsetx, ymax=0.80 - offsety)
+            pad.latex("Tagged QCD jets:", NDC=True, x=0.93 - offsetx, y=0.84 - offsety, textcolor=ROOT.kGray + 3, textsize=style.GetLegendTextSize() * 0.8, align=31)
+            pad._legends[-1].SetMargin(0.35)
+            pad._legends[-1].SetTextSize(style.GetLegendTextSize())
+            pass
 
-    c.ylim(5E-05, 5E+02)
-    c.logy()
+        # Formatting pads
+        margin = 0.2
+        for ipad, pad in enumerate(c.pads()):
+            tpad = pad._bare()  # ROOT.TPad
+            right = ipad % 2
+            f = (ipad // 2) / float(len(c.pads()) // 2 - 1)
+            tpad.SetLeftMargin (0.05 + 0.15 * (1 - right))
+            tpad.SetRightMargin(0.05 + 0.15 * right)
+            tpad.SetBottomMargin(f * margin)
+            tpad.SetTopMargin((1 - f) * margin)
+            if ipad == 0: continue
+            pad._xaxis().SetNdivisions(505)
+            pad._yaxis().SetNdivisions(505)
+            if ipad // 2 < len(c.pads()) // 2 - 1:  # Not bottom pad(s)
+                pad._xaxis().SetLabelOffset(9999.)
+                pad._xaxis().SetTitleOffset(9999.)
+            else:
+                pad._xaxis().SetTitleOffset(2.7)
+                pass
+            pass
+
+        # Re-draw axes
+        for pad in c.pads()[1:]:
+            pad._bare().RedrawAxis()
+            pad._bare().Update()
+            pad._xaxis().SetAxisColor(ROOT.kWhite)  # Remove "double ticks"
+            pad._yaxis().SetAxisColor(ROOT.kWhite)  # Remove "double ticks"
+            pass
+
+        # Decorations
+        c.pads()[-1].xlabel("Large-#it{R} jet mass [GeV]")
+        c.pads()[-2].xlabel("Large-#it{R} jet mass [GeV]")
+        c.pads()[1].ylabel("#splitline{#splitline{#splitline{#splitline{}{}}{#splitline{}{}}}{#splitline{}{}}}{#splitline{}{#splitline{}{#splitline{}{Fraction of jets}}}}")
+        c.pads()[2].ylabel("#splitline{#splitline{#splitline{#splitline{Fraction of jets}{}}{}}{}}{#splitline{#splitline{}{}}{#splitline{#splitline{}{}}{#splitline{}{}}}}")
+        # I have written a _lot_ of ugly code, but this ^ is probably the worst.
+
+        c.pads()[0].text(["#sqrt{s} = 13 TeV,  #it{W} jet tagging",
+                    "Cuts at #varepsilon_{sig} = %.0f%%" % eff_sig,
+                    ], xmin=0.2, ymax=0.72, qualifier=QUALIFIER)
+
+        for pad in c.pads()[1:]:
+            pad.ylim(ymin, ymax)
+            pad.logy()
+            pass
+
+        pass  # end temprorary style
 
     return c

@@ -18,19 +18,19 @@ from adversarial.utils import mkdir, garbage_collect, JSD, MASSBINS
 
 # Custom import(s)
 import rootplotting as rp
-col = rp.colours.pop(3)  # To remove unused colour from list
+rp.colours.pop(3)  # To remove unused colour from list
 
 # Global variable definition(s)
 HISTSTYLE = {  # key = signal / passing
     True: {
-        'fillcolor': rp.colours_light[5],  # col,
-        'linecolor': rp.colours_light[5],  # col,
+        'fillcolor': rp.colours[4],
+        'linecolor': rp.colours[4],
         'fillstyle': 3354,
         'alpha': 0.75,
         },
     False: {
-        'fillcolor': rp.colours_light[1],  # ROOT.kBlack,
-        'linecolor': rp.colours_light[1],  # ROOT.kBlack,
+        'fillcolor': rp.colours[1],
+        'linecolor': rp.colours[1],
         'fillstyle': 1001,
         'alpha': 0.5,
         }
