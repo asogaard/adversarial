@@ -112,7 +112,7 @@ def plot (*argv):
         c.pads()[0].legend(header='Inclusive selection:', categories=[
             ("QCD jets",    HISTSTYLE[False]),
             ("#it{W} jets", HISTSTYLE[True])
-            ], xmin=0.18, ymax=0.38)
+            ], xmin=0.18, width= 0.60, ymax=0.28, ymin=0.001, columns=2)
         c.pads()[0]._legends[-1].SetTextSize(style.GetLegendTextSize())
         c.pads()[0]._legends[-1].SetMargin(0.35)
 
