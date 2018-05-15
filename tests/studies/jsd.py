@@ -37,7 +37,6 @@ def jsd (data, args, features):
     # Loop tagger features
     jsd = {feat: [] for feat in features}
     c = rp.canvas(batch=not args.show)
-    jsd_limits = list()
     for ifeat, feat in enumerate(features):
 
         # Define cuts
@@ -70,6 +69,7 @@ def jsd (data, args, features):
         pass
 
     # Compute meaningful limit on JSD
+    jsd_limits = list()
     sigmoid = lambda x: 1. / (1. + np.exp(-x))
     for eff in sigmoid(np.linspace(-5, 5, 20 + 1, endpoint=True)):
         limits = jsd_limit(data[msk], eff, num_bootstrap=5)
