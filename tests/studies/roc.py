@@ -36,15 +36,26 @@ def roc (data, args, features, masscut=False):
         masscut: ...
     """
 
+    # (Opt.) masscut | @NOTE: Duplication with adversarial/utils/metrics.py
+    msk = (data['m'] > 60.) & (data['m'] < 100.) if masscut else np.ones_like(data['signal']).astype(bool)
+
     # Computing ROC curves
     ROCs = dict()
     for feat in features:
 
         sign = -1. if signal_low(feat) else 1.
 
-        eff_bkg, eff_sig, thresholds = roc_curve(data['signal'].values,
-                                                 data[feat]    .values * sign,
-                                                 sample_weight=data['weight_test'].values)
+        eff_bkg, eff_sig, thresholds = roc_curve(data.loc[msk, 'signal'].values,
+                                                 data.loc[msk, feat]    .values * sign,
+                                                 sample_weight=data.loc[msk, 'weight_test'].values)
+
+        if masscut:
+            eff_sig_mass = np.mean(msk[data['signal'] == 1])
+            eff_bkg_mass = np.mean(msk[data['signal'] == 0])
+            
+            eff_sig *= eff_sig_mass
+            eff_bkg *= eff_bkg_mass
+            pass
 
         # Filter, to advoid background rejection blowing up
         indices = np.where((eff_bkg > 0) & (eff_sig > 0))
@@ -69,6 +80,17 @@ def roc (data, args, features, masscut=False):
                                    data[feat]    .values * sign,
                                    sample_weight=data['weight_test'].values)
         pass
+
+    # Report scores
+    print "\n== {} masscut".format("With" if masscut else "Without")
+    for feat in features:
+        effsig = ROCs[feat][0]
+        idx = np.argmin(np.abs(effsig - 0.5))
+        print "\nFeature {}:".format(feat)
+        print "  Background rejection at effsig = {:.0f}%: {:6.3f}".format(ROCs[feat][0][idx] * 100., 1. / ROCs[feat][1][idx])
+        print "  AUC: {:5.4f}".format(AUCs[feat])
+        pass
+
 
     # Perform plotting
     c = plot(args, data, features, ROCs, AUCs, masscut)
@@ -125,7 +147,7 @@ def plot (*argv):
 
     c.latex("Random guessing", 0.4, 1./0.4 * 0.9, align=23, angle=-12, textsize=13, textcolor=ROOT.kGray + 2)
     c.xlim(0.2, 1.)
-    c.ylim(1E+00, 1E+03)
+    c.ylim(1E+00, 1E+03)  # 1E+04 if masscut else 1E+03)
     c.logy()
     c.legend()
 
