@@ -25,7 +25,7 @@ import rootplotting as rp
 # Local import(s)
 from .common import *
 
-REBIN = 10
+REBIN = 5
 
 # Main function definition
 @profile
@@ -35,8 +35,7 @@ def main (args):
     args, cfg = initialise(args)
 
     # Load data
-    data, features, _ = load_data(args.input + 'data.h5', background=True)  # ,
-                                        # train=True) @TEMP!
+    data, features, _ = load_data(args.input + 'data.h5', background=True, train=True)
 
     # Fill substructure profile
     D2BINS = np.linspace(0., 5., 501, endpoint=True)
@@ -51,10 +50,12 @@ def perform_optimisation (var, bins, data):
     """
 
     # Fill 2D substructure profile
+    msk_train = data['train'] == 1
     profile2d = fill_2d_profile(data, var, bins, "m", MASS_BINS)
 
     # Get 1D profile for lowest mass bin
     profile0 = profile2d.ProjectionY("%s_lowMass"%profile2d.GetName(), 1, 1)
+    profile0 = kde(profile0)
 
     # Perform the optimisation
     bestShapeVal = 0
@@ -69,6 +70,7 @@ def perform_optimisation (var, bins, data):
 
             # Get 1D profile for current mass bin
             profile = profile2d.ProjectionY("%s_bin_%i"%(profile2d.GetName(),mass),mass+1, mass+1)
+            profile = kde(profile)
 
             # Fit current profile to low-mass profile
             chi2, bestOmega, _, _ = fit(profile, shapeVal, profile0, "%.2f"%mass)
@@ -94,10 +96,14 @@ def perform_optimisation (var, bins, data):
         bestOmegas = list()
         for mass in range(len(MASS_BINS)-1):
             profile = profile2d.ProjectionY("%s_bin_%i_final"%(profile2d.GetName(),mass),mass+1, mass+1)
+            profile = kde(profile)
             sumChi2, bestOmega, profile_css, profile0rebin = fit(profile, bestShapeVal, profile0, "%.2f"%mass)
             print mass, bestOmega
             bestOmegas.append(bestOmega)
             F,Ginv = get_css_fns(bestShapeVal, bestOmega, profile, "")
+
+
+            # Save plot of histograms used for the training, for cross-checks
 
             # Save classifier
             saveclf(F,    'models/css/css_%s_F_%i.pkl.gz' % (var,mass))
@@ -114,7 +120,9 @@ def perform_optimisation (var, bins, data):
         # -- Decorations
         c.xlabel("Large-#it{R} jet mass [GeV]")
         c.ylabel("Best-fit #Omega_{D}")
-        c.text(["#sqrt{s} = 13 TeV,  QCD jets", "CSS applied to D_{2}"], qualifier=QUALIFIER)
+        c.text(["#sqrt{s} = 13 TeV,  QCD jets",
+                "CSS applied to D_{2}",
+                "Best-fit #alpha = {:.0f}".format(bestShapeVal)], qualifier=QUALIFIER)
 
         # Save
         c.save('figures/css/cssBestOmega_{}.pdf'.format(var))
@@ -173,7 +181,7 @@ def get_css (shapeval, omega, originalHist, name):
     ...
     """
     F, Ginv = get_css_fns(shapeval, omega, originalHist, name)
-    jssVar_css = ROOT.TH1D("css%s_%.2f_%.2f_%s"%(name, omega, shapeval,originalHist.GetName()),"low_m_css",originalHist.GetNbinsX(),0,originalHist.GetXaxis().GetXmax())
+    jssVar_css = ROOT.TH1D("css%s_%.3f_%.3f_%s"%(name, omega, shapeval,originalHist.GetName()),"low_m_css",originalHist.GetNbinsX(),0,originalHist.GetXaxis().GetXmax())
 
     # Apply the convolutions to get the new distributions
     for i in range(1, originalHist.GetNbinsX()+1):

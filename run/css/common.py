@@ -17,13 +17,13 @@ from adversarial.profile import profile
 
 
 # Common definition(s)
-SHAPEVAL_RANGE = np.linspace(1., 3., 3)
-OMEGA_RANGE = np.linspace(0.01, 1.4, 40)
+SHAPEVAL_RANGE = np.linspace(1., 3., 2 + 1, endpoint=True)
+OMEGA_RANGE = np.linspace(0., 0.6, 3 * 40 + 1, endpoint = True)[1:]
 #MASS_BINS = np.linspace(40., 310., 20)
 MASS_BINS = np.linspace(50., 300., 20 + 1, endpoint=True)
 
-TAU21BINS = np.linspace(0., 2., 501, endpoint=True)
-D2BINS = np.linspace(0., 5., 501, endpoint=True)
+#TAU21BINS = np.linspace(0., 2., 501, endpoint=True)
+D2BINS = np.linspace(0., 5., 500 + 1, endpoint=True)
 
 # Adds the CSS variable to the data (assuming Ginv, F files exist)
 def add_css (jssVar, data):
@@ -147,3 +147,34 @@ def normalise (p, density=False):
         p.Scale(1. / p.Integral('width' if density else ''))
         pass
     return
+
+
+def kde (original, scale=0.15):
+    """
+    Perform kernel density estimation (KDE), -ish, on input histogram `original`
+    with gaussian kernel length scale `scale`.
+    """
+
+    # Clone histogram, for KDE
+    h = original.Clone(original.GetName() + '_redistributed')
+    h.Reset()
+
+    # Define utility method(s)
+    gaussian = lambda z: np.exp(-np.power(z,2.)/2.)
+
+    # Perform KDE
+    ibins = range(1, original.GetNbinsX() + 1)
+    X = np.array(map(h.GetXaxis().GetBinCenter, ibins))
+    for ibin in ibins:
+        x = h.GetXaxis().GetBinCenter(ibin)
+        c = original.GetBinContent(ibin)
+        Z = np.abs(X - x) / scale
+
+        weights = c * gaussian(Z)
+        root_numpy.fill_hist(h, X, weights)
+        pass
+
+    # Normalise
+    h.Scale(original.Integral()/h.Integral())
+
+    return h
