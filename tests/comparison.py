@@ -54,7 +54,7 @@ def main (args):
     from adversarial.models import classifier_model, adversary_model, combined_model, decorrelation_model
 
     # Load data
-    data, features, _ = load_data(args.input + 'data.h5', test=True)
+    data, features, _ = load_data(args.input + 'data.h5', test=True)#, sample=0.1)  # @TEMP!
 
 
     # Common definitions
@@ -71,7 +71,7 @@ def main (args):
 
     # -- Adversarial neural network (ANN) scan
     lambda_reg  = 10.
-    lambda_regs = sorted([0.1, 1., 3., 10., 30., 100.])
+    lambda_regs = sorted([0.1, 1., 3., 10.])
     ann_vars    = list()
     lambda_strs = list()
     for lambda_reg_ in lambda_regs:
@@ -87,7 +87,7 @@ def main (args):
     # -- uBoost scan
     uboost_eff = 92
     uboost_ur  = 0.3
-    uboost_urs = sorted([0.0, uboost_ur])  # sorted([0., 0.01, 0.1, 0.3, 1.0])
+    uboost_urs = sorted([0., 0.01, 0.1, 0.3, 1.0])
     uboost_var  =  'uBoost(#alpha={:s})'.format(meaningful_digits(uboost_ur))
     uboost_vars = ['uBoost(#alpha={:s})'.format(meaningful_digits(ur)) for ur in uboost_urs]
     uboost_pattern = 'uboost_ur_{{:4.2f}}_te_{:.0f}_rel21_fixed'.format(uboost_eff)
@@ -167,14 +167,15 @@ def perform_studies (data, args, tagger_features, ann_vars, uboost_vars):
     """
     Method delegating performance studies.
     """
-    masscuts = [False]  # [True, False]  # @TEMP
+    masscuts = [True, False]
 
     # Perform pile-up robustness study
     with Profile("Study: Robustness (pile-up)"):
-        bins = [0,  9.5, 11.5, 13.5, 15.5, 18.5, 30.5]
+        bins = [0,  5.5, 10.5, 15.5, 20.5, 25.5, 30.5]
+        #bins = [0,  9.5, 11.5, 13.5, 15.5, 18.5, 30.5]
         print "NPV bins:", bins
         for masscut in masscuts:
-            studies.robustness(data, args, tagger_features, 'npv', bins, masscut=masscut)
+            #studies.robustness(data, args, tagger_features, 'npv', bins, masscut=masscut)
             pass
         pass
 
@@ -190,7 +191,7 @@ def perform_studies (data, args, tagger_features, ann_vars, uboost_vars):
     with Profile("Study: Jet mass comparison"):
         studies.jetmasscomparison(data, args, tagger_features)
         pass
-    
+
     # Perform summary plot study
     with Profile("Study: Summary plot"):
         regex_nn = re.compile('\#lambda=[\d\.]+')
@@ -224,7 +225,7 @@ def perform_studies (data, args, tagger_features, ann_vars, uboost_vars):
             studies.roc(data, args, tagger_features, masscut=masscut)
             pass
         pass
-
+    
     # Perform JSD study
     with Profile("Study: JSD"):
         studies.jsd(data, args, tagger_features)
