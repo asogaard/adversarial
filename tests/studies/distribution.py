@@ -75,7 +75,7 @@ def plot (*argv):
     c.xlabel("Large-#it{R} jet " + latex(feat, ROOT=True))
     c.ylabel("Fraction of jets")
     c.text(TEXT + ["#it{W} jet tagging"], qualifier=QUALIFIER)
-    c.ylim(2E-03, 2E+00)
+    c.ylim(4E-03, 4E-01)
     c.logy()
     c.legend()
     return c
