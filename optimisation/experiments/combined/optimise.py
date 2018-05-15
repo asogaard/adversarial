@@ -36,6 +36,7 @@ def main(job_id, params):
             patch['combined'][field] = dict()
             pass
         pass
+    patch['combined']['pretrain']            = 20
     patch['combined']['fit']['epochs']       = 200
     patch['combined']['fit']['batch_size']   = 8192
     patch['combined']['model']['lambda_reg'] = 10.
