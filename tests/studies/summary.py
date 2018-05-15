@@ -45,6 +45,9 @@ def summary (data, args, features, scan_features, target_tpr=0.5, num_bootstrap=
     assert isinstance(features, list)
     assert isinstance(scan_features, dict)
 
+    # For reproducibility of bootstrap sampling
+    np.random.seed(7)
+
     # Compute metrics for all features
     points = list()
     for feat in features + map(lambda t: t[0], [it for gr in scan_features.itervalues() for it in gr]):
@@ -56,7 +59,7 @@ def summary (data, args, features, scan_features, target_tpr=0.5, num_bootstrap=
             continue
 
         # Compute metrics
-        rej, jsd = metrics(data, feat, masscut=masscut)
+        _, rej, jsd = metrics(data, feat, masscut=masscut)
 
         # Add point to array
         points.append((rej, jsd, feat))
@@ -112,7 +115,7 @@ def plot (*argv):
         c.plot([1, amaxy], bins=[2, 2],     **lineopts)
         c.plot([1, 1],     bins=[2, amaxx], **lineopts)
         c.hist([amaxy],    bins=[aminx, 2], **boxopts)
-        c.hist([1],        bins=[2, amaxx],     **boxopts)
+        c.hist([1],        bins=[2, amaxx], **boxopts)
 
         # Markers
         for is_simple in [True, False]:
@@ -190,15 +193,15 @@ def plot (*argv):
         x,y,ey = map(np.array, zip(*jsd_limits))
         ex = np.zeros_like(ey)
         gr = ROOT.TGraphErrors(len(x), x, y, ex, ey)
-        smooth_tgrapherrors(gr, ntimes=2)
+        smooth_tgrapherrors(gr, ntimes=3)
         c.graph(gr, linestyle=2, linecolor=ROOT.kGray + 1, fillcolor=ROOT.kBlack, alpha=0.03, option='L3')
 
         x_, y_, ex_, ey_ = ROOT.Double(0), ROOT.Double(0), ROOT.Double(0), ROOT.Double(0)
-        idx = 4
+        idx = 3
         gr.GetPoint(idx, x_,  y_)
         ey_ = gr.GetErrorY(idx)
         x_, y_ = map(float, (x_, y_))
-        c.latex("Statistical limit", x_, y_ + ey_ / 2., align=21, textsize=11, angle=-7, textcolor=ROOT.kGray + 2)
+        c.latex("Statistical limit", x_, y_ + ey_, align=21, textsize=11, angle=-5, textcolor=ROOT.kGray + 2)
 
         # Decorations
         c.xlabel("Background rejection, 1 / #varepsilon_{bkg} @ #varepsilon_{sig} = 50%")
