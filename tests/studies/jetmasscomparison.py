@@ -76,12 +76,13 @@ def plot (*argv):
         style.SetTickLength(0.07 * (5./6.) * (2./3.), 'y')
 
         # Global variable override(s)
-        HISTSTYLE[True]['fillstyle'] = 3554
-        HISTSTYLE[True] ['label'] = None
-        HISTSTYLE[False]['label'] = None
+        histstyle = dict(**HISTSTYLE)
+        histstyle[True]['fillstyle'] = 3554
+        histstyle[True] ['label'] = None
+        histstyle[False]['label'] = None
         for v in ['linecolor', 'fillcolor']:
-            HISTSTYLE[True] [v] = 16
-            HISTSTYLE[False][v] = ROOT.kBlack
+            histstyle[True] [v] = 16
+            histstyle[False][v] = ROOT.kBlack
             pass
         style.SetHatchesLineWidth(1)
 
@@ -98,20 +99,20 @@ def plot (*argv):
         base = dict(bins=MASSBINS, normalise=True, linewidth=2)
         for signal, name in zip([False, True], ['bkg', 'sig']):
             msk = data['signal'] == signal
-            HISTSTYLE[signal].update(base)
+            histstyle[signal].update(base)
             for ipad, pad in enumerate(c.pads()[1:], 1):
-                HISTSTYLE[signal]['option'] = 'HIST'
-                pad.hist(data.loc[msk, 'm'].values, weights=data.loc[msk, 'weight_test'].values, **HISTSTYLE[signal])
+                histstyle[signal]['option'] = 'HIST'
+                pad.hist(data.loc[msk, 'm'].values, weights=data.loc[msk, 'weight_test'].values, **histstyle[signal])
                 pass
             pass
 
         for sig in [True, False]:
-            HISTSTYLE[sig]['option'] = 'FL'
+            histstyle[sig]['option'] = 'FL'
             pass
 
         c.pads()[0].legend(header='Inclusive selection:', categories=[
-            ("QCD jets",    HISTSTYLE[False]),
-            ("#it{W} jets", HISTSTYLE[True])
+            ("QCD jets",    histstyle[False]),
+            ("#it{W} jets", histstyle[True])
             ], xmin=0.18, width= 0.60, ymax=0.28, ymin=0.001, columns=2)
         c.pads()[0]._legends[-1].SetTextSize(style.GetLegendTextSize())
         c.pads()[0]._legends[-1].SetMargin(0.35)
