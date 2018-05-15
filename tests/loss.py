@@ -50,9 +50,8 @@ def main (args):
     print "Entropy of prior: {}".format(H_prior)
 
     # Perform adversarial loss study
-    basedir='output/2018-04-25'
     for lambda_reg in [10, 100]:
-        plot_adversarial_training_loss(lambda_reg, num_folds, 10, H_prior, basedir=basedir)
+        plot_adversarial_training_loss(lambda_reg, num_folds, 10, H_prior)
         pass
 
     return 0
