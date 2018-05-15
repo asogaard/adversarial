@@ -36,7 +36,7 @@ def JSD (P, Q, base=2):
 
 
 @garbage_collect
-def metrics (data, feat, target_tpr=0.5, masscut=False, verbose=False):
+def metrics (data, feat, target_tpr=0.5, cut=None, masscut=False, verbose=False):
     """
     Compute the standard metrics (bkg. rejection and JSD) from a DataFrame.
     Assuming that any necessary selection has already been imposed.
@@ -86,9 +86,19 @@ def metrics (data, feat, target_tpr=0.5, masscut=False, verbose=False):
         pass
 
     # Get background rejection factor
-    idx = np.argmin(np.abs(tpr - target_tpr))
+    if cut is None:
+        idx = np.argmin(np.abs(tpr - target_tpr))
+        cut = thresholds[idx]    
+    else:
+        print "metrics: Using manual cut of {:.2f} for {}".format(cut, feat)
+        idx = np.argmin(np.abs(thresholds - cut))
+        print "metrics:   effsig = {:.1f}%, effbkg = {:.1f}, threshold = {:.2f}".format(tpr[idx] * 100.,
+                                                                                        fpr[idx] * 100.,
+                                                                                        thresholds[idx])
+        pass
+
+    eff = tpr[idx]
     rej = 1. / fpr[idx]
-    cut = thresholds[idx]
 
 
     # JSD at `target_tpr` signal efficiency
@@ -104,7 +114,7 @@ def metrics (data, feat, target_tpr=0.5, masscut=False, verbose=False):
     jsd = JSD(p, f)
 
     # Return metrics
-    return rej, 1./jsd
+    return eff, rej, 1./jsd
 
 
 @garbage_collect
@@ -113,12 +123,14 @@ def bootstrap_metrics (data, feat, num_bootstrap=10, **kwargs):
     ...
     """
     # Compute metrics using bootstrapping
-    bootstrap_rej, bootstrap_jsd = list(), list()
+    bootstrap_eff, bootstrap_rej, bootstrap_jsd = list(), list(), list()
     for _ in range(num_bootstrap):
         idx = np.random.choice(data.shape[0], data.shape[0], replace=True)
-        rej, jsd = metrics(data.iloc[idx], feat, **kwargs)
+        eff, rej, jsd = metrics(data.iloc[idx], feat, **kwargs)
         bootstrap_rej.append(rej)
         bootstrap_jsd.append(jsd)
         pass
 
-    return (np.mean(bootstrap_rej), np.std(bootstrap_rej)), (np.mean(bootstrap_jsd), np.std(bootstrap_jsd))
+    return (np.mean(bootstrap_eff), np.std(bootstrap_eff)), \
+           (np.mean(bootstrap_rej), np.std(bootstrap_rej)), \
+           (np.mean(bootstrap_jsd), np.std(bootstrap_jsd))
