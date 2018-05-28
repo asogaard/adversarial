@@ -8,8 +8,8 @@ source scripts/utils.sh
 usertarget="" # Default
 username="" # Default
 target=data
-source=/eos/atlas/user/a/asogaard/adversarial/data/2018-04-10
-filename=data_4M.h5
+source=/eos/atlas/user/a/asogaard/adversarial/data/2018-04-20
+filename=data_1M_10M.h5
 
 # Make sure target directory exists
 mkdir -p $target
