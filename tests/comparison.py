@@ -54,7 +54,7 @@ def main (args):
     from adversarial.models import classifier_model, adversary_model, combined_model, decorrelation_model
 
     # Load data
-    data, features, _ = load_data(args.input + 'data.h5', test=True)#, sample=0.1)  # @TEMP!
+    data, features, _ = load_data(args.input + 'data.h5', test=True)
 
 
     # Common definitions
@@ -169,13 +169,21 @@ def perform_studies (data, args, tagger_features, ann_vars, uboost_vars):
     """
     masscuts = [True, False]
 
+    # Perform combined robustness study
+    with Profile("Study: Robustness"):
+        for masscut in masscuts:
+            studies.robustness_full(data, args, tagger_features, masscut=masscut)
+            pass
+        pass
+
+
     # Perform pile-up robustness study
     with Profile("Study: Robustness (pile-up)"):
         bins = [0,  5.5, 10.5, 15.5, 20.5, 25.5, 30.5]
         #bins = [0,  9.5, 11.5, 13.5, 15.5, 18.5, 30.5]
         print "NPV bins:", bins
         for masscut in masscuts:
-            #studies.robustness(data, args, tagger_features, 'npv', bins, masscut=masscut)
+            studies.robustness(data, args, tagger_features, 'npv', bins, masscut=masscut)
             pass
         pass
 
@@ -225,7 +233,7 @@ def perform_studies (data, args, tagger_features, ann_vars, uboost_vars):
             studies.roc(data, args, tagger_features, masscut=masscut)
             pass
         pass
-    
+
     # Perform JSD study
     with Profile("Study: JSD"):
         studies.jsd(data, args, tagger_features)
