@@ -119,7 +119,7 @@ def plot (*argv):
                 c.plot(jsd[feat], bins=np.array(effs) / 100., linecolor=colour, markercolor=colour, linestyle=linestyle, markerstyle=markerstyle, label=latex(feat, ROOT=True), option='PL')
                 pass
 
-            c.legend(header=("Simple:" if is_simple else "MVA:"),
+            c.legend(header=("Analytical:" if is_simple else "MVA:"),
                      width=width * (1 + 0.8 * int(is_simple)), xmin=0.42 + (width + 0.05) * (is_simple), ymax=0.888,
                      columns=2 if is_simple else 1,
                      margin=0.35)

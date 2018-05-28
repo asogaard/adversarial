@@ -13,6 +13,34 @@ from adversarial.constants import *
 import rootplotting as rp
 
 
+
+@showsave
+def robustness_full (data, args, features, masscut=False, num_bootstrap=5):
+
+    # Compute relevant quantities
+    bins, effs, rejs, jsds, meanx, jsd_limits = dict(), dict(), dict(), dict(), dict(), dict()
+
+    # -- pt
+    var = 'pt'
+    bins[var] = [200, 260, 330, 430, 560, 720, 930, 1200, 1550, 2000]
+    effs[var], rejs[var], jsds[var], meanx[var], jsd_limits[var] = compute(data, args, features, var, bins[var], masscut, num_bootstrap)
+
+    # -- npv
+    var = 'npv'
+    bins[var] = [0,  5.5, 10.5, 15.5, 20.5, 25.5, 30.5]
+    effs[var], rejs[var], jsds[var], meanx[var], jsd_limits[var] = compute(data, args, features, var, bins[var], masscut, num_bootstrap)
+
+    # Perform plotting
+    c = plot_full(data, args, features, bins, effs, rejs, jsds, meanx, jsd_limits, masscut)
+
+    # Output
+    path = 'figures/robustness{}.pdf'.format('_masscut' if masscut else '')
+
+    return c, args, path
+
+    pass
+
+
 @showsave
 def robustness (data, args, features, var, bins, masscut=False, num_bootstrap=5):
     """
@@ -30,6 +58,23 @@ def robustness (data, args, features, var, bins, masscut=False, num_bootstrap=5)
         num_bootstrap: ...
     """
 
+    # Compute relevant quantities
+    effs, rejs, jsds, meanx, jsd_limits = compute(data, args, features, var, bins, masscut, num_bootstrap)
+
+    # Perform plotting
+    c = plot(data, args, features, bins, effs, rejs, jsds, meanx, jsd_limits, masscut, var)
+
+    # Output
+    path = 'figures/robustness_{}{}.pdf'.format(var, '_masscut' if masscut else '')
+
+    return c, args, path
+
+
+def compute (data, args, features, var, bins, masscut, num_bootstrap):
+    """
+    ...
+    """
+
     # Compute metrics for all features
     effs, rejs, jsds = {feat: [] for feat in features}, \
                        {feat: [] for feat in features}, \
@@ -38,40 +83,6 @@ def robustness (data, args, features, var, bins, masscut=False, num_bootstrap=5)
 
     # For reproducibility of bootstrap sampling
     np.random.seed(7)
-
-    # Get fixed, inclusive effsig = 50% cut(s)
-    '''
-    cuts = dict()
-    for feat in features:
-        # @NOTE: This is _horrible_ code duplication...
-        # (Opt.) mass cut mask
-        if masscut:
-            print "metrics: Applying mass cut."
-            pass
-        msk = (data['m'] > 60.) & (data['m'] < 100.) if masscut else np.ones_like(data['signal']).astype(bool)
-        
-        # scikit-learn assumes signal towards 1, background towards 0
-        pred = data[feat].values.copy()
-        if signal_low(feat):
-            pred *= -1.
-            pass
-        
-        # Compute ROC curve efficiencies
-        fpr, tpr, thresholds = roc_curve(data.loc[msk, 'signal'], pred[msk], sample_weight=data.loc[msk, 'weight_test'])
-        
-        if masscut:
-            tpr_mass = np.mean(msk[data['signal'] == 1])
-            fpr_mass = np.mean(msk[data['signal'] == 0])
-            
-            tpr *= tpr_mass
-            fpr *= fpr_mass
-            pass
-        
-        # Get background rejection factor
-        idx = np.argmin(np.abs(tpr - 0.5))
-        cuts[feat] = thresholds[idx]
-        pass
-        '''
 
     # Scan `var`
     jsd_limits = list()
@@ -106,13 +117,204 @@ def robustness (data, args, features, var, bins, masscut=False, num_bootstrap=5)
     # Format array
     meanx = np.array(meanx).astype(float)
 
-    # Perform plotting
-    c = plot(data, args, features, bins, effs, rejs, jsds, meanx, jsd_limits, masscut, var)
+    return effs, rejs, jsds, meanx, jsd_limits
 
-    # Output
-    path = 'figures/robustness_{}{}.pdf'.format(var, '_masscut' if masscut else '')
 
-    return c, args, path
+def plot_full (*argv):
+    """
+    Method for delegating plotting.
+    """
+
+    # Unpack arguments
+    data, args, features, bins, effs, rejs, jsds, meanx, jsd_limits, masscut = argv
+
+    with TemporaryStyle() as style:
+
+        # Set styles
+        scale      = 1.0
+        scale_axis = 0.7
+        margin_squeeze = 0.035
+        margin_vert    = 0.20
+        margin_hori    = 0.35
+        size = (800, 600)
+
+        style.SetTextSize(scale_axis * style.GetTextSize())
+        for coord in ['x', 'y', 'z']:
+            style.SetLabelSize(scale_axis * style.GetLabelSize(coord), coord)
+            style.SetTitleSize(scale_axis * style.GetTitleSize(coord), coord)
+            pass
+        style.SetLegendTextSize(style.GetLegendTextSize() * scale)
+        style.SetTickLength(0.05,                                                               'x')
+        style.SetTickLength(0.07 * (float(size[0])/float(size[1])) * (margin_hori/margin_vert), 'y')
+
+        # Canvas
+        c = rp.canvas(num_pads=(2,2), size=size, batch=not args.show)
+
+        # Margins
+        c.pads()[0]._bare().SetTopMargin   (margin_vert)
+        c.pads()[1]._bare().SetTopMargin   (margin_vert)
+        c.pads()[2]._bare().SetBottomMargin(margin_vert)
+        c.pads()[3]._bare().SetBottomMargin(margin_vert)
+
+        c.pads()[0]._bare().SetLeftMargin  (margin_hori)
+        c.pads()[2]._bare().SetLeftMargin  (margin_hori)
+        c.pads()[1]._bare().SetRightMargin (margin_hori)
+        c.pads()[3]._bare().SetRightMargin (margin_hori)
+
+        c.pads()[1]._bare().SetLeftMargin  (margin_squeeze)
+        c.pads()[3]._bare().SetLeftMargin  (margin_squeeze)
+        c.pads()[0]._bare().SetRightMargin (margin_squeeze)
+        c.pads()[2]._bare().SetRightMargin (margin_squeeze)
+
+        c.pads()[0]._bare().SetBottomMargin(margin_squeeze)
+        c.pads()[1]._bare().SetBottomMargin(margin_squeeze)
+        c.pads()[2]._bare().SetTopMargin   (margin_squeeze)
+        c.pads()[3]._bare().SetTopMargin   (margin_squeeze)
+
+        # To fix 30.5 --> 30 for NPV
+        bins['npv'][-1] = np.floor(bins['npv'][-1])
+
+        # Plots
+        # -- References
+        boxopts  = dict(fillcolor=ROOT.kBlack, alpha=0.05, linecolor=ROOT.kGray + 2, linewidth=1, option='HIST')
+        c.pads()[0].hist([2], bins=[bins['pt'] [0], bins['pt'] [-1]], **boxopts)
+        c.pads()[1].hist([2], bins=[bins['npv'][0], bins['npv'][-1]], **boxopts)
+        c.pads()[2].hist([1], bins=[bins['pt'] [0], bins['pt'] [-1]], **boxopts)
+        c.pads()[3].hist([1], bins=[bins['npv'][0], bins['npv'][-1]], **boxopts)
+
+        nb_col = 2
+        for col, var in enumerate(['pt', 'npv']):
+            for is_simple in [True, False]:
+                for ifeat, feat in filter(lambda t: is_simple == signal_low(t[1]), enumerate(features)):
+
+                    opts = dict(
+                        linecolor   = rp.colours[(ifeat // 2)],
+                        markercolor = rp.colours[(ifeat // 2)],
+                        fillcolor   = rp.colours[(ifeat // 2)],
+                        linestyle   = 1 + (ifeat % 2),
+                        alpha       = 0.3,
+                        option      = 'E2',
+                    )
+
+                    mean_rej, std_rej = map(np.array, zip(*rejs[var][feat]))  # @TEMP
+                    mean_jsd, std_jsd = map(np.array, zip(*jsds[var][feat]))
+
+                    # Only _show_ mass-decorrelated features for `npv`
+                    if (col == 1) and (ifeat % 2 == 0):
+                        mean_rej *= -9999.
+                        mean_jsd *= -9999.
+                        pass
+
+                    # Error boxes
+                    x    = np.array(bins[var][:-1]) + 0.5 * np.diff(bins[var])
+                    xerr = 0.5 * np.diff(bins[var])
+                    graph_rej = ROOT.TGraphErrors(len(x), x, mean_rej, xerr, std_rej)
+                    graph_jsd = ROOT.TGraphErrors(len(x), x, mean_jsd, xerr, std_jsd)
+
+                    c.pads()[col + 0 * nb_col].hist(graph_rej, **opts)
+                    c.pads()[col + 1 * nb_col].hist(graph_jsd, **opts)
+
+                    # Markers and lines
+                    opts['option']      = 'PE2L'
+                    opts['markerstyle'] = 20 + 4 * (ifeat % 2)
+
+                    graph_rej = ROOT.TGraph(len(x), meanx[var], mean_rej)
+                    graph_jsd = ROOT.TGraph(len(x), meanx[var], mean_jsd)
+
+                    c.pads()[col + 0 * nb_col].hist(graph_rej, label=latex(feat, ROOT=True) if not is_simple else None, **opts)
+                    c.pads()[col + 1 * nb_col].hist(graph_jsd, label=latex(feat, ROOT=True) if     is_simple else None, **opts)
+                    pass
+                pass
+
+            # Meaningful limits on JSD
+            x, y, ey_stat, ey_syst  = map(np.array, zip(*jsd_limits[var]))
+            ex = np.zeros_like(x)
+            x[0]  = bins[var][0]
+            x[-1] = bins[var][-1]
+            format = lambda arr: arr.flatten('C').astype(float)
+            gr_stat = ROOT.TGraphErrors(len(x), *list(map(format, [x, y, ex, ey_stat])))
+            gr_comb = ROOT.TGraphErrors(len(x), *list(map(format, [x, y, ex, np.sqrt(np.square(ey_stat) + np.square(ey_syst))])))
+            smooth_tgrapherrors(gr_stat, ntimes=2)
+            smooth_tgrapherrors(gr_comb, ntimes=2)
+            c.pads()[col + 1 * nb_col].graph(gr_comb,                                        fillcolor=ROOT.kBlack, alpha=0.03, option='3')
+            c.pads()[col + 1 * nb_col].graph(gr_stat, linestyle=2, linecolor=ROOT.kGray + 1, fillcolor=ROOT.kBlack, alpha=0.03, option='L3')
+
+            if col == 0:
+                x_, y_, ex_, ey_ = ROOT.Double(0), ROOT.Double(0), ROOT.Double(0), ROOT.Double(0)
+                idx = gr_comb.GetN() - 1
+                gr_comb.GetPoint(idx, x_,  y_)
+                ey_ = gr_comb.GetErrorY(idx)
+                x_, y_ = map(float, (x_, y_))
+                c.pads()[col + 1 * nb_col].latex("Mean stat. #oplus #varepsilon_{bkg} var. limit     ", x_, y_ + ey_, align=31, textsize=11 * scale, angle=0, textcolor=ROOT.kGray + 2)
+                pass
+
+            # Decorations
+            # -- offsets
+            c.pads()[0]._xaxis().SetLabelOffset(9999.)
+            c.pads()[0]._xaxis().SetTitleOffset(9999.)
+            c.pads()[1]._xaxis().SetLabelOffset(9999.)
+            c.pads()[1]._xaxis().SetTitleOffset(9999.)
+
+            c.pads()[2]._xaxis().SetTitleOffset(2.3)
+            c.pads()[3]._xaxis().SetTitleOffset(2.3)
+
+            c.pads()[1]._yaxis().SetLabelOffset(9999.)
+            c.pads()[1]._yaxis().SetTitleOffset(9999.)
+            c.pads()[3]._yaxis().SetLabelOffset(9999.)
+            c.pads()[3]._yaxis().SetTitleOffset(9999.)
+
+            # -- x-axis label
+            if   var == 'pt':
+                xlabel = "Large-#it{R} jet p_{T} [GeV]"
+            elif var == 'npv':
+                xlabel = "Number of reconstructed vertices N_{PV}"
+            else:
+                raise NotImplementedError("Variable {} is not supported.".format(xlabel))
+
+            c.pads()[col + 1 * nb_col].xlabel(xlabel)
+            if col == 0:
+                pattern = "#splitline{#splitline{#splitline{%s}{}}{#splitline{}{}}}{#splitline{#splitline{}{}}{#splitline{}{}}}"
+                c.pads()[col + 0 * nb_col].ylabel(pattern % "1/#varepsilon_{bkg} @ #varepsilon_{sig} = 50%")
+                c.pads()[col + 1 * nb_col].ylabel(pattern % "1/JSD @ #varepsilon_{sig} = 50%")
+                pass
+
+            xmid = (bins[var][0] + bins[var][-1]) * 0.5
+            c.pads()[col + 0 * nb_col].latex("Random guessing",   xmid, 2 * 0.9, align=23, textsize=11 * scale, angle=0, textcolor=ROOT.kGray + 2)
+            c.pads()[col + 1 * nb_col].latex("Maximal sculpting", xmid, 1 * 0.8, align=23, textsize=11 * scale, angle=0, textcolor=ROOT.kGray + 2)
+
+            c.pads()[col + 0 * nb_col].ylim(1,   70)  # 500
+            c.pads()[col + 1 * nb_col].ylim(0.2, 7E+04)  # 2E+05
+
+            c.pads()[col + 0 * nb_col].logy()
+            c.pads()[col + 1 * nb_col].logy()
+
+            pass  # end: loop `col`
+
+        # Draw class-specific legend
+        width = margin_hori - 0.03
+        c.pads()[col + 0 * nb_col].legend(header='MVA:',        width=width, xmin=1. - margin_hori + 0.03, ymax=1. - margin_vert    + 0.02)
+        c.pads()[col + 1 * nb_col].legend(header='Analytical:', width=width, xmin=1. - margin_hori + 0.03, ymax=1. - margin_squeeze + 0.02)
+        c.pads()[col + 0 * nb_col]._legends[-1].SetTextSize(style.GetLegendTextSize())
+        c.pads()[col + 1 * nb_col]._legends[-1].SetTextSize(style.GetLegendTextSize())
+
+        # Common decorations
+        for pad in c.pads():
+            pad._xaxis().SetNdivisions(504)
+            pass
+
+        c.text([], qualifier=QUALIFIER, xmin=margin_hori, ymax=1. - margin_vert + 0.03)
+
+        c.pads()[1].text(["#sqrt{s} = 13 TeV,  #it{W} jet tagging"] + \
+                        (['m #in  [60, 100] GeV'] if masscut else []),
+                        ATLAS=False, ymax=1. - margin_vert - 0.10)
+
+        c.pads()[3].text(["QCD jets"],
+                         ATLAS=False, ymax=1. - margin_squeeze - 0.10)
+
+
+        pass  # Temporary style scope
+
+    return c
 
 
 def plot (*argv):
@@ -190,7 +392,7 @@ def plot (*argv):
         # Draw class-specific legend
         width = 0.20
         c.pads()[0].legend(header='MVA:',    width=width, xmin=0.79, ymax=0.92)
-        c.pads()[1].legend(header='Simple:', width=width, xmin=0.79, ymax=0.975)
+        c.pads()[1].legend(header='Analytical:', width=width, xmin=0.79, ymax=0.975)
 
         # Meaningful limits on JSD
         x, y, ey_stat, ey_syst  = map(np.array, zip(*jsd_limits))
@@ -225,7 +427,7 @@ def plot (*argv):
         else:
             raise NotImplementedError("Variable {} is not supported.".format(xlabel))
 
-        c.xlabel(xlabel)
+        xlabel(xlabel)
         c.pads()[0].ylabel("1/#varepsilon_{bkg} @ #varepsilon_{sig} = 50%")
         c.pads()[1].ylabel("1/JSD @ #varepsilon_{sig} = 50%")
 

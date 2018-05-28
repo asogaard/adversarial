@@ -141,7 +141,7 @@ def plot (*argv):
 
             # Draw class-specific legend
             width = 0.18
-            c.legend(header=("Simple:" if is_simple else "MVA:"),
+            c.legend(header=("Analytical:" if is_simple else "MVA:"),
                      width=width, xmin=0.54 + (width + 0.02) * (is_simple), ymax=0.827)
             pass
 
