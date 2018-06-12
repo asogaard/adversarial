@@ -34,12 +34,12 @@ def main (args):
 
     # Loading data
     # --------------------------------------------------------------------------
-    data, features, _ = load_data(args.input + 'data_4M.h5')
-    data = data.sample(frac=0.001, random_state=32)  # @TEMP
+    data, features, _ = load_data(args.input + 'data_1M_10M.h5')
+    #data = data.sample(frac=0.5, random_state=32)  # @TEMP
     data = data[data['train'] == 1]
 
     # Reduce size of data
-    drop_features = [feat for feat in list(data) if feat not in features + ['m', 'signal', 'weight_train']]
+    drop_features = [feat for feat in list(data) if feat not in features + ['m', 'signal', 'weight_adv']]
     data.drop(drop_features, axis=1)
 
 
@@ -51,7 +51,9 @@ def main (args):
     # Arrays
     X = data
 
-    w = np.array(data['weight_train']).flatten()
+    #print(X.head())
+
+    w = np.array(data['weight_adv']).flatten()
     y = np.array(data['signal']).flatten()
 
 
@@ -99,8 +101,9 @@ def main (args):
             return uboost
 
         #uniforming_rates = [0.0, 0.01, 0.1, 0.3, 1.0, 3.0, 10.0, 30.0, 100.0]
-        uniforming_rates = [0.0]
-        n_jobs = min(2, len(uniforming_rates))  # ...(10, ...
+        uniforming_rates = [0.0, 0.01, 0.1, 0.3, 0.5, 1.0]
+        #uniforming_rates = [0.5, 1.0]
+        n_jobs = min(7, len(uniforming_rates))  # ...(10, ...
 
         jobs = [delayed(train_uBoost, check_pickle=False)(X, y, w, cfg, uniforming_rate) for uniforming_rate in uniforming_rates]
 
@@ -120,7 +123,7 @@ def main (args):
             suffix_te = "te_{:d}".format(int(cfg['uBoost']['target_efficiency'] * 100))
 
             # Save uBoost classifier
-            with gzip.open('models/uboost/uboost_{}_{}.pkl.gz'.format(suffix_ur, suffix_te), 'w') as f:
+            with gzip.open('models/uboost/uboost_{}_{}_rel21_fixed_def_cfg_1000boost.pkl.gz'.format(suffix_ur, suffix_te), 'w') as f:
                 pickle.dump(uboost, f)
                 pass
             pass
