@@ -52,14 +52,15 @@ stops = np.linspace(0, 1, nb_cols, endpoint=True)
 
 ROOT.TColor.CreateGradientColorTable(nb_cols, stops, red, green, blue, NB_CONTOUR)
 
-BOUNDS[0].SetLineColor(ROOT.kGray + 0)
+BOUNDS[0].SetLineColor(ROOT.kGray + 3)
 BOUNDS[1].SetLineColor(ROOT.kGray + 3)
 for bound in BOUNDS:
     bound.SetLineWidth(1)
     bound.SetLineStyle(2)
     pass
 
-ZRANGE = (0.125, 0.325)
+#ZRANGE = (0.125, 0.325)
+ZRANGE = (0., 2.5)
 
 
 # Main function definition
@@ -162,7 +163,7 @@ def plot (profile, fit):
     # Styling
     profile.GetXaxis().SetTitle("Large-#it{R} jet " + latex(VARX, ROOT=True) + " = log(m^{2}/p_{T}^{2})")
     profile.GetYaxis().SetTitle("Large-#it{R} jet " + latex(VARY, ROOT=True) + " [GeV]")
-    profile.GetZaxis().SetTitle("%s %s^{(%s%%)}" % ("#it{k}-NN#minusfitted" if fit else "Measured", latex(VAR, ROOT=True), EFF))
+    profile.GetZaxis().SetTitle("%s %s^{(%s%%)}" % ("#it{k}-NN fitted" if fit else "Measured", latex(VAR, ROOT=True), EFF))
 
     profile.GetYaxis().SetNdivisions(505)
     profile.GetZaxis().SetNdivisions(505)
@@ -178,12 +179,12 @@ def plot (profile, fit):
     profile.Draw('COLZ')
     BOUNDS[0].DrawCopy("SAME")
     BOUNDS[1].DrawCopy("SAME")
-    c.latex("m > 50 GeV",  -4.5, BOUNDS[0].Eval(-4.5) + 30, align=21, angle=-37, textsize=13, textcolor=ROOT.kGray + 0)
+    c.latex("m > 50 GeV",  -4.5, BOUNDS[0].Eval(-4.5) + 30, align=21, angle=-37, textsize=13, textcolor=ROOT.kGray + 3)
     c.latex("m < 300 GeV", -2.5, BOUNDS[1].Eval(-2.5) - 30, align=23, angle=-57, textsize=13, textcolor=ROOT.kGray + 3)
 
     # Decorations
     c.text(qualifier=QUALIFIER, ymax=0.92, xmin=0.15)
-    c.text(["#sqrt{s} = 13 TeV", "QCD jets"], ATLAS=False, textcolor=ROOT.kWhite)
+    c.text(["#sqrt{s} = 13 TeV", "Multijets"], ATLAS=False, textcolor=ROOT.kWhite)
 
     # Save
     mkdir('figures/knn/')

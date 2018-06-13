@@ -15,8 +15,8 @@ from adversarial.utils import wpercentile, loadclf, garbage_collect
 from adversarial.profile import profile
 
 # Common definition(s)
-VAR  = 'N2'   # 'NN' | Substructure variable to decorrelate
-EFF  = 19     # '95' | Fixed backround efficiency at which to perform decorrelation
+VAR  = 'D2'   # 'NN' | Substructure variable to decorrelate
+EFF  = 16     # '95' | Fixed backround efficiency at which to perform decorrelation
 VARX = 'rho'  # X-axis variable from which to decorrelate
 VARY = 'pt'   # Y-axis variable from which to decorrelate
 VARS = [VARX, VARY]
