@@ -17,13 +17,15 @@ from adversarial.profile import profile
 
 
 # Common definition(s)
-SHAPEVAL_RANGE = np.linspace(1., 3., 2 + 1, endpoint=True)
-OMEGA_RANGE = np.linspace(0., 0.6, 3 * 40 + 1, endpoint = True)[1:]
-#MASS_BINS = np.linspace(40., 310., 20)
-MASS_BINS = np.linspace(50., 300., 20 + 1, endpoint=True)
+eps = np.finfo(float).eps
 
-#TAU21BINS = np.linspace(0., 2., 501, endpoint=True)
+SHAPEVAL_RANGE = np.linspace(0, 3.0, 3 * 2 + 1, endpoint=True)[1:]
+OMEGA_RANGE = np.linspace(0., 1.0, 2 * 50 + 1, endpoint = True)[1:]
+MASS_BINS = np.linspace(50., 300., 25 + 1, endpoint=True)
+
+TAU21BINS = np.linspace(0., 2., 501, endpoint=True)
 D2BINS = np.linspace(0., 5., 500 + 1, endpoint=True)
+N2BINS = np.linspace(0, 0.6, 500 + 1, endpoint=True)
 
 # Adds the CSS variable to the data (assuming Ginv, F files exist)
 def add_css (jssVar, data):
@@ -149,7 +151,7 @@ def normalise (p, density=False):
     return
 
 
-def kde (original, scale=0.15):
+def kde (original, scale=0.10):  # 0.015
     """
     Perform kernel density estimation (KDE), -ish, on input histogram `original`
     with gaussian kernel length scale `scale`.
@@ -157,6 +159,14 @@ def kde (original, scale=0.15):
 
     # Clone histogram, for KDE
     h = original.Clone(original.GetName() + '_redistributed')
+
+    # Rebinning
+    if isinstance(scale, int):
+        #print "kde: Rebinning instead of KDE-smoothing."
+        h.Rebin(scale)
+        return h
+
+    # Smoothing
     h.Reset()
 
     # Define utility method(s)
