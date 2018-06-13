@@ -168,8 +168,7 @@ def plot1D (*argv):
     c.xlabel("Large-#it{R} jet #rho^{DDT} = log(m^{2}/ p_{T} / 1 GeV)")
     c.ylabel("#LT#tau_{21}#GT, #LT#tau_{21}^{DDT}#GT")
 
-    lines = ["#sqrt{s} = 13 TeV,  QCD jets"]
-    c.text(["#sqrt{s} = 13 TeV,  QCD jets"], qualifier=QUALIFIER)
+    c.text(["#sqrt{s} = 13 TeV,  Multijets"], qualifier=QUALIFIER)
     c.legend(width=0.25, xmin=0.57, ymax=None if "Internal" in QUALIFIER else 0.85)
 
     c.ylim(0, 1.4)
