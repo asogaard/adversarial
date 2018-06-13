@@ -151,7 +151,7 @@ def normalise (p, density=False):
     return
 
 
-def kde (original, scale=0.10):  # 0.015
+def kde (original, scale=0.15):
     """
     Perform kernel density estimation (KDE), -ish, on input histogram `original`
     with gaussian kernel length scale `scale`.
