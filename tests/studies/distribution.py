@@ -6,7 +6,7 @@ import ROOT
 
 # Project import(s)
 from .common import *
-from adversarial.utils import mkdir, latex, wpercentile
+from adversarial.utils import mkdir, latex, wpercentile, garbage_collect
 from adversarial.constants import *
 
 # Custom import(s)
@@ -15,11 +15,12 @@ import rootplotting as rp
 
 # Global variable definition(s)
 HISTSTYLE[True] ['label'] = "#it{W} jets"
-HISTSTYLE[False]['label'] = "QCD jets"
+HISTSTYLE[False]['label'] = "Multijets"
 
 
+@garbage_collect
 @showsave
-def distribution (data, args, feat):
+def distribution (data_, args, feat, pt_range, mass_range):
     """
     Perform study of substructure variable distributions.
 
@@ -30,6 +31,17 @@ def distribution (data, args, feat):
         args: Namespace holding command-line arguments.
         feat: Feature for which to plot signal- and background distributions.
     """
+
+    # Select data
+    if pt_range is not None:
+        data = data_[(data_['pt'] > pt_range[0]) & (data_['pt'] < pt_range[1])]
+    else:
+        data = data_
+        pass
+
+    if mass_range is not None:
+        data = data[(data['m'] > mass_range[0]) & (data['m'] < mass_range[1])]
+        pass
 
     # Define bins
     xmin = wpercentile (data[feat].values,  1, weights=data['weight_test'].values)
@@ -42,10 +54,10 @@ def distribution (data, args, feat):
     bins = np.linspace(xmin, xmax, 50 + 1, endpoint=True)
 
     # Perform plotting
-    c = plot(args, data, feat, bins)
+    c = plot(args, data, feat, bins, pt_range, mass_range)
 
     # Output
-    path = 'figures/distribution_{}.pdf'.format(standardise(feat))
+    path = 'figures/distribution_{}{}{}.pdf'.format(standardise(feat), '__pT{:.0f}_{:.0f}'.format(pt_range[0], pt_range[1]) if pt_range is not None else '', '__mass{:.0f}_{:.0f}'.format(mass_range[0], mass_range[1]) if mass_range is not None else '')
 
     return c, args, path
 
@@ -56,7 +68,7 @@ def plot (*argv):
     """
 
     # Unpack arguments
-    args, data, feat, bins = argv
+    args, data, feat, bins, pt_range, mass_range = argv
 
     # Canvas
     c = rp.canvas(batch=not args.show)
@@ -74,7 +86,12 @@ def plot (*argv):
     # Decorations
     c.xlabel("Large-#it{R} jet " + latex(feat, ROOT=True))
     c.ylabel("Fraction of jets")
-    c.text(TEXT + ["#it{W} jet tagging"], qualifier=QUALIFIER)
+    c.text(TEXT + [
+        "#it{W} jet tagging"] + (
+        ["p_{{T}} #in  [{:.0f}, {:.0f}] GeV".format(pt_range[0], pt_range[1])] if pt_range is not None else []
+        ) + (
+        ["m #in  [{:.0f}, {:.0f}] GeV".format(mass_range[0], mass_range[1]),] if mass_range is not None else []
+        ), qualifier=QUALIFIER)
     c.ylim(4E-03, 4E-01)
     c.logy()
     c.legend()
