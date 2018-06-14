@@ -17,7 +17,7 @@ import rootplotting as rp
 
 
 @showsave
-def summary (data, args, features, scan_features, target_tpr=0.5, num_bootstrap=5, masscut=False):
+def summary (data_, args, features, scan_features, target_tpr=0.5, num_bootstrap=5, masscut=False, pt_range=(200, 2000)):
     """
     Perform study of combined classification- and decorrelation performance.
 
@@ -45,6 +45,13 @@ def summary (data, args, features, scan_features, target_tpr=0.5, num_bootstrap=
     assert isinstance(features, list)
     assert isinstance(scan_features, dict)
 
+    # Select pT-range
+    if pt_range is not None:
+        data = data_.loc[(data_['pt'] > pt_range[0]) & (data_['pt'] < pt_range[1])]
+    else:
+        data = data_
+        pass
+
     # For reproducibility of bootstrap sampling
     np.random.seed(7)
 
@@ -54,9 +61,9 @@ def summary (data, args, features, scan_features, target_tpr=0.5, num_bootstrap=
         print  "-- {}".format(feat)
 
         # Check for duplicates
-        if feat in map(lambda t: t[2], points):
-            print "    Skipping (already encounted)"
-            continue
+        #if feat in map(lambda t: t[2], points):
+        #    print "    Skipping (already encounted)"
+        #    continue
 
         # Compute metrics
         _, rej, jsd = metrics(data, feat, masscut=masscut)
@@ -76,10 +83,10 @@ def summary (data, args, features, scan_features, target_tpr=0.5, num_bootstrap=
         pass
 
     # Perform plotting
-    c = plot(data, args, features, scan_features, points, jsd_limits, masscut)
+    c = plot(data, args, features, scan_features, points, jsd_limits, masscut, pt_range)
 
     # Output
-    path = 'figures/summary{}.pdf'.format('_masscut' if masscut else '')
+    path = 'figures/summary{}{}.pdf'.format('__pT{:.0f}_{:.0f}'.format(pt_range[0], pt_range[1]) if pt_range is not None else '', '__masscut' if masscut else '')
 
     return c, args, path
 
@@ -90,19 +97,26 @@ def plot (*argv):
     """
 
     # Unpack arguments
-    data, args, features, scan_features, points, jsd_limits, masscut = argv
+    data, args, features, scan_features, points, jsd_limits, masscut, pt_range = argv
 
     with TemporaryStyle() as style:
 
+        # Compute yaxis range
+        ranges = int(pt_range is not None) + int(masscut)
+        mult  = 10. if ranges == 2 else (5. if ranges == 1 else 1.)
+        
         # Define variable(s)
-        axisrangex = (1.4,    100.)
-        axisrangey = (0.3, 500000.)
+        axisrangex = (1.4,     100.)
+        axisrangey = (0.3, 100000. * mult)
         aminx, amaxx = axisrangex
         aminy, amaxy = axisrangey
 
         # Styling
+        scale = 0.95
         style.SetTitleOffset(1.8, 'x')
         style.SetTitleOffset(1.6, 'y')
+        style.SetTextSize      ( style.GetTextSize()       * scale)
+        style.SetLegendTextSize( style.GetLegendTextSize() * scale)
 
         # Canvas
         c = rp.canvas(batch=not args.show, size=(600,600))
@@ -116,6 +130,21 @@ def plot (*argv):
         c.plot([1, 1],     bins=[2, amaxx], **lineopts)
         c.hist([amaxy],    bins=[aminx, 2], **boxopts)
         c.hist([1],        bins=[2, amaxx], **boxopts)
+
+        # Meaningful limits on 1/JSD
+        x,y,ey = map(np.array, zip(*jsd_limits))
+        ex = np.zeros_like(ey)
+        gr = ROOT.TGraphErrors(len(x), x, y, ex, ey)
+        smooth_tgrapherrors(gr, ntimes=3)
+        c.graph(gr, linestyle=2, linecolor=ROOT.kGray + 1, fillcolor=ROOT.kBlack, alpha=0.03, option='L3')
+
+        x_, y_, ex_, ey_ = ROOT.Double(0), ROOT.Double(0), ROOT.Double(0), ROOT.Double(0)
+        idx = 3
+        gr.GetPoint(idx, x_,  y_)
+        ey_ = gr.GetErrorY(idx)
+        x_, y_ = map(float, (x_, y_))
+        c.latex("Statistical limit", x_, y_ + ey_, align=21, textsize=11, angle=-5, textcolor=ROOT.kGray + 2)
+
 
         # Markers
         for is_simple in [True, False]:
@@ -136,13 +165,18 @@ def plot (*argv):
                 markerstyle = 20 + (ifeat % 2) * 4
 
                 # Draw
-                c.graph([y], bins=[x], markercolor=colour, markerstyle=markerstyle, label=latex(label, ROOT=True), option='P')
+                c.graph([y], bins=[x], markercolor=colour, markerstyle=markerstyle, label='#scale[%.1f]{%s}' % (scale, latex(label, ROOT=True)), option='P')
                 pass
 
             # Draw class-specific legend
-            width = 0.18
+            width = 0.15
             c.legend(header=("Analytical:" if is_simple else "MVA:"),
-                     width=width, xmin=0.54 + (width + 0.02) * (is_simple), ymax=0.827)
+                     width=width, xmin=0.60 + (width + 0.02) * (is_simple), ymax=0.888)  #, ymax=0.827)
+            pass
+
+        # Make legends transparent
+        for leg in c.pads()[0]._legends:
+            leg.SetFillStyle(0)
             pass
 
         # Markers, parametrised decorrelation
@@ -189,23 +223,9 @@ def plot (*argv):
             c.graph([y1, y2], bins=[x1, x2], linecolor=colour, linestyle=2, option='L')
             pass
 
-        # Meaningful limits on 1/JSD
-        x,y,ey = map(np.array, zip(*jsd_limits))
-        ex = np.zeros_like(ey)
-        gr = ROOT.TGraphErrors(len(x), x, y, ex, ey)
-        smooth_tgrapherrors(gr, ntimes=3)
-        c.graph(gr, linestyle=2, linecolor=ROOT.kGray + 1, fillcolor=ROOT.kBlack, alpha=0.03, option='L3')
-
-        x_, y_, ex_, ey_ = ROOT.Double(0), ROOT.Double(0), ROOT.Double(0), ROOT.Double(0)
-        idx = 3
-        gr.GetPoint(idx, x_,  y_)
-        ey_ = gr.GetErrorY(idx)
-        x_, y_ = map(float, (x_, y_))
-        c.latex("Statistical limit", x_, y_ + ey_, align=21, textsize=11, angle=-5, textcolor=ROOT.kGray + 2)
-
         # Decorations
-        c.xlabel("Background rejection, 1 / #varepsilon_{bkg} @ #varepsilon_{sig} = 50%")
-        c.ylabel("Mass decorrelation, 1 / JSD @ #varepsilon_{sig} = 50%")
+        c.xlabel("Background rejection, 1 / #varepsilon_{bkg}^{rel} @ #varepsilon_{sig}^{rel} = 50%")
+        c.ylabel("Mass-decorrelation, 1 / JSD @ #varepsilon_{sig}^{rel} = 50%")
         c.xlim(*axisrangex)
         c.ylim(*axisrangey)
         c.logx()
@@ -214,16 +234,20 @@ def plot (*argv):
         opts_text = dict(textsize=11, textcolor=ROOT.kGray + 2)
         midpointx = np.power(10, 0.5 * np.log10(amaxx))
         midpointy = np.power(10, 0.5 * np.log10(amaxy))
-        c.latex("No separation",                     1.91, midpointy, angle=90, align=21, **opts_text)
-        c.latex("Maximal sculpting",                 midpointx, 0.89, angle= 0, align=23, **opts_text)
-        c.latex("    Less sculpting #rightarrow",    2.1, midpointy,  angle=90, align=23, **opts_text)
-        c.latex("    Greater separtion #rightarrow", midpointx, 1.1,  angle= 0, align=21, **opts_text)
+        c.latex("No separation",                       1.91, midpointy, angle=90, align=21, **opts_text)
+        c.latex("Maximal sculpting",                   midpointx, 0.89, angle= 0, align=23, **opts_text)
+        c.latex("    Less sculpting #rightarrow",      2.1, midpointy,  angle=90, align=23, **opts_text)
+        c.latex("     Greater separation #rightarrow", midpointx, 1.1,  angle= 0, align=21, **opts_text)
 
         #c.text(TEXT + ["#it{W} jet tagging"], xmin=0.24, qualifier=QUALIFIER)
+        c.text([], xmin=0.15, ymax=0.96, qualifier=QUALIFIER)
         c.text(TEXT + \
-               ["#it{W} jet tagging"] + \
-               (['m #in  [60, 100] GeV'] if masscut else []),
-               xmin=0.26, qualifier=QUALIFIER)
+               ["#it{W} jet tagging"] + (
+                    ["p_{{T}} #in  [{:.0f}, {:.0f}] GeV".format(pt_range[0], pt_range[1])] if pt_range is not None else []
+                ) + (
+                    ['Cut: m #in  [60, 100] GeV'] if masscut else []
+                ),
+               xmin=0.26, ATLAS=None)
         pass
 
     return c
