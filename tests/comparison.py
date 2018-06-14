@@ -7,6 +7,7 @@
 import re
 import gc
 import gzip
+import itertools
 
 # Get ROOT to stop hogging the command-line options
 import ROOT
@@ -60,7 +61,7 @@ def main (args):
     # Common definitions
     # --------------------------------------------------------------------------
     # -- k-nearest neighbour
-    kNN_var = 'N2-k#minusNN'
+    kNN_var = 'D2-k#minusNN'
 
     def meaningful_digits (number):
         digits = 0
@@ -71,7 +72,7 @@ def main (args):
 
     # -- Adversarial neural network (ANN) scan
     lambda_reg  = 10.
-    lambda_regs = sorted([0.1, 1., 3., 10.])
+    lambda_regs = sorted([1., 3., 10.])
     ann_vars    = list()
     lambda_strs = list()
     for lambda_reg_ in lambda_regs:
@@ -93,7 +94,7 @@ def main (args):
     uboost_pattern = 'uboost_ur_{{:4.2f}}_te_{:.0f}_rel21_fixed'.format(uboost_eff)
 
     # Tagger feature collection
-    tagger_features = ['Tau21','Tau21DDT', 'N2', kNN_var, 'D2', 'D2CSS', 'NN', ann_var, 'Adaboost', uboost_var]
+    tagger_features = ['Tau21','Tau21DDT', 'D2', kNN_var, 'D2', 'D2CSS', 'NN', ann_var, 'Adaboost', uboost_var]
 
 
     # Add variables
@@ -104,8 +105,9 @@ def main (args):
         from run.ddt.common import add_ddt
         add_ddt(data, path='models/ddt/ddt.pkl.gz')
 
-        # N2-kNN
+        # D2-kNN
         from run.knn.common import add_knn, VAR as kNN_basevar, EFF as kNN_eff
+        print "k-NN base variable: {} (cp. {})".format(kNN_basevar, kNN_var)
         add_knn(data, newfeat=kNN_var, path='models/knn/knn_{}_{}.pkl.gz'.format(kNN_basevar, kNN_eff))
 
         # D2-CSS
@@ -167,31 +169,13 @@ def perform_studies (data, args, tagger_features, ann_vars, uboost_vars):
     """
     Method delegating performance studies.
     """
-    masscuts = [True, False]
+    masscuts  = [True, False]
+    pt_ranges = [None, (200, 500), (500, 1000)]
 
     # Perform combined robustness study
     with Profile("Study: Robustness"):
         for masscut in masscuts:
             studies.robustness_full(data, args, tagger_features, masscut=masscut)
-            pass
-        pass
-
-
-    # Perform pile-up robustness study
-    with Profile("Study: Robustness (pile-up)"):
-        bins = [0,  5.5, 10.5, 15.5, 20.5, 25.5, 30.5]
-        #bins = [0,  9.5, 11.5, 13.5, 15.5, 18.5, 30.5]
-        print "NPV bins:", bins
-        for masscut in masscuts:
-            studies.robustness(data, args, tagger_features, 'npv', bins, masscut=masscut)
-            pass
-        pass
-
-    # Perform pT robustness study
-    with Profile("Study: Robustness (pT)"):
-        bins = [200, 260, 330, 430, 560, 720, 930, 1200, 1550, 2000]
-        for masscut in masscuts:
-            studies.robustness(data, args, tagger_features, 'pt', bins, masscut=masscut)
             pass
         pass
 
@@ -206,31 +190,27 @@ def perform_studies (data, args, tagger_features, ann_vars, uboost_vars):
         regex_ub = re.compile('\#alpha=[\d\.]+')
 
         scan_features = {'NN':       map(lambda feat: (feat, regex_nn.search(feat).group(0)), ann_vars),
-                         'Adaboost': map(lambda feat: (feat, regex_ub.search(feat).group(0)), uboost_vars)}
+                         'Adaboost': map(lambda feat: (feat, regex_ub.search(feat).group(0)), uboost_vars)
+                         }
 
-        for masscut in masscuts:
-            studies.summary(data, args, tagger_features, scan_features, masscut=masscut)
+        for masscut, pt_range in itertools.product(masscuts, pt_ranges):
+            studies.summary(data, args, tagger_features, scan_features, masscut=masscut, pt_range=pt_range)
             pass
         pass
 
     # Perform distributions study
     with Profile("Study: Substructure tagger distributions"):
-        for feat in tagger_features:
-            studies.distribution(data, args, feat)
-            pass
-        pass
-
-    # Perform jet mass distributions study
-    with Profile("Study: Jet mass distributions"):
-        for feat in tagger_features:
-            studies.jetmass(data, args, feat)
+        mass_ranges = np.linspace(50, 300, 5 + 1, endpoint=True)
+        mass_ranges = [None] + zip(mass_ranges[:-1], mass_ranges[1:])
+        for feat, pt_range, mass_range in itertools.product(tagger_features, pt_ranges, mass_ranges):  # tagger_features
+            studies.distribution(data, args, feat, pt_range, mass_range)
             pass
         pass
 
     # Perform ROC study
     with Profile("Study: ROC"):
-        for masscut in masscuts:
-            studies.roc(data, args, tagger_features, masscut=masscut)
+        for masscut, pt_range in itertools.product(masscuts, pt_ranges):
+            studies.roc(data, args, tagger_features, masscut=masscut, pt_range=pt_range)
             pass
         pass
 
