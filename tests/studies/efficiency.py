@@ -97,14 +97,14 @@ def plot (*argv):
 
         # Decorations
         c.xlabel("Large-#it{R} jet mass [GeV]")
-        c.ylabel("Background efficiency, #varepsilon_{bkg}")
-        c.text(["#sqrt{s} = 13 TeV,  QCD jets",
+        c.ylabel("Background efficiency, #varepsilon_{bkg}^{rel}")
+        c.text(["#sqrt{s} = 13 TeV,  Multijets",
                 #"#it{W} jet tagging",
                 "Cuts on {}".format(latex(feat, ROOT=True)),
                 ],
                qualifier=QUALIFIER)
         c.ylim(0, 2.0)
-        c.legend(reverse=True, width=0.25, ymax=0.87, header="Incl. #bar{#varepsilon}_{bkg}:")
+        c.legend(reverse=True, width=0.25, ymax=0.87, header="Incl. #bar{#varepsilon}_{bkg}^{rel}:")
         pass
 
     return c
