@@ -17,6 +17,7 @@ from adversarial.constants import *
 import rootplotting as rp
 
 
+
 @showsave
 def jsd (data, args, features):
     """
@@ -30,14 +31,20 @@ def jsd (data, args, features):
         features: Features for ...
     """
 
+    # Create local histogram style dict
+    histstyle = dict(**HISTSTYLE)
+    histstyle[True] ['label'] = "Pass"
+    histstyle[False]['label'] = "Fail"
+
     # Define common variables
     msk  = data['signal'] == 0
     effs = np.linspace(0, 100, 10 * 2, endpoint=False)[1:].astype(int)
 
     # Loop tagger features
     jsd = {feat: [] for feat in features}
-    c = rp.canvas(batch=not args.show)
     for ifeat, feat in enumerate(features):
+
+        if len(jsd[feat]): continue  # Duplicate feature.
 
         # Define cuts
         cuts = list()
@@ -55,8 +62,10 @@ def jsd (data, args, features):
                 msk_pass = ~msk_pass
                 pass
 
-            h_pass = c.hist(data.loc[ msk_pass & msk, 'm'].values, bins=MASSBINS, weights=data.loc[ msk_pass & msk, 'weight_test'].values, normalise=True, display=False)
-            h_fail = c.hist(data.loc[~msk_pass & msk, 'm'].values, bins=MASSBINS, weights=data.loc[~msk_pass & msk, 'weight_test'].values, normalise=True, display=False)
+            # Get histograms / plot
+            c = rp.canvas(batch=not args.show)
+            h_pass = c.hist(data.loc[ msk_pass & msk, 'm'].values, bins=MASSBINS, weights=data.loc[ msk_pass & msk, 'weight_test'].values, normalise=True, **histstyle[True])   #, display=False)
+            h_fail = c.hist(data.loc[~msk_pass & msk, 'm'].values, bins=MASSBINS, weights=data.loc[~msk_pass & msk, 'weight_test'].values, normalise=True, **histstyle[False])  #, display=False)
 
             # Convert to numpy arrays
             p = root_numpy.hist2array(h_pass)
@@ -64,6 +73,19 @@ def jsd (data, args, features):
 
             # Compute Jensen-Shannon divergence
             jsd[feat].append(JSD(p, f, base=2))
+
+            # -- Decorations
+            c.xlabel("Large-#it{R} jet mass [GeV]")
+            c.ylabel("Fraction of jets")
+            c.legend()
+            c.logy()
+            c.text(TEXT + [
+                "{:s} {} {:.3f}".format(latex(feat, ROOT=True), '<' if signal_low(feat) else '>', cut),
+                "JSD = {:.4f}".format(jsd[feat][-1])
+                ], qualifier=QUALIFIER)
+
+            # -- Save
+            c.save('figures/temp_jsd_{:s}_{:.0f}.pdf'.format(feat, eff))
 
             pass
         pass
@@ -136,10 +158,10 @@ def plot (*argv):
         c.pads()[0]._primitives[0].Draw('AXIS SAME')
 
         # Decorations
-        c.xlabel("Background efficiency #varepsilon_{bkg}")
+        c.xlabel("Background efficiency #varepsilon_{bkg}^{rel}")
         c.ylabel("Mass correlation, JSD")
         c.text([], xmin=0.15, ymax = 0.96, qualifier=QUALIFIER)
-        c.text(["#sqrt{s} = 13 TeV",  "QCD jets"],
+        c.text(["#sqrt{s} = 13 TeV",  "Multijets"],
                ymax=0.85, ATLAS=None)
 
         c.latex("Maximal sculpting", 0.065, 1.2, align=11, textsize=11, textcolor=ROOT.kGray + 2)
@@ -157,7 +179,7 @@ def plot (*argv):
         gr.GetPoint(idx, x_,  y_)
         ey_ = gr.GetErrorY(idx)
         x_, y_ = map(float, (x_, y_))
-        c.latex("Statistical limit", x_, y_ - ey_ / 2., align=23, textsize=11, angle=16, textcolor=ROOT.kGray + 2)
+        c.latex("Statistical limit", x_, y_ - ey_ / 2., align=23, textsize=11, angle=12, textcolor=ROOT.kGray + 2)
         pass
 
     return c
