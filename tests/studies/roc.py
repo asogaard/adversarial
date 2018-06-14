@@ -23,7 +23,7 @@ ROOT.gStyle.SetTitleOffset(2.0, 'y')
 
 
 @showsave
-def roc (data, args, features, masscut=False):
+def roc (data_, args, features, masscut=False, pt_range=(200, 2000)):
     """
     Perform study of ...
 
@@ -35,6 +35,13 @@ def roc (data, args, features, masscut=False):
         features: Features for ...
         masscut: ...
     """
+
+    # Select pT-range
+    if pt_range is not None:
+        data = data_.loc[(data_['pt'] > pt_range[0]) & (data_['pt'] < pt_range[1])]
+    else:
+        data = data_
+        pass
 
     # (Opt.) masscut | @NOTE: Duplication with adversarial/utils/metrics.py
     msk = (data['m'] > 60.) & (data['m'] < 100.) if masscut else np.ones_like(data['signal']).astype(bool)
@@ -52,7 +59,7 @@ def roc (data, args, features, masscut=False):
         if masscut:
             eff_sig_mass = np.mean(msk[data['signal'] == 1])
             eff_bkg_mass = np.mean(msk[data['signal'] == 0])
-            
+
             eff_sig *= eff_sig_mass
             eff_bkg *= eff_bkg_mass
             pass
@@ -93,10 +100,10 @@ def roc (data, args, features, masscut=False):
 
 
     # Perform plotting
-    c = plot(args, data, features, ROCs, AUCs, masscut)
+    c = plot(args, data, features, ROCs, AUCs, masscut, pt_range)
 
     # Output
-    path = 'figures/roc{}.pdf'.format('_masscut' if masscut else '')
+    path = 'figures/roc{}{:s}.pdf'.format('__pT{:.0f}_{:.0f}'.format(pt_range[0], pt_range[1]) if pt_range is not None else '', '__masscut' if masscut else '')
 
     return c, args, path
 
@@ -107,7 +114,7 @@ def plot (*argv):
     """
 
     # Unpack arguments
-    args, data, features, ROCs, AUCs, masscut = argv
+    args, data, features, ROCs, AUCs, masscut, pt_range = argv
 
     # Canvas
     c = rp.canvas(batch=not args.show)
@@ -132,22 +139,29 @@ def plot (*argv):
             pass
 
         # Draw class-specific legend
-        width = 0.18
+        width = 0.17
         c.legend(header=("Analytical:" if is_simple else "MVA:"),
-                 width=width, xmin=0.54 + (width + 0.02) * (is_simple))
+                 width=width, xmin=0.58 + (width) * (is_simple), ymax=0.888)
         pass
 
     # Decorations
-    c.xlabel("Signal efficiency #varepsilon_{sig}")
-    c.ylabel("Background rejection 1/#varepsilon_{bkg}")
+    c.xlabel("Signal efficiency #varepsilon_{sig}^{rel}")
+    c.ylabel("Background rejection 1/#varepsilon_{bkg}^{rel}")
+    c.text([], xmin=0.15, ymax=0.96, qualifier=QUALIFIER)
     c.text(["#sqrt{s} = 13 TeV",
-            "#it{W} jet tagging"] + \
-            (["m #in  [60, 100] GeV"] if masscut else []),
-           qualifier=QUALIFIER)
+            "#it{W} jet tagging"] + (
+                ["p_{{T}} #in  [{:.0f}, {:.0f}] GeV".format(pt_range[0], pt_range[1])] if pt_range is not None else []
+            ) + (
+                ["Cut: m #in  [60, 100] GeV"] if masscut else []
+            ),
+           ATLAS=False)
 
-    c.latex("Random guessing", 0.4, 1./0.4 * 0.9, align=23, angle=-12, textsize=13, textcolor=ROOT.kGray + 2)
+    ranges = int(pt_range is not None) + int(masscut)
+    mult = 10. if ranges == 2 else (2. if ranges == 1 else 1.)
+
+    c.latex("Random guessing", 0.4, 1./0.4 * 0.9, align=23, angle=-12 + 2 * ranges, textsize=13, textcolor=ROOT.kGray + 2)
     c.xlim(0.2, 1.)
-    c.ylim(1E+00, 1E+03)  # 1E+04 if masscut else 1E+03)
+    c.ylim(1E+00, 5E+02 * mult)
     c.logy()
     c.legend()
 
