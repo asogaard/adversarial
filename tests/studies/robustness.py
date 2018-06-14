@@ -96,7 +96,8 @@ def compute (data, args, features, var, bins, masscut, num_bootstrap):
         meanx.append(wmean(data.loc[msk_bin & msk_bkg, var], data.loc[msk_bin & msk_bkg, 'weight_test']))
 
         # Compute bootstrapped metrics for all features
-        for feat in features:
+        for feat in set(features):  # Ensure no duplicate features
+
             mean_std_eff, mean_std_rej, mean_std_jsd = bootstrap_metrics(data[msk_bin], feat, num_bootstrap=num_bootstrap, masscut=masscut)
 
             # Store in output containers
@@ -245,7 +246,7 @@ def plot_full (*argv):
                 gr_comb.GetPoint(idx, x_,  y_)
                 ey_ = gr_comb.GetErrorY(idx)
                 x_, y_ = map(float, (x_, y_))
-                c.pads()[col + 1 * nb_col].latex("Mean stat. #oplus #varepsilon_{bkg} var. limit     ", x_, y_ + ey_, align=31, textsize=11 * scale, angle=0, textcolor=ROOT.kGray + 2)
+                c.pads()[col + 1 * nb_col].latex("Mean stat. #oplus #varepsilon_{bkg}^{rel} var. limit     ", x_, y_ + 0.75 * ey_, align=31, textsize=11 * scale, angle=0, textcolor=ROOT.kGray + 2)
                 pass
 
             # Decorations
@@ -274,8 +275,8 @@ def plot_full (*argv):
             c.pads()[col + 1 * nb_col].xlabel(xlabel)
             if col == 0:
                 pattern = "#splitline{#splitline{#splitline{%s}{}}{#splitline{}{}}}{#splitline{#splitline{}{}}{#splitline{}{}}}"
-                c.pads()[col + 0 * nb_col].ylabel(pattern % "1/#varepsilon_{bkg} @ #varepsilon_{sig} = 50%")
-                c.pads()[col + 1 * nb_col].ylabel(pattern % "1/JSD @ #varepsilon_{sig} = 50%")
+                c.pads()[col + 0 * nb_col].ylabel(pattern % "1/#varepsilon_{bkg}^{rel} @ #varepsilon_{sig}^{rel} = 50%")
+                c.pads()[col + 1 * nb_col].ylabel(pattern % "1/JSD @ #varepsilon_{sig}^{rel} = 50%")
                 pass
 
             xmid = (bins[var][0] + bins[var][-1]) * 0.5
@@ -308,9 +309,32 @@ def plot_full (*argv):
                         (['m #in  [60, 100] GeV'] if masscut else []),
                         ATLAS=False, ymax=1. - margin_vert - 0.10)
 
-        c.pads()[3].text(["QCD jets"],
+        c.pads()[3].text(["Multijets"],
                          ATLAS=False, ymax=1. - margin_squeeze - 0.10)
 
+        # Arrows
+        c._bare().cd()
+        opts_text = dict(textsize=11, textcolor=ROOT.kGray + 2)
+        tlatex = ROOT.TLatex()
+        tlatex.SetTextAngle(90)
+        tlatex.SetTextAlign(22)
+        tlatex.SetTextSize(11)
+        tlatex.SetTextColor(ROOT.kGray + 2)
+        tlatex.DrawLatexNDC(0.5, 0. + 0.5 * (margin_vert + 0.5 * (1.0 - margin_squeeze - margin_vert)), "    Less sculpting #rightarrow")
+        tlatex.DrawLatexNDC(0.5, 1. - 0.5 * (margin_vert + 0.5 * (1.0 - margin_squeeze - margin_vert)), "     Greater separation #rightarrow")
+
+
+        # height = 0.5 * (1. - margin_squeeze - margin_vert)
+        # offset = margin_vert * 0.5
+        # offset + 0.5 * height
+
+        # 0. + margin_vert + 0.25 * (1.0 - margin_squeeze - margin_vert)
+        # 0. + 0.20 + 0.5 * (0.5 - 0.035 - 0.20)
+        # 0. + 0.20 + 0.5 * (0.5 - 0.035 - 0.20)
+        # 0.3325
+
+        # 0. + 0 + 0.5 * (0.5 - 0 - 0)
+        # 0.25
 
         pass  # Temporary style scope
 
@@ -412,7 +436,7 @@ def plot (*argv):
         gr_comb.GetPoint(idx, x_,  y_)
         ey_ = gr_comb.GetErrorY(idx)
         x_, y_ = map(float, (x_, y_))
-        c.pads()[1].latex("Mean stat. #oplus #varepsilon_{bkg} var. limit     ", x_, y_ + ey_, align=31, textsize=11, angle=0, textcolor=ROOT.kGray + 2)
+        c.pads()[1].latex("Mean stat. #oplus #varepsilon_{bkg}^{rel} var. limit     ", x_, y_ + ey_, align=31, textsize=11, angle=0, textcolor=ROOT.kGray + 2)
 
         # Decorations
         for pad in c.pads():
@@ -427,9 +451,9 @@ def plot (*argv):
         else:
             raise NotImplementedError("Variable {} is not supported.".format(xlabel))
 
-        xlabel(xlabel)
-        c.pads()[0].ylabel("1/#varepsilon_{bkg} @ #varepsilon_{sig} = 50%")
-        c.pads()[1].ylabel("1/JSD @ #varepsilon_{sig} = 50%")
+        c.xlabel(xlabel)
+        c.pads()[0].ylabel("1/#varepsilon_{bkg}^{rel} @ #varepsilon_{sig}^{rel} = 50%")
+        c.pads()[1].ylabel("1/JSD @ #varepsilon_{sig}^{rel} = 50%")
 
         xmid = (bins[0] + bins[-1]) * 0.5
         c.pads()[0].latex("Random guessing",   xmid, 2 * 0.9, align=23, textsize=11, angle=0, textcolor=ROOT.kGray + 2)
@@ -441,7 +465,7 @@ def plot (*argv):
                 (['m #in  [60, 100] GeV'] if masscut else []),
                  ATLAS=False, ymax=0.76)
 
-        c.pads()[1].text(["QCD jets"], ATLAS=False)
+        c.pads()[1].text(["Multijets"], ATLAS=False)
 
         c.pads()[0].ylim(1, 500)
         c.pads()[1].ylim(0.2, 2E+05)
