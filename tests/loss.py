@@ -83,6 +83,7 @@ def plot_classifier_training_loss (num_folds, basedir='models/adversarial/classi
             pass
 
         loss = np.array(d['val_loss'])
+        print "Outliers:", loss[np.abs(loss - 0.72) < 0.02]
         loss[np.abs(loss - 0.72) < 0.02] = np.nan  # @FIXME: This probably isn't completely kosher
         losses['val'].append(loss)
         loss = np.array(d['loss'])
