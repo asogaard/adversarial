@@ -86,7 +86,7 @@ def plot (*argv):
     # Decorations
     c.xlabel("Large-#it{R} jet mass [GeV]")
     c.ylabel("Fraction of jets")
-    c.text(["#sqrt{s} = 13 TeV,  QCD jets",
+    c.text(["#sqrt{s} = 13 TeV,  Multijets",
             "#varepsilon_{sig} = %d%% cut on %s" % (eff_sig, latex(feat, ROOT=True)),
             ], qualifier=QUALIFIER)
 
