@@ -3,6 +3,7 @@
 # Basic import(s)
 import pickle
 import numpy as np
+from glob import glob
 rng = np.random.RandomState(21)  # For reproducibility
 
 # Project import(s)
@@ -25,15 +26,18 @@ def OpenFile (fi, opt='rb'):
 def main ():
 
     # Global defintions
-    alpha = 0.1
+    alpha     = 0.3
+    nb_epochs = 500
 
     # Load epochs and log-losses from files
-    pattern = 'tests/inputs_Fig5/{v:s}_uboost_ur_{a:4.2f}_te_92_rel21_fixed_FIG5'
-    x           = OpenFile(pattern.format(v='x_axis', a=alpha).replace('.', 'p') + '.pkl.gz')
-    ll_ab_train = OpenFile(pattern.format(v='train',  a=0)    .replace('.', 'p') + '.pkl.gz')
-    ll_ab_test  = OpenFile(pattern.format(v='test',   a=0)    .replace('.', 'p') + '.pkl.gz')
-    ll_ub_train = OpenFile(pattern.format(v='train',  a=alpha).replace('.', 'p') + '.pkl.gz')
-    ll_ub_test  = OpenFile(pattern.format(v='test',   a=alpha).replace('.', 'p') + '.pkl.gz')
+    #pattern =
+    #'tests/inputs_Fig5/{v:s}_uboost_ur_{a:4.2f}_te_92_rel21_fixed_FIG5'
+    pattern = 'tests/inputs_Fig5/{v:s}_uboost_ur_{a:4.2f}_te_92_rel21_fixed_*'
+    x           = OpenFile(glob(pattern.format(v='x_axis', a=alpha).replace('.', 'p') + '.pkl.gz')[0])[:nb_epochs]
+    ll_ab_train = OpenFile(glob(pattern.format(v='train',  a=0)    .replace('.', 'p') + '.pkl.gz')[0])[:nb_epochs]
+    ll_ab_test  = OpenFile(glob(pattern.format(v='test',   a=0)    .replace('.', 'p') + '.pkl.gz')[0])[:nb_epochs]
+    ll_ub_train = OpenFile(glob(pattern.format(v='train',  a=alpha).replace('.', 'p') + '.pkl.gz')[0])[:nb_epochs]
+    ll_ub_test  = OpenFile(glob(pattern.format(v='test',   a=alpha).replace('.', 'p') + '.pkl.gz')[0])[:nb_epochs]
 
     # Plot log-loss curves
     c = rp.canvas(batch=True)	
