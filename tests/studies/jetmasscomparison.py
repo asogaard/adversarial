@@ -46,11 +46,13 @@ def jetmasscomparison (data, args, features, eff_sig=50):
     # Perform plotting
     c = plot(data, args, features, msks_pass, eff_sig)
 
+    # Perform plotting on individual figures
+    plot_individual(data, args, features, msks_pass, eff_sig)
+
     # Output
     path = 'figures/jetmasscomparison__eff_sig_{:d}.pdf'.format(int(eff_sig))
 
     return c, args, path
-
 
 
 def plot (*argv):
@@ -190,3 +192,142 @@ def plot (*argv):
         pass  # end temprorary style
 
     return c
+
+
+def plot_individual (*argv):
+    """
+    Method for delegating plotting.
+    """
+
+    # Unpack arguments
+    data, args, features, msks_pass, eff_sig = argv
+
+    with TemporaryStyle() as style:
+
+        # Style @TEMP?
+        ymin, ymax = 5E-05, 5E+00
+        scale = 0.6
+        for coord in ['x', 'y', 'z']:
+            style.SetLabelSize(style.GetLabelSize(coord) * scale, coord)
+            style.SetTitleSize(style.GetTitleSize(coord) * scale, coord)
+            pass
+        #style.SetTextSize      (style.GetTextSize()       * scale)
+        #style.SetLegendTextSize(style.GetLegendTextSize() * (scale + 0.03))
+        style.SetTickLength(0.07,                     'x')
+        style.SetTickLength(0.07 * (5./6.) * (2./3.), 'y')
+
+        # Global variable override(s)
+        histstyle = dict(**HISTSTYLE)
+        histstyle[True]['fillstyle'] = 3554
+        histstyle[True] ['linewidth'] = 4
+        histstyle[False]['linewidth'] = 4
+        histstyle[True] ['label'] = None
+        histstyle[False]['label'] = None
+        for v in ['linecolor', 'fillcolor']:
+            histstyle[True] [v] = 16
+            histstyle[False][v] = ROOT.kBlack
+            pass
+        style.SetHatchesLineWidth(6)
+
+        # Loop features
+        ts  = style.GetTextSize()
+        lts = style.GetLegendTextSize()
+        for ifeat, feats in enumerate([None] + list(zip(features[::2], features[1::2])), start=-1):
+            first = ifeat == -1
+
+            # Style
+            style.SetTitleOffset(1.25 if first else 1.2, 'x')
+            style.SetTitleOffset(1.7  if first else 1.6, 'y')
+            style.SetTextSize(ts * (0.8 if first else scale))
+            style.SetLegendTextSize(lts * (0.8 + 0.03 if first else scale + 0.03))
+
+            # Canvas
+            c = rp.canvas(batch=not args.show, size=(300, 200))#int(200 * (1.45 if first else 1.))))
+
+            if first:
+                opts = dict(xmin=0.185, width=0.60, columns=2)
+                c.legend(header=' ', categories=[
+                            ("Multijets",   histstyle[False]),
+                            ("#it{W} jets", histstyle[True])
+                        ], ymax=0.45, **opts)
+                c.legend(header='Inclusive selection:',
+                         ymax=0.40, **opts)
+                #c.pad()._legends[-2].SetTextSize(style.GetLegendTextSize())
+                #c.pad()._legends[-1].SetTextSize(style.GetLegendTextSize())
+                c.pad()._legends[-2].SetMargin(0.35)
+                c.pad()._legends[-1].SetMargin(0.35)
+
+                c.text(["#sqrt{s} = 13 TeV,  #it{W} jet tagging",
+                        "Cuts at #varepsilon_{sig}^{rel} = %.0f%%" % eff_sig,
+                        ], xmin=0.2, ymax=0.80, qualifier=QUALIFIER)
+
+
+            else:
+
+
+                # Plots
+                # -- Dummy, for proper axes
+                c.hist([ymin], bins=[50, 300], linestyle=0, fillstyle=0)
+
+                # -- Inclusive
+                base = dict(bins=MASSBINS, normalise=True)
+                for signal, name in zip([False, True], ['bkg', 'sig']):
+                    msk = data['signal'] == signal
+                    histstyle[signal].update(base)
+                    histstyle[signal]['option'] = 'HIST'
+                    c.hist(data.loc[msk, 'm'].values, weights=data.loc[msk, 'weight_test'].values, **histstyle[signal])
+                    pass
+
+                for sig in [True, False]:
+                    histstyle[sig]['option'] = 'FL'
+                    pass
+
+                # -- Tagged
+                for jfeat, feat in enumerate(feats):
+                    opts = dict(
+                        linecolor = rp.colours[((2 * ifeat + jfeat) // 2)],
+                        linestyle = 1 + 6 * (jfeat % 2),
+                        linewidth = 4,
+                        )
+                    cfg = dict(**base)
+                    cfg.update(opts)
+                    msk = (data['signal'] == 0) & msks_pass[feat]
+                    c.hist(data.loc[msk, 'm'].values, weights=data.loc[msk, 'weight_test'].values, label=" " + latex(feat, ROOT=True), **cfg)
+                    pass
+
+                # -- Legend(s)
+                y =  0.46  if first else 0.68
+                dy = 0.025 if first else 0.04
+                c.legend(width=0.25, xmin=0.63, ymax=y)
+                c.latex("Tagged multijets:", NDC=True, x=0.87, y=y + dy, textcolor=ROOT.kGray + 3, textsize=style.GetLegendTextSize() * 0.9, align=31)
+                c.pad()._legends[-1].SetMargin(0.35)
+                c.pad()._legends[-1].SetTextSize(style.GetLegendTextSize())
+
+                # Formatting pads
+                tpad = c.pad()._bare()
+                tpad.SetLeftMargin  (0.20)
+                tpad.SetBottomMargin(0.12 if first else 0.20)
+                tpad.SetTopMargin   (0.39 if first else 0.05)
+
+                # Re-draw axes
+                tpad.RedrawAxis()
+                tpad.Update()
+                c.pad()._xaxis().SetAxisColor(ROOT.kWhite)  # Remove "double ticks"
+                c.pad()._yaxis().SetAxisColor(ROOT.kWhite)  # Remove "double ticks"
+
+                # Decorations
+                c.xlabel("Large-#it{R} jet mass [GeV]")
+                c.ylabel("Fraction of jets")
+
+                c.text(qualifier=QUALIFIER, xmin=0.25, ymax=0.82)
+
+                c.ylim(ymin, ymax)
+                c.logy()
+                pass
+
+            # Save
+            c.save(path = 'figures/jetmasscomparison__eff_sig_{:d}__{}.pdf'.format(int(eff_sig), 'legend' if first else '{}_{}'.format(*feats)))
+            pass
+        pass  # end temprorary style
+
+    return
