@@ -29,7 +29,8 @@ def main (args):
 
     # Common definitions
     experiment  = 'classifier'
-    paths = sorted(glob.glob('optimisation/experiments/{}/output/*.out'.format(experiment)))
+    paths = sorted(glob.glob('optimisation/{}/output/*.out'.format(experiment)))
+    
     num_steps = 100
 
     # Loop all run outputs
