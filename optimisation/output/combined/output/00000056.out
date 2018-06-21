@@ -1,0 +1,1402 @@
+Job launching after 2.84 seconds in submission.
+Running python job.
+Changed into dir /exports/eddie3_homes_local/s1562020/work/adversarial/optimisation/experiments/combined
+Importing optimise.py
+Running optimise.main()
+INFO: Applying patch '/exports/eddie3_homes_local/s1562020/work/adversarial/optimisation/experiments/combined/patches/patch.00000056.json'
+INFO: Found 20 Intel(R) Xeon(R) CPU E5-2630 v4 @ 2.20GHz devices with 10 cores each.
+Using TensorFlow backend.
+INFO: Scaling combined/lr -5.0 -> 1e-05
+INFO: Scaling combined/decay -2.05408568483 -> 0.00882905688923
+INFO: Scaling adversary/units 3 -> 8
+INFO: Writing TensorBoard logs to 'logs/tensorboard/combined-patch.00000056/'
+INFO: Running '/exports/eddie3_homes_local/s1562020/work/adversarial/run/adversarial/common.pyc'
+INFO: Command-line arguments:
+INFO: Configuration file contents:
+INFO: Python version: 2.7.14
+INFO: Numpy  version: 1.12.1
+INFO: Keras  version: 2.1.5
+INFO: Using keras backend: 'tensorflow'
+INFO: Found  1000000 training and  1000249 test samples for signal
+INFO: Found  1000000 training and 10000000 test samples for background
+INFO: load_data: Selecting only training data.
+INFO: Implementing gradient reversal layer in TensorFlow
+INFO: Loading cross-validation classifiers from file
+/exports/csce/eddie/ph/groups/PPE/asogaard/anaconda/adversarial-gpu/lib/python2.7/site-packages/keras/models.py:255: UserWarning: No training configuration found in save file: the model was *not* compiled. Compile it manually.
+  warnings.warn('No training configuration found in save file: '
+INFO: Loading full classifier from file
+INFO: Training combined model cross-validation
+INFO: Computing initial loss
+INFO: Pre-training
+Call to main function (#56)
+  Parameters: {u'adversary/model/gmm_components': array([11]), u'combined/compile/decay': array([-2.05408568]), u'combined/model/lr_ratio': array([-5.60161706]), u'adversary/model/default/units': array([3]), u'adversary/model/default/activation': [u'tanh'], u'combined/compile/lr': array([-5.]), u'adversary/model/architecture': array([1])}
+param: adversary/model/gmm_components
+param: combined/compile/decay
+param: combined/model/lr_ratio
+param: adversary/model/default/units
+param: adversary/model/default/activation
+param: combined/compile/lr
+param: adversary/model/architecture
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+Saving the following patch to '/exports/eddie3_homes_local/s1562020/work/adversarial/optimisation/experiments/combined/patches/patch.00000056.json':
+{u'adversary': {u'model': {u'default': {u'units': 3, u'activation': u'tanh'}, u'gmm_components': 11, u'architecture': 1}}, u'combined': {u'compile': {'loss_weights': [2.502551025508961e-06, 1.0], u'lr': -5.0, u'decay': -2.0540856848347042}, u'model': {'lambda_reg': 10.0}, 'fit': {'epochs': 200, 'batch_size': 8192}}}
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+cd: Going to /exports/eddie3_homes_local/s1562020/work/adversarial/
+[38;2;74;176;245m[1mProfile[0m ⏱  Starting [1m@main[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  ·· Starting [1mInitialisation[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  ···· Starting [1m@initialise[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  ···· Time elapsed in [1m@initialise[0m: .............................. [1m0.0s[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  ···· Starting [1m@initialise_backend[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  ······ Starting [1m@configure_tensorflow[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  ······ Time elapsed in [1m@configure_tensorflow[0m: ................. [1m11.1s[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  ···· Time elapsed in [1m@initialise_backend[0m: ..................... [1m11.6s[0m
+{'config': './configs/default.json',
+ 'devices': 7,
+ 'folds': 3,
+ 'gpu': True,
+ 'input': './input/',
+ 'jobname': 'combined-patch.00000056',
+ 'mode': 'gpu',
+ 'optimise_adversarial': True,
+ 'optimise_classifier': False,
+ 'output': './output/',
+ 'patches': ['/exports/eddie3_homes_local/s1562020/work/adversarial/optimisation/experiments/combined/patches/patch.00000056.json'],
+ 'tensorboard': True,
+ 'theano': False,
+ 'train': False,
+ 'train_adversarial': True,
+ 'train_classifier': False,
+ 'verbose': False}
+{u'adversary': {u'compile': {},
+                u'fit': {},
+                u'model': {u'architecture': [{}],
+                           u'default': {u'activation': u'tanh', u'units': 8},
+                           u'gmm_components': 11}},
+ u'classifier': {u'compile': {u'loss': u'binary_crossentropy',
+                              u'optimizer': <keras.optimizers.Adam object at 0x2aca1edf1410>},
+                 u'fit': {u'batch_size': 57344,
+                          u'epochs': 200,
+                          u'shuffle': True,
+                          'verbose': 2},
+                 u'model': {u'architecture': [{}, {}, {}],
+                            u'default': {u'activation': u'relu',
+                                         u'batchnorm': True,
+                                         u'units': 64}}},
+ u'combined': {u'compile': {u'loss': [u'binary_crossentropy', None],
+                            u'loss_weights': [2.2750463868263283e-07, 1.0],
+                            u'optimizer': <keras.optimizers.Adam object at 0x2aca1edf1450>},
+               u'fit': {u'batch_size': 57344,
+                        u'epochs': 200,
+                        u'shuffle': True,
+                        'verbose': 2},
+               u'model': {u'lambda_reg': 10.0,
+                          u'lr_ratio': 2.2750463868263283e-07},
+               u'pretrain': 10}}
+  TensorFlow version: 1.4.1
+[38;2;74;176;245m[1mProfile[0m ⏱  ·· Time elapsed in [1mInitialisation[0m: ............................ [1m11.7s[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  ·· Starting [1m@load_data[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  ·· Time elapsed in [1m@load_data[0m: ................................ [1m30.4s[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  ·· Starting [1m@get_decorrelation_variables[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  ·· Time elapsed in [1m@get_decorrelation_variables[0m: ............... [1m0.0s[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  ·· Starting [1mClassifier-only fit, cross-validation[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  ·· Time elapsed in [1mClassifier-only fit, cross-validation[0m: ...... [1m2.0s[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  ·· Starting [1mClassifier-only fit, full[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  ·· Time elapsed in [1mClassifier-only fit, full[0m: .................. [1m0.6s[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  ·· Starting [1mCombined adversarial fit, cross-validation[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  ···· Starting [1mFold 1/3[0m
+Train on 1333332 samples, validate on 666668 samples
+Epoch 1/10
+ - 10s - loss: 0.0493 - classifier_loss: 0.3434 - adversary_loss: 0.0493 - val_loss: 0.0493 - val_classifier_loss: 0.3551 - val_adversary_loss: 0.0493
+Epoch 2/10
+ - 3s - loss: 0.0491 - classifier_loss: 0.3433 - adversary_loss: 0.0491 - val_loss: 0.0492 - val_classifier_loss: 0.3464 - val_adversary_loss: 0.0492
+Epoch 3/10
+ - 3s - loss: 0.0490 - classifier_loss: 0.3433 - adversary_loss: 0.0490 - val_loss: 0.0490 - val_classifier_loss: 0.3564 - val_adversary_loss: 0.0490
+Epoch 4/10
+ - 3s - loss: 0.0488 - classifier_loss: 0.3433 - adversary_loss: 0.0488 - val_loss: 0.0488 - val_classifier_loss: 0.3591 - val_adversary_loss: 0.0488
+Epoch 5/10
+ - 3s - loss: 0.0487 - classifier_loss: 0.3433 - adversary_loss: 0.0487 - val_loss: 0.0488 - val_classifier_loss: 0.3513 - val_adversary_loss: 0.0488
+Epoch 6/10
+ - 3s - loss: 0.0486 - classifier_loss: 0.3433 - adversary_loss: 0.0486 - val_loss: 0.0487 - val_classifier_loss: 0.3430 - val_adversary_loss: 0.0487
+Epoch 7/10
+ - 3s - loss: 0.0485 - classifier_loss: 0.3434 - adversary_loss: 0.0485 - val_loss: 0.0486 - val_classifier_loss: 0.3434 - val_adversary_loss: 0.0486
+Epoch 8/10
+ - 3s - loss: 0.0484 - classifier_loss: 0.3433 - adversary_loss: 0.0484 - val_loss: 0.0484 - val_classifier_loss: 0.3549 - val_adversary_loss: 0.0484
+Epoch 9/10
+ - 3s - loss: 0.0483 - classifier_loss: 0.3433 - adversary_loss: 0.0483 - val_loss: 0.0484 - val_classifier_loss: 0.3554 - val_adversary_loss: 0.0484
+Epoch 10/10
+ - 3s - loss: 0.0482 - classifier_loss: 0.3433 - adversary_loss: 0.0482 - val_loss: 0.0483 - val_classifier_loss: 0.3535 - val_adversary_loss: 0.0483
+INFO: Actual training
+Train on 1333332 samples, validate on 666668 samples
+Epoch 1/200
+ - 14s - loss: 0.0481 - classifier_loss: 0.3434 - adversary_loss: 0.0481 - val_loss: 0.0481 - val_classifier_loss: 0.3548 - val_adversary_loss: 0.0481
+Epoch 2/200
+ - 4s - loss: 0.0479 - classifier_loss: 0.3433 - adversary_loss: 0.0479 - val_loss: 0.0479 - val_classifier_loss: 0.3506 - val_adversary_loss: 0.0479
+Epoch 3/200
+ - 3s - loss: 0.0478 - classifier_loss: 0.3433 - adversary_loss: 0.0478 - val_loss: 0.0478 - val_classifier_loss: 0.3541 - val_adversary_loss: 0.0478
+Epoch 4/200
+ - 4s - loss: 0.0476 - classifier_loss: 0.3433 - adversary_loss: 0.0476 - val_loss: 0.0477 - val_classifier_loss: 0.3502 - val_adversary_loss: 0.0477
+Epoch 5/200
+ - 3s - loss: 0.0475 - classifier_loss: 0.3433 - adversary_loss: 0.0475 - val_loss: 0.0476 - val_classifier_loss: 0.3518 - val_adversary_loss: 0.0476
+Epoch 6/200
+ - 3s - loss: 0.0474 - classifier_loss: 0.3434 - adversary_loss: 0.0474 - val_loss: 0.0475 - val_classifier_loss: 0.3532 - val_adversary_loss: 0.0475
+Epoch 7/200
+ - 3s - loss: 0.0474 - classifier_loss: 0.3434 - adversary_loss: 0.0474 - val_loss: 0.0474 - val_classifier_loss: 0.3524 - val_adversary_loss: 0.0474
+Epoch 8/200
+ - 3s - loss: 0.0473 - classifier_loss: 0.3433 - adversary_loss: 0.0473 - val_loss: 0.0474 - val_classifier_loss: 0.3523 - val_adversary_loss: 0.0474
+Epoch 9/200
+ - 3s - loss: 0.0472 - classifier_loss: 0.3433 - adversary_loss: 0.0472 - val_loss: 0.0473 - val_classifier_loss: 0.3512 - val_adversary_loss: 0.0473
+Epoch 10/200
+ - 3s - loss: 0.0472 - classifier_loss: 0.3433 - adversary_loss: 0.0472 - val_loss: 0.0472 - val_classifier_loss: 0.3547 - val_adversary_loss: 0.0472
+Epoch 11/200
+ - 3s - loss: 0.0471 - classifier_loss: 0.3433 - adversary_loss: 0.0471 - val_loss: 0.0472 - val_classifier_loss: 0.3544 - val_adversary_loss: 0.0472
+Epoch 12/200
+ - 3s - loss: 0.0471 - classifier_loss: 0.3433 - adversary_loss: 0.0471 - val_loss: 0.0471 - val_classifier_loss: 0.3543 - val_adversary_loss: 0.0471
+Epoch 13/200
+ - 3s - loss: 0.0470 - classifier_loss: 0.3434 - adversary_loss: 0.0470 - val_loss: 0.0471 - val_classifier_loss: 0.3538 - val_adversary_loss: 0.0471
+Epoch 14/200
+ - 4s - loss: 0.0470 - classifier_loss: 0.3433 - adversary_loss: 0.0470 - val_loss: 0.0470 - val_classifier_loss: 0.3512 - val_adversary_loss: 0.0470
+Epoch 15/200
+ - 4s - loss: 0.0469 - classifier_loss: 0.3433 - adversary_loss: 0.0469 - val_loss: 0.0470 - val_classifier_loss: 0.3526 - val_adversary_loss: 0.0470
+Epoch 16/200
+ - 4s - loss: 0.0469 - classifier_loss: 0.3433 - adversary_loss: 0.0469 - val_loss: 0.0470 - val_classifier_loss: 0.3506 - val_adversary_loss: 0.0470
+Epoch 17/200
+ - 3s - loss: 0.0468 - classifier_loss: 0.3433 - adversary_loss: 0.0468 - val_loss: 0.0469 - val_classifier_loss: 0.3513 - val_adversary_loss: 0.0469
+Epoch 18/200
+ - 4s - loss: 0.0468 - classifier_loss: 0.3433 - adversary_loss: 0.0468 - val_loss: 0.0469 - val_classifier_loss: 0.3493 - val_adversary_loss: 0.0469
+Epoch 19/200
+ - 3s - loss: 0.0468 - classifier_loss: 0.3433 - adversary_loss: 0.0468 - val_loss: 0.0468 - val_classifier_loss: 0.3501 - val_adversary_loss: 0.0468
+Epoch 20/200
+ - 3s - loss: 0.0467 - classifier_loss: 0.3433 - adversary_loss: 0.0467 - val_loss: 0.0468 - val_classifier_loss: 0.3501 - val_adversary_loss: 0.0468
+Epoch 21/200
+ - 3s - loss: 0.0467 - classifier_loss: 0.3433 - adversary_loss: 0.0467 - val_loss: 0.0468 - val_classifier_loss: 0.3509 - val_adversary_loss: 0.0468
+Epoch 22/200
+ - 4s - loss: 0.0467 - classifier_loss: 0.3434 - adversary_loss: 0.0467 - val_loss: 0.0468 - val_classifier_loss: 0.3503 - val_adversary_loss: 0.0468
+Epoch 23/200
+ - 3s - loss: 0.0466 - classifier_loss: 0.3433 - adversary_loss: 0.0466 - val_loss: 0.0467 - val_classifier_loss: 0.3529 - val_adversary_loss: 0.0467
+Epoch 24/200
+ - 4s - loss: 0.0466 - classifier_loss: 0.3433 - adversary_loss: 0.0466 - val_loss: 0.0466 - val_classifier_loss: 0.3552 - val_adversary_loss: 0.0466
+Epoch 25/200
+ - 3s - loss: 0.0466 - classifier_loss: 0.3433 - adversary_loss: 0.0466 - val_loss: 0.0466 - val_classifier_loss: 0.3544 - val_adversary_loss: 0.0466
+Epoch 26/200
+ - 4s - loss: 0.0465 - classifier_loss: 0.3433 - adversary_loss: 0.0465 - val_loss: 0.0466 - val_classifier_loss: 0.3546 - val_adversary_loss: 0.0466
+Epoch 27/200
+ - 3s - loss: 0.0465 - classifier_loss: 0.3434 - adversary_loss: 0.0465 - val_loss: 0.0466 - val_classifier_loss: 0.3552 - val_adversary_loss: 0.0466
+Epoch 28/200
+ - 4s - loss: 0.0465 - classifier_loss: 0.3433 - adversary_loss: 0.0465 - val_loss: 0.0465 - val_classifier_loss: 0.3530 - val_adversary_loss: 0.0465
+Epoch 29/200
+ - 4s - loss: 0.0464 - classifier_loss: 0.3433 - adversary_loss: 0.0464 - val_loss: 0.0466 - val_classifier_loss: 0.3498 - val_adversary_loss: 0.0466
+Epoch 30/200
+ - 3s - loss: 0.0464 - classifier_loss: 0.3433 - adversary_loss: 0.0464 - val_loss: 0.0465 - val_classifier_loss: 0.3549 - val_adversary_loss: 0.0465
+Epoch 31/200
+ - 4s - loss: 0.0464 - classifier_loss: 0.3433 - adversary_loss: 0.0464 - val_loss: 0.0465 - val_classifier_loss: 0.3538 - val_adversary_loss: 0.0465
+Epoch 32/200
+ - 3s - loss: 0.0464 - classifier_loss: 0.3433 - adversary_loss: 0.0464 - val_loss: 0.0464 - val_classifier_loss: 0.3552 - val_adversary_loss: 0.0464
+Epoch 33/200
+ - 3s - loss: 0.0463 - classifier_loss: 0.3432 - adversary_loss: 0.0463 - val_loss: 0.0464 - val_classifier_loss: 0.3538 - val_adversary_loss: 0.0464
+Epoch 34/200
+ - 4s - loss: 0.0463 - classifier_loss: 0.3433 - adversary_loss: 0.0463 - val_loss: 0.0464 - val_classifier_loss: 0.3547 - val_adversary_loss: 0.0464
+Epoch 35/200
+ - 4s - loss: 0.0463 - classifier_loss: 0.3433 - adversary_loss: 0.0463 - val_loss: 0.0463 - val_classifier_loss: 0.3561 - val_adversary_loss: 0.0463
+Epoch 36/200
+ - 3s - loss: 0.0463 - classifier_loss: 0.3433 - adversary_loss: 0.0463 - val_loss: 0.0464 - val_classifier_loss: 0.3528 - val_adversary_loss: 0.0464
+Epoch 37/200
+ - 3s - loss: 0.0463 - classifier_loss: 0.3433 - adversary_loss: 0.0463 - val_loss: 0.0463 - val_classifier_loss: 0.3520 - val_adversary_loss: 0.0463
+Epoch 38/200
+ - 4s - loss: 0.0462 - classifier_loss: 0.3433 - adversary_loss: 0.0462 - val_loss: 0.0463 - val_classifier_loss: 0.3525 - val_adversary_loss: 0.0463
+Epoch 39/200
+ - 3s - loss: 0.0462 - classifier_loss: 0.3433 - adversary_loss: 0.0462 - val_loss: 0.0463 - val_classifier_loss: 0.3534 - val_adversary_loss: 0.0463
+Epoch 40/200
+ - 3s - loss: 0.0462 - classifier_loss: 0.3435 - adversary_loss: 0.0462 - val_loss: 0.0463 - val_classifier_loss: 0.3504 - val_adversary_loss: 0.0463
+Epoch 41/200
+ - 3s - loss: 0.0462 - classifier_loss: 0.3433 - adversary_loss: 0.0462 - val_loss: 0.0463 - val_classifier_loss: 0.3520 - val_adversary_loss: 0.0463
+Epoch 42/200
+ - 3s - loss: 0.0462 - classifier_loss: 0.3433 - adversary_loss: 0.0462 - val_loss: 0.0462 - val_classifier_loss: 0.3520 - val_adversary_loss: 0.0462
+Epoch 43/200
+ - 3s - loss: 0.0461 - classifier_loss: 0.3434 - adversary_loss: 0.0461 - val_loss: 0.0462 - val_classifier_loss: 0.3502 - val_adversary_loss: 0.0462
+Epoch 44/200
+ - 3s - loss: 0.0461 - classifier_loss: 0.3433 - adversary_loss: 0.0461 - val_loss: 0.0462 - val_classifier_loss: 0.3546 - val_adversary_loss: 0.0462
+Epoch 45/200
+ - 3s - loss: 0.0461 - classifier_loss: 0.3433 - adversary_loss: 0.0461 - val_loss: 0.0462 - val_classifier_loss: 0.3527 - val_adversary_loss: 0.0462
+Epoch 46/200
+ - 3s - loss: 0.0461 - classifier_loss: 0.3433 - adversary_loss: 0.0461 - val_loss: 0.0462 - val_classifier_loss: 0.3528 - val_adversary_loss: 0.0462
+Epoch 47/200
+ - 3s - loss: 0.0461 - classifier_loss: 0.3434 - adversary_loss: 0.0461 - val_loss: 0.0462 - val_classifier_loss: 0.3510 - val_adversary_loss: 0.0462
+Epoch 48/200
+ - 3s - loss: 0.0460 - classifier_loss: 0.3434 - adversary_loss: 0.0460 - val_loss: 0.0461 - val_classifier_loss: 0.3507 - val_adversary_loss: 0.0461
+Epoch 49/200
+ - 3s - loss: 0.0460 - classifier_loss: 0.3433 - adversary_loss: 0.0460 - val_loss: 0.0461 - val_classifier_loss: 0.3544 - val_adversary_loss: 0.0461
+Epoch 50/200
+ - 3s - loss: 0.0460 - classifier_loss: 0.3434 - adversary_loss: 0.0460 - val_loss: 0.0461 - val_classifier_loss: 0.3543 - val_adversary_loss: 0.0461
+Epoch 51/200
+ - 3s - loss: 0.0460 - classifier_loss: 0.3433 - adversary_loss: 0.0460 - val_loss: 0.0461 - val_classifier_loss: 0.3524 - val_adversary_loss: 0.0461
+Epoch 52/200
+ - 3s - loss: 0.0460 - classifier_loss: 0.3434 - adversary_loss: 0.0460 - val_loss: 0.0461 - val_classifier_loss: 0.3515 - val_adversary_loss: 0.0461
+Epoch 53/200
+ - 3s - loss: 0.0460 - classifier_loss: 0.3433 - adversary_loss: 0.0460 - val_loss: 0.0460 - val_classifier_loss: 0.3533 - val_adversary_loss: 0.0460
+Epoch 54/200
+ - 3s - loss: 0.0459 - classifier_loss: 0.3434 - adversary_loss: 0.0459 - val_loss: 0.0460 - val_classifier_loss: 0.3536 - val_adversary_loss: 0.0460
+Epoch 55/200
+ - 3s - loss: 0.0459 - classifier_loss: 0.3434 - adversary_loss: 0.0459 - val_loss: 0.0460 - val_classifier_loss: 0.3533 - val_adversary_loss: 0.0460
+Epoch 56/200
+ - 3s - loss: 0.0459 - classifier_loss: 0.3433 - adversary_loss: 0.0459 - val_loss: 0.0460 - val_classifier_loss: 0.3542 - val_adversary_loss: 0.0460
+Epoch 57/200
+ - 3s - loss: 0.0459 - classifier_loss: 0.3434 - adversary_loss: 0.0459 - val_loss: 0.0460 - val_classifier_loss: 0.3521 - val_adversary_loss: 0.0460
+Epoch 58/200
+ - 3s - loss: 0.0459 - classifier_loss: 0.3433 - adversary_loss: 0.0459 - val_loss: 0.0459 - val_classifier_loss: 0.3561 - val_adversary_loss: 0.0459
+Epoch 59/200
+ - 3s - loss: 0.0459 - classifier_loss: 0.3434 - adversary_loss: 0.0459 - val_loss: 0.0459 - val_classifier_loss: 0.3549 - val_adversary_loss: 0.0459
+Epoch 60/200
+ - 3s - loss: 0.0459 - classifier_loss: 0.3434 - adversary_loss: 0.0459 - val_loss: 0.0459 - val_classifier_loss: 0.3537 - val_adversary_loss: 0.0459
+Epoch 61/200
+ - 3s - loss: 0.0458 - classifier_loss: 0.3433 - adversary_loss: 0.0458 - val_loss: 0.0459 - val_classifier_loss: 0.3544 - val_adversary_loss: 0.0459
+Epoch 62/200
+ - 3s - loss: 0.0458 - classifier_loss: 0.3433 - adversary_loss: 0.0458 - val_loss: 0.0459 - val_classifier_loss: 0.3542 - val_adversary_loss: 0.0459
+Epoch 63/200
+ - 3s - loss: 0.0458 - classifier_loss: 0.3433 - adversary_loss: 0.0458 - val_loss: 0.0459 - val_classifier_loss: 0.3529 - val_adversary_loss: 0.0459
+Epoch 64/200
+ - 3s - loss: 0.0458 - classifier_loss: 0.3434 - adversary_loss: 0.0458 - val_loss: 0.0459 - val_classifier_loss: 0.3533 - val_adversary_loss: 0.0459
+Epoch 65/200
+ - 3s - loss: 0.0458 - classifier_loss: 0.3433 - adversary_loss: 0.0458 - val_loss: 0.0459 - val_classifier_loss: 0.3532 - val_adversary_loss: 0.0459
+Epoch 66/200
+ - 3s - loss: 0.0458 - classifier_loss: 0.3433 - adversary_loss: 0.0458 - val_loss: 0.0459 - val_classifier_loss: 0.3526 - val_adversary_loss: 0.0459
+Epoch 67/200
+ - 3s - loss: 0.0458 - classifier_loss: 0.3432 - adversary_loss: 0.0458 - val_loss: 0.0458 - val_classifier_loss: 0.3555 - val_adversary_loss: 0.0458
+Epoch 68/200
+ - 3s - loss: 0.0457 - classifier_loss: 0.3434 - adversary_loss: 0.0457 - val_loss: 0.0458 - val_classifier_loss: 0.3539 - val_adversary_loss: 0.0458
+Epoch 69/200
+ - 3s - loss: 0.0457 - classifier_loss: 0.3434 - adversary_loss: 0.0457 - val_loss: 0.0458 - val_classifier_loss: 0.3539 - val_adversary_loss: 0.0458
+Epoch 70/200
+ - 3s - loss: 0.0457 - classifier_loss: 0.3433 - adversary_loss: 0.0457 - val_loss: 0.0458 - val_classifier_loss: 0.3545 - val_adversary_loss: 0.0458
+Epoch 71/200
+ - 3s - loss: 0.0457 - classifier_loss: 0.3433 - adversary_loss: 0.0457 - val_loss: 0.0458 - val_classifier_loss: 0.3462 - val_adversary_loss: 0.0458
+Epoch 72/200
+ - 3s - loss: 0.0457 - classifier_loss: 0.3433 - adversary_loss: 0.0457 - val_loss: 0.0458 - val_classifier_loss: 0.3504 - val_adversary_loss: 0.0458
+Epoch 73/200
+ - 3s - loss: 0.0457 - classifier_loss: 0.3434 - adversary_loss: 0.0457 - val_loss: 0.0457 - val_classifier_loss: 0.3534 - val_adversary_loss: 0.0457
+Epoch 74/200
+ - 3s - loss: 0.0457 - classifier_loss: 0.3433 - adversary_loss: 0.0457 - val_loss: 0.0458 - val_classifier_loss: 0.3530 - val_adversary_loss: 0.0458
+Epoch 75/200
+ - 3s - loss: 0.0457 - classifier_loss: 0.3433 - adversary_loss: 0.0457 - val_loss: 0.0457 - val_classifier_loss: 0.3552 - val_adversary_loss: 0.0457
+Epoch 76/200
+ - 3s - loss: 0.0456 - classifier_loss: 0.3432 - adversary_loss: 0.0456 - val_loss: 0.0457 - val_classifier_loss: 0.3557 - val_adversary_loss: 0.0457
+Epoch 77/200
+ - 3s - loss: 0.0456 - classifier_loss: 0.3432 - adversary_loss: 0.0456 - val_loss: 0.0457 - val_classifier_loss: 0.3538 - val_adversary_loss: 0.0457
+Epoch 78/200
+ - 3s - loss: 0.0456 - classifier_loss: 0.3433 - adversary_loss: 0.0456 - val_loss: 0.0457 - val_classifier_loss: 0.3520 - val_adversary_loss: 0.0457
+Epoch 79/200
+ - 3s - loss: 0.0456 - classifier_loss: 0.3434 - adversary_loss: 0.0456 - val_loss: 0.0457 - val_classifier_loss: 0.3531 - val_adversary_loss: 0.0457
+Epoch 80/200
+ - 3s - loss: 0.0456 - classifier_loss: 0.3433 - adversary_loss: 0.0456 - val_loss: 0.0457 - val_classifier_loss: 0.3533 - val_adversary_loss: 0.0457
+Epoch 81/200
+ - 3s - loss: 0.0456 - classifier_loss: 0.3434 - adversary_loss: 0.0456 - val_loss: 0.0457 - val_classifier_loss: 0.3530 - val_adversary_loss: 0.0457
+Epoch 82/200
+ - 3s - loss: 0.0456 - classifier_loss: 0.3433 - adversary_loss: 0.0456 - val_loss: 0.0456 - val_classifier_loss: 0.3535 - val_adversary_loss: 0.0456
+Epoch 83/200
+ - 3s - loss: 0.0456 - classifier_loss: 0.3433 - adversary_loss: 0.0456 - val_loss: 0.0456 - val_classifier_loss: 0.3524 - val_adversary_loss: 0.0456
+Epoch 84/200
+ - 3s - loss: 0.0456 - classifier_loss: 0.3434 - adversary_loss: 0.0456 - val_loss: 0.0456 - val_classifier_loss: 0.3526 - val_adversary_loss: 0.0456
+Epoch 85/200
+ - 3s - loss: 0.0455 - classifier_loss: 0.3434 - adversary_loss: 0.0455 - val_loss: 0.0456 - val_classifier_loss: 0.3504 - val_adversary_loss: 0.0456
+Epoch 86/200
+ - 3s - loss: 0.0455 - classifier_loss: 0.3433 - adversary_loss: 0.0455 - val_loss: 0.0456 - val_classifier_loss: 0.3514 - val_adversary_loss: 0.0456
+Epoch 87/200
+ - 3s - loss: 0.0455 - classifier_loss: 0.3434 - adversary_loss: 0.0455 - val_loss: 0.0456 - val_classifier_loss: 0.3504 - val_adversary_loss: 0.0456
+Epoch 88/200
+ - 3s - loss: 0.0455 - classifier_loss: 0.3434 - adversary_loss: 0.0455 - val_loss: 0.0456 - val_classifier_loss: 0.3501 - val_adversary_loss: 0.0456
+Epoch 89/200
+ - 3s - loss: 0.0455 - classifier_loss: 0.3434 - adversary_loss: 0.0455 - val_loss: 0.0455 - val_classifier_loss: 0.3521 - val_adversary_loss: 0.0455
+Epoch 90/200
+ - 3s - loss: 0.0455 - classifier_loss: 0.3433 - adversary_loss: 0.0455 - val_loss: 0.0456 - val_classifier_loss: 0.3521 - val_adversary_loss: 0.0456
+Epoch 91/200
+ - 3s - loss: 0.0455 - classifier_loss: 0.3434 - adversary_loss: 0.0455 - val_loss: 0.0456 - val_classifier_loss: 0.3505 - val_adversary_loss: 0.0456
+Epoch 92/200
+ - 3s - loss: 0.0455 - classifier_loss: 0.3433 - adversary_loss: 0.0455 - val_loss: 0.0456 - val_classifier_loss: 0.3487 - val_adversary_loss: 0.0456
+Epoch 93/200
+ - 3s - loss: 0.0455 - classifier_loss: 0.3434 - adversary_loss: 0.0455 - val_loss: 0.0456 - val_classifier_loss: 0.3520 - val_adversary_loss: 0.0456
+Epoch 94/200
+ - 3s - loss: 0.0455 - classifier_loss: 0.3433 - adversary_loss: 0.0455 - val_loss: 0.0455 - val_classifier_loss: 0.3537 - val_adversary_loss: 0.0455
+Epoch 95/200
+ - 3s - loss: 0.0455 - classifier_loss: 0.3433 - adversary_loss: 0.0455 - val_loss: 0.0455 - val_classifier_loss: 0.3627 - val_adversary_loss: 0.0455
+Epoch 96/200
+ - 3s - loss: 0.0454 - classifier_loss: 0.3434 - adversary_loss: 0.0454 - val_loss: 0.0455 - val_classifier_loss: 0.3519 - val_adversary_loss: 0.0455
+Epoch 97/200
+ - 3s - loss: 0.0454 - classifier_loss: 0.3433 - adversary_loss: 0.0454 - val_loss: 0.0455 - val_classifier_loss: 0.3546 - val_adversary_loss: 0.0455
+Epoch 98/200
+ - 3s - loss: 0.0454 - classifier_loss: 0.3433 - adversary_loss: 0.0454 - val_loss: 0.0455 - val_classifier_loss: 0.3536 - val_adversary_loss: 0.0455
+Epoch 99/200
+ - 3s - loss: 0.0454 - classifier_loss: 0.3433 - adversary_loss: 0.0454 - val_loss: 0.0455 - val_classifier_loss: 0.3525 - val_adversary_loss: 0.0455
+Epoch 100/200
+ - 3s - loss: 0.0454 - classifier_loss: 0.3434 - adversary_loss: 0.0454 - val_loss: 0.0454 - val_classifier_loss: 0.3559 - val_adversary_loss: 0.0454
+Epoch 101/200
+ - 3s - loss: 0.0454 - classifier_loss: 0.3433 - adversary_loss: 0.0454 - val_loss: 0.0455 - val_classifier_loss: 0.3551 - val_adversary_loss: 0.0455
+Epoch 102/200
+ - 3s - loss: 0.0454 - classifier_loss: 0.3434 - adversary_loss: 0.0454 - val_loss: 0.0455 - val_classifier_loss: 0.3535 - val_adversary_loss: 0.0455
+Epoch 103/200
+ - 3s - loss: 0.0454 - classifier_loss: 0.3433 - adversary_loss: 0.0454 - val_loss: 0.0454 - val_classifier_loss: 0.3552 - val_adversary_loss: 0.0454
+Epoch 104/200
+ - 3s - loss: 0.0454 - classifier_loss: 0.3434 - adversary_loss: 0.0454 - val_loss: 0.0454 - val_classifier_loss: 0.3548 - val_adversary_loss: 0.0454
+Epoch 105/200
+ - 3s - loss: 0.0454 - classifier_loss: 0.3434 - adversary_loss: 0.0454 - val_loss: 0.0454 - val_classifier_loss: 0.3528 - val_adversary_loss: 0.0454
+Epoch 106/200
+ - 3s - loss: 0.0453 - classifier_loss: 0.3433 - adversary_loss: 0.0453 - val_loss: 0.0455 - val_classifier_loss: 0.3517 - val_adversary_loss: 0.0455
+Epoch 107/200
+ - 3s - loss: 0.0453 - classifier_loss: 0.3433 - adversary_loss: 0.0453 - val_loss: 0.0454 - val_classifier_loss: 0.3524 - val_adversary_loss: 0.0454
+Epoch 108/200
+ - 3s - loss: 0.0453 - classifier_loss: 0.3433 - adversary_loss: 0.0453 - val_loss: 0.0454 - val_classifier_loss: 0.3510 - val_adversary_loss: 0.0454
+Epoch 109/200
+ - 3s - loss: 0.0453 - classifier_loss: 0.3433 - adversary_loss: 0.0453 - val_loss: 0.0454 - val_classifier_loss: 0.3522 - val_adversary_loss: 0.0454
+Epoch 110/200
+ - 3s - loss: 0.0453 - classifier_loss: 0.3433 - adversary_loss: 0.0453 - val_loss: 0.0454 - val_classifier_loss: 0.3558 - val_adversary_loss: 0.0454
+Epoch 111/200
+ - 3s - loss: 0.0453 - classifier_loss: 0.3434 - adversary_loss: 0.0453 - val_loss: 0.0454 - val_classifier_loss: 0.3535 - val_adversary_loss: 0.0454
+Epoch 112/200
+ - 3s - loss: 0.0453 - classifier_loss: 0.3433 - adversary_loss: 0.0453 - val_loss: 0.0454 - val_classifier_loss: 0.3551 - val_adversary_loss: 0.0454
+Epoch 113/200
+ - 3s - loss: 0.0453 - classifier_loss: 0.3433 - adversary_loss: 0.0453 - val_loss: 0.0454 - val_classifier_loss: 0.3558 - val_adversary_loss: 0.0454
+Epoch 114/200
+ - 3s - loss: 0.0453 - classifier_loss: 0.3434 - adversary_loss: 0.0453 - val_loss: 0.0453 - val_classifier_loss: 0.3574 - val_adversary_loss: 0.0453
+Epoch 115/200
+ - 4s - loss: 0.0453 - classifier_loss: 0.3434 - adversary_loss: 0.0453 - val_loss: 0.0453 - val_classifier_loss: 0.3560 - val_adversary_loss: 0.0453
+Epoch 116/200
+ - 4s - loss: 0.0453 - classifier_loss: 0.3434 - adversary_loss: 0.0453 - val_loss: 0.0453 - val_classifier_loss: 0.3543 - val_adversary_loss: 0.0453
+Epoch 117/200
+ - 3s - loss: 0.0453 - classifier_loss: 0.3434 - adversary_loss: 0.0453 - val_loss: 0.0453 - val_classifier_loss: 0.3549 - val_adversary_loss: 0.0453
+Epoch 118/200
+ - 4s - loss: 0.0453 - classifier_loss: 0.3432 - adversary_loss: 0.0453 - val_loss: 0.0454 - val_classifier_loss: 0.3508 - val_adversary_loss: 0.0454
+Epoch 119/200
+ - 3s - loss: 0.0452 - classifier_loss: 0.3432 - adversary_loss: 0.0452 - val_loss: 0.0453 - val_classifier_loss: 0.3515 - val_adversary_loss: 0.0453
+Epoch 120/200
+ - 4s - loss: 0.0452 - classifier_loss: 0.3432 - adversary_loss: 0.0452 - val_loss: 0.0453 - val_classifier_loss: 0.3512 - val_adversary_loss: 0.0453
+Epoch 121/200
+ - 3s - loss: 0.0452 - classifier_loss: 0.3433 - adversary_loss: 0.0452 - val_loss: 0.0453 - val_classifier_loss: 0.3502 - val_adversary_loss: 0.0453
+Epoch 122/200
+ - 3s - loss: 0.0452 - classifier_loss: 0.3433 - adversary_loss: 0.0452 - val_loss: 0.0453 - val_classifier_loss: 0.3526 - val_adversary_loss: 0.0453
+Epoch 123/200
+ - 4s - loss: 0.0452 - classifier_loss: 0.3434 - adversary_loss: 0.0452 - val_loss: 0.0453 - val_classifier_loss: 0.3554 - val_adversary_loss: 0.0453
+Epoch 124/200
+ - 3s - loss: 0.0452 - classifier_loss: 0.3433 - adversary_loss: 0.0452 - val_loss: 0.0453 - val_classifier_loss: 0.3490 - val_adversary_loss: 0.0453
+Epoch 125/200
+ - 3s - loss: 0.0452 - classifier_loss: 0.3433 - adversary_loss: 0.0452 - val_loss: 0.0452 - val_classifier_loss: 0.3582 - val_adversary_loss: 0.0452
+Epoch 126/200
+ - 3s - loss: 0.0452 - classifier_loss: 0.3433 - adversary_loss: 0.0452 - val_loss: 0.0453 - val_classifier_loss: 0.3526 - val_adversary_loss: 0.0453
+Epoch 127/200
+ - 3s - loss: 0.0452 - classifier_loss: 0.3434 - adversary_loss: 0.0452 - val_loss: 0.0453 - val_classifier_loss: 0.3501 - val_adversary_loss: 0.0453
+Epoch 128/200
+ - 3s - loss: 0.0452 - classifier_loss: 0.3432 - adversary_loss: 0.0452 - val_loss: 0.0453 - val_classifier_loss: 0.3535 - val_adversary_loss: 0.0453
+Epoch 129/200
+ - 3s - loss: 0.0452 - classifier_loss: 0.3432 - adversary_loss: 0.0452 - val_loss: 0.0452 - val_classifier_loss: 0.3561 - val_adversary_loss: 0.0452
+Epoch 130/200
+ - 3s - loss: 0.0452 - classifier_loss: 0.3433 - adversary_loss: 0.0452 - val_loss: 0.0452 - val_classifier_loss: 0.3538 - val_adversary_loss: 0.0452
+Epoch 131/200
+ - 3s - loss: 0.0452 - classifier_loss: 0.3432 - adversary_loss: 0.0452 - val_loss: 0.0453 - val_classifier_loss: 0.3516 - val_adversary_loss: 0.0453
+Epoch 132/200
+ - 3s - loss: 0.0451 - classifier_loss: 0.3434 - adversary_loss: 0.0451 - val_loss: 0.0452 - val_classifier_loss: 0.3521 - val_adversary_loss: 0.0452
+Epoch 133/200
+ - 3s - loss: 0.0451 - classifier_loss: 0.3433 - adversary_loss: 0.0451 - val_loss: 0.0452 - val_classifier_loss: 0.3524 - val_adversary_loss: 0.0452
+Epoch 134/200
+ - 3s - loss: 0.0451 - classifier_loss: 0.3433 - adversary_loss: 0.0451 - val_loss: 0.0453 - val_classifier_loss: 0.3483 - val_adversary_loss: 0.0453
+Epoch 135/200
+ - 3s - loss: 0.0451 - classifier_loss: 0.3434 - adversary_loss: 0.0451 - val_loss: 0.0452 - val_classifier_loss: 0.3495 - val_adversary_loss: 0.0452
+Epoch 136/200
+ - 3s - loss: 0.0451 - classifier_loss: 0.3434 - adversary_loss: 0.0451 - val_loss: 0.0452 - val_classifier_loss: 0.3521 - val_adversary_loss: 0.0452
+Epoch 137/200
+ - 3s - loss: 0.0451 - classifier_loss: 0.3434 - adversary_loss: 0.0451 - val_loss: 0.0452 - val_classifier_loss: 0.3510 - val_adversary_loss: 0.0452
+Epoch 138/200
+ - 3s - loss: 0.0451 - classifier_loss: 0.3433 - adversary_loss: 0.0451 - val_loss: 0.0452 - val_classifier_loss: 0.3515 - val_adversary_loss: 0.0452
+Epoch 139/200
+ - 3s - loss: 0.0451 - classifier_loss: 0.3434 - adversary_loss: 0.0451 - val_loss: 0.0452 - val_classifier_loss: 0.3511 - val_adversary_loss: 0.0452
+Epoch 140/200
+ - 3s - loss: 0.0451 - classifier_loss: 0.3432 - adversary_loss: 0.0451 - val_loss: 0.0452 - val_classifier_loss: 0.3529 - val_adversary_loss: 0.0452
+Epoch 141/200
+ - 3s - loss: 0.0451 - classifier_loss: 0.3433 - adversary_loss: 0.0451 - val_loss: 0.0451 - val_classifier_loss: 0.3537 - val_adversary_loss: 0.0451
+Epoch 142/200
+ - 3s - loss: 0.0451 - classifier_loss: 0.3433 - adversary_loss: 0.0451 - val_loss: 0.0452 - val_classifier_loss: 0.3520 - val_adversary_loss: 0.0452
+Epoch 143/200
+ - 3s - loss: 0.0451 - classifier_loss: 0.3433 - adversary_loss: 0.0451 - val_loss: 0.0452 - val_classifier_loss: 0.3508 - val_adversary_loss: 0.0452
+Epoch 144/200
+ - 3s - loss: 0.0451 - classifier_loss: 0.3433 - adversary_loss: 0.0451 - val_loss: 0.0452 - val_classifier_loss: 0.3505 - val_adversary_loss: 0.0452
+Epoch 145/200
+ - 3s - loss: 0.0451 - classifier_loss: 0.3434 - adversary_loss: 0.0451 - val_loss: 0.0451 - val_classifier_loss: 0.3514 - val_adversary_loss: 0.0451
+Epoch 146/200
+ - 4s - loss: 0.0451 - classifier_loss: 0.3433 - adversary_loss: 0.0451 - val_loss: 0.0451 - val_classifier_loss: 0.3525 - val_adversary_loss: 0.0451
+Epoch 147/200
+ - 4s - loss: 0.0450 - classifier_loss: 0.3434 - adversary_loss: 0.0450 - val_loss: 0.0451 - val_classifier_loss: 0.3539 - val_adversary_loss: 0.0451
+Epoch 148/200
+ - 3s - loss: 0.0450 - classifier_loss: 0.3434 - adversary_loss: 0.0450 - val_loss: 0.0451 - val_classifier_loss: 0.3535 - val_adversary_loss: 0.0451
+Epoch 149/200
+ - 3s - loss: 0.0450 - classifier_loss: 0.3433 - adversary_loss: 0.0450 - val_loss: 0.0451 - val_classifier_loss: 0.3529 - val_adversary_loss: 0.0451
+Epoch 150/200
+ - 3s - loss: 0.0450 - classifier_loss: 0.3433 - adversary_loss: 0.0450 - val_loss: 0.0451 - val_classifier_loss: 0.3523 - val_adversary_loss: 0.0451
+Epoch 151/200
+ - 3s - loss: 0.0450 - classifier_loss: 0.3433 - adversary_loss: 0.0450 - val_loss: 0.0451 - val_classifier_loss: 0.3506 - val_adversary_loss: 0.0451
+Epoch 152/200
+ - 3s - loss: 0.0450 - classifier_loss: 0.3434 - adversary_loss: 0.0450 - val_loss: 0.0451 - val_classifier_loss: 0.3533 - val_adversary_loss: 0.0451
+Epoch 153/200
+ - 3s - loss: 0.0450 - classifier_loss: 0.3433 - adversary_loss: 0.0450 - val_loss: 0.0451 - val_classifier_loss: 0.3523 - val_adversary_loss: 0.0451
+Epoch 154/200
+ - 3s - loss: 0.0450 - classifier_loss: 0.3434 - adversary_loss: 0.0450 - val_loss: 0.0451 - val_classifier_loss: 0.3532 - val_adversary_loss: 0.0451
+Epoch 155/200
+ - 3s - loss: 0.0450 - classifier_loss: 0.3435 - adversary_loss: 0.0450 - val_loss: 0.0451 - val_classifier_loss: 0.3544 - val_adversary_loss: 0.0451
+Epoch 156/200
+ - 3s - loss: 0.0450 - classifier_loss: 0.3434 - adversary_loss: 0.0450 - val_loss: 0.0450 - val_classifier_loss: 0.3553 - val_adversary_loss: 0.0450
+Epoch 157/200
+ - 3s - loss: 0.0450 - classifier_loss: 0.3433 - adversary_loss: 0.0450 - val_loss: 0.0450 - val_classifier_loss: 0.3527 - val_adversary_loss: 0.0450
+Epoch 158/200
+ - 3s - loss: 0.0450 - classifier_loss: 0.3433 - adversary_loss: 0.0450 - val_loss: 0.0450 - val_classifier_loss: 0.3573 - val_adversary_loss: 0.0450
+Epoch 159/200
+ - 3s - loss: 0.0450 - classifier_loss: 0.3433 - adversary_loss: 0.0450 - val_loss: 0.0450 - val_classifier_loss: 0.3586 - val_adversary_loss: 0.0450
+Epoch 160/200
+ - 3s - loss: 0.0450 - classifier_loss: 0.3434 - adversary_loss: 0.0450 - val_loss: 0.0451 - val_classifier_loss: 0.3529 - val_adversary_loss: 0.0451
+Epoch 161/200
+ - 3s - loss: 0.0450 - classifier_loss: 0.3434 - adversary_loss: 0.0450 - val_loss: 0.0451 - val_classifier_loss: 0.3523 - val_adversary_loss: 0.0451
+Epoch 162/200
+ - 3s - loss: 0.0450 - classifier_loss: 0.3432 - adversary_loss: 0.0450 - val_loss: 0.0450 - val_classifier_loss: 0.3571 - val_adversary_loss: 0.0450
+Epoch 163/200
+ - 3s - loss: 0.0450 - classifier_loss: 0.3433 - adversary_loss: 0.0450 - val_loss: 0.0450 - val_classifier_loss: 0.3558 - val_adversary_loss: 0.0450
+Epoch 164/200
+ - 3s - loss: 0.0449 - classifier_loss: 0.3434 - adversary_loss: 0.0449 - val_loss: 0.0450 - val_classifier_loss: 0.3516 - val_adversary_loss: 0.0450
+Epoch 165/200
+ - 3s - loss: 0.0449 - classifier_loss: 0.3434 - adversary_loss: 0.0449 - val_loss: 0.0450 - val_classifier_loss: 0.3552 - val_adversary_loss: 0.0450
+Epoch 166/200
+ - 3s - loss: 0.0449 - classifier_loss: 0.3434 - adversary_loss: 0.0449 - val_loss: 0.0450 - val_classifier_loss: 0.3555 - val_adversary_loss: 0.0450
+Epoch 167/200
+ - 3s - loss: 0.0449 - classifier_loss: 0.3433 - adversary_loss: 0.0449 - val_loss: 0.0450 - val_classifier_loss: 0.3523 - val_adversary_loss: 0.0450
+Epoch 168/200
+ - 3s - loss: 0.0449 - classifier_loss: 0.3433 - adversary_loss: 0.0449 - val_loss: 0.0450 - val_classifier_loss: 0.3552 - val_adversary_loss: 0.0450
+Epoch 169/200
+ - 3s - loss: 0.0449 - classifier_loss: 0.3433 - adversary_loss: 0.0449 - val_loss: 0.0450 - val_classifier_loss: 0.3536 - val_adversary_loss: 0.0450
+Epoch 170/200
+ - 3s - loss: 0.0449 - classifier_loss: 0.3434 - adversary_loss: 0.0449 - val_loss: 0.0449 - val_classifier_loss: 0.3556 - val_adversary_loss: 0.0449
+Epoch 171/200
+ - 3s - loss: 0.0449 - classifier_loss: 0.3434 - adversary_loss: 0.0449 - val_loss: 0.0449 - val_classifier_loss: 0.3564 - val_adversary_loss: 0.0449
+Epoch 172/200
+ - 3s - loss: 0.0449 - classifier_loss: 0.3433 - adversary_loss: 0.0449 - val_loss: 0.0449 - val_classifier_loss: 0.3560 - val_adversary_loss: 0.0449
+Epoch 173/200
+ - 3s - loss: 0.0449 - classifier_loss: 0.3434 - adversary_loss: 0.0449 - val_loss: 0.0449 - val_classifier_loss: 0.3538 - val_adversary_loss: 0.0449
+Epoch 174/200
+ - 3s - loss: 0.0449 - classifier_loss: 0.3434 - adversary_loss: 0.0449 - val_loss: 0.0450 - val_classifier_loss: 0.3540 - val_adversary_loss: 0.0450
+Epoch 175/200
+ - 3s - loss: 0.0449 - classifier_loss: 0.3435 - adversary_loss: 0.0449 - val_loss: 0.0450 - val_classifier_loss: 0.3524 - val_adversary_loss: 0.0450
+Epoch 176/200
+ - 3s - loss: 0.0449 - classifier_loss: 0.3433 - adversary_loss: 0.0449 - val_loss: 0.0450 - val_classifier_loss: 0.3526 - val_adversary_loss: 0.0450
+Epoch 177/200
+ - 3s - loss: 0.0449 - classifier_loss: 0.3433 - adversary_loss: 0.0449 - val_loss: 0.0449 - val_classifier_loss: 0.3554 - val_adversary_loss: 0.0449
+Epoch 178/200
+ - 3s - loss: 0.0449 - classifier_loss: 0.3434 - adversary_loss: 0.0449 - val_loss: 0.0449 - val_classifier_loss: 0.3542 - val_adversary_loss: 0.0449
+Epoch 179/200
+ - 3s - loss: 0.0449 - classifier_loss: 0.3433 - adversary_loss: 0.0449 - val_loss: 0.0449 - val_classifier_loss: 0.3551 - val_adversary_loss: 0.0449
+Epoch 180/200
+ - 3s - loss: 0.0449 - classifier_loss: 0.3433 - adversary_loss: 0.0449 - val_loss: 0.0449 - val_classifier_loss: 0.3567 - val_adversary_loss: 0.0449
+Epoch 181/200
+ - 3s - loss: 0.0449 - classifier_loss: 0.3434 - adversary_loss: 0.0449 - val_loss: 0.0449 - val_classifier_loss: 0.3535 - val_adversary_loss: 0.0449
+Epoch 182/200
+ - 3s - loss: 0.0448 - classifier_loss: 0.3433 - adversary_loss: 0.0448 - val_loss: 0.0449 - val_classifier_loss: 0.3546 - val_adversary_loss: 0.0449
+Epoch 183/200
+ - 4s - loss: 0.0448 - classifier_loss: 0.3433 - adversary_loss: 0.0448 - val_loss: 0.0449 - val_classifier_loss: 0.3548 - val_adversary_loss: 0.0449
+Epoch 184/200
+ - 3s - loss: 0.0448 - classifier_loss: 0.3433 - adversary_loss: 0.0448 - val_loss: 0.0449 - val_classifier_loss: 0.3520 - val_adversary_loss: 0.0449
+Epoch 185/200
+ - 3s - loss: 0.0448 - classifier_loss: 0.3433 - adversary_loss: 0.0448 - val_loss: 0.0449 - val_classifier_loss: 0.3526 - val_adversary_loss: 0.0449
+Epoch 186/200
+ - 4s - loss: 0.0448 - classifier_loss: 0.3433 - adversary_loss: 0.0448 - val_loss: 0.0449 - val_classifier_loss: 0.3557 - val_adversary_loss: 0.0449
+Epoch 187/200
+ - 3s - loss: 0.0448 - classifier_loss: 0.3433 - adversary_loss: 0.0448 - val_loss: 0.0449 - val_classifier_loss: 0.3549 - val_adversary_loss: 0.0449
+Epoch 188/200
+ - 3s - loss: 0.0448 - classifier_loss: 0.3433 - adversary_loss: 0.0448 - val_loss: 0.0449 - val_classifier_loss: 0.3541 - val_adversary_loss: 0.0449
+Epoch 189/200
+ - 3s - loss: 0.0448 - classifier_loss: 0.3433 - adversary_loss: 0.0448 - val_loss: 0.0449 - val_classifier_loss: 0.3541 - val_adversary_loss: 0.0449
+Epoch 190/200
+ - 3s - loss: 0.0448 - classifier_loss: 0.3434 - adversary_loss: 0.0448 - val_loss: 0.0449 - val_classifier_loss: 0.3532 - val_adversary_loss: 0.0449
+Epoch 191/200
+ - 3s - loss: 0.0448 - classifier_loss: 0.3431 - adversary_loss: 0.0448 - val_loss: 0.0449 - val_classifier_loss: 0.3538 - val_adversary_loss: 0.0449
+Epoch 192/200
+ - 3s - loss: 0.0448 - classifier_loss: 0.3433 - adversary_loss: 0.0448 - val_loss: 0.0449 - val_classifier_loss: 0.3542 - val_adversary_loss: 0.0449
+Epoch 193/200
+ - 3s - loss: 0.0448 - classifier_loss: 0.3433 - adversary_loss: 0.0448 - val_loss: 0.0448 - val_classifier_loss: 0.3541 - val_adversary_loss: 0.0448
+Epoch 194/200
+ - 3s - loss: 0.0448 - classifier_loss: 0.3433 - adversary_loss: 0.0448 - val_loss: 0.0449 - val_classifier_loss: 0.3510 - val_adversary_loss: 0.0449
+Epoch 195/200
+ - 3s - loss: 0.0448 - classifier_loss: 0.3434 - adversary_loss: 0.0448 - val_loss: 0.0448 - val_classifier_loss: 0.3550 - val_adversary_loss: 0.0448
+Epoch 196/200
+ - 4s - loss: 0.0448 - classifier_loss: 0.3433 - adversary_loss: 0.0448 - val_loss: 0.0449 - val_classifier_loss: 0.3523 - val_adversary_loss: 0.0449
+Epoch 197/200
+ - 4s - loss: 0.0448 - classifier_loss: 0.3433 - adversary_loss: 0.0448 - val_loss: 0.0448 - val_classifier_loss: 0.3524 - val_adversary_loss: 0.0448
+Epoch 198/200
+ - 4s - loss: 0.0448 - classifier_loss: 0.3433 - adversary_loss: 0.0448 - val_loss: 0.0448 - val_classifier_loss: 0.3549 - val_adversary_loss: 0.0448
+Epoch 199/200
+ - 4s - loss: 0.0448 - classifier_loss: 0.3434 - adversary_loss: 0.0448 - val_loss: 0.0448 - val_classifier_loss: 0.3562 - val_adversary_loss: 0.0448
+Epoch 200/200
+ - 3s - loss: 0.0448 - classifier_loss: 0.3433 - adversary_loss: 0.0448 - val_loss: 0.0448 - val_classifier_loss: 0.3560 - val_adversary_loss: 0.0448
+INFO: Computing initial loss
+INFO: Pre-training
+[38;2;74;176;245m[1mProfile[0m ⏱  ······ Starting [1m@add_nn[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  ······ Time elapsed in [1m@add_nn[0m: ................................ [1m3.5s[0m
+Background rejection: 18.5625699929
+1/JSD:                4.02694054424
+[38;2;74;176;245m[1mProfile[0m ⏱  ···· Time elapsed in [1mFold 1/3[0m: ............................... [1m757.2s[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  ···· Starting [1mFold 2/3[0m
+Train on 1333334 samples, validate on 666666 samples
+Epoch 1/10
+ - 13s - loss: 0.0305 - classifier_loss: 0.3438 - adversary_loss: 0.0305 - val_loss: 0.0314 - val_classifier_loss: 0.3578 - val_adversary_loss: 0.0314
+Epoch 2/10
+ - 3s - loss: 0.0305 - classifier_loss: 0.3439 - adversary_loss: 0.0305 - val_loss: 0.0312 - val_classifier_loss: 0.3531 - val_adversary_loss: 0.0312
+Epoch 3/10
+ - 3s - loss: 0.0305 - classifier_loss: 0.3438 - adversary_loss: 0.0305 - val_loss: 0.0310 - val_classifier_loss: 0.3494 - val_adversary_loss: 0.0310
+Epoch 4/10
+ - 3s - loss: 0.0305 - classifier_loss: 0.3438 - adversary_loss: 0.0305 - val_loss: 0.0315 - val_classifier_loss: 0.3621 - val_adversary_loss: 0.0315
+Epoch 5/10
+ - 3s - loss: 0.0305 - classifier_loss: 0.3439 - adversary_loss: 0.0305 - val_loss: 0.0312 - val_classifier_loss: 0.3542 - val_adversary_loss: 0.0312
+Epoch 6/10
+ - 3s - loss: 0.0304 - classifier_loss: 0.3439 - adversary_loss: 0.0304 - val_loss: 0.0313 - val_classifier_loss: 0.3558 - val_adversary_loss: 0.0313
+Epoch 7/10
+ - 3s - loss: 0.0304 - classifier_loss: 0.3438 - adversary_loss: 0.0304 - val_loss: 0.0312 - val_classifier_loss: 0.3556 - val_adversary_loss: 0.0312
+Epoch 8/10
+ - 3s - loss: 0.0304 - classifier_loss: 0.3438 - adversary_loss: 0.0304 - val_loss: 0.0312 - val_classifier_loss: 0.3549 - val_adversary_loss: 0.0312
+Epoch 9/10
+ - 3s - loss: 0.0304 - classifier_loss: 0.3438 - adversary_loss: 0.0304 - val_loss: 0.0312 - val_classifier_loss: 0.3536 - val_adversary_loss: 0.0312
+Epoch 10/10
+ - 3s - loss: 0.0304 - classifier_loss: 0.3438 - adversary_loss: 0.0304 - val_loss: 0.0311 - val_classifier_loss: 0.3535 - val_adversary_loss: 0.0311
+INFO: Actual training
+Train on 1333334 samples, validate on 666666 samples
+Epoch 1/200
+ - 20s - loss: 0.0304 - classifier_loss: 0.3439 - adversary_loss: 0.0304 - val_loss: 0.0312 - val_classifier_loss: 0.3555 - val_adversary_loss: 0.0312
+Epoch 2/200
+ - 3s - loss: 0.0304 - classifier_loss: 0.3439 - adversary_loss: 0.0304 - val_loss: 0.0309 - val_classifier_loss: 0.3489 - val_adversary_loss: 0.0309
+Epoch 3/200
+ - 3s - loss: 0.0303 - classifier_loss: 0.3438 - adversary_loss: 0.0303 - val_loss: 0.0312 - val_classifier_loss: 0.3581 - val_adversary_loss: 0.0312
+Epoch 4/200
+ - 3s - loss: 0.0303 - classifier_loss: 0.3438 - adversary_loss: 0.0303 - val_loss: 0.0311 - val_classifier_loss: 0.3556 - val_adversary_loss: 0.0311
+Epoch 5/200
+ - 4s - loss: 0.0303 - classifier_loss: 0.3439 - adversary_loss: 0.0303 - val_loss: 0.0309 - val_classifier_loss: 0.3517 - val_adversary_loss: 0.0309
+Epoch 6/200
+ - 3s - loss: 0.0303 - classifier_loss: 0.3438 - adversary_loss: 0.0303 - val_loss: 0.0312 - val_classifier_loss: 0.3586 - val_adversary_loss: 0.0312
+Epoch 7/200
+ - 3s - loss: 0.0303 - classifier_loss: 0.3439 - adversary_loss: 0.0303 - val_loss: 0.0309 - val_classifier_loss: 0.3510 - val_adversary_loss: 0.0309
+Epoch 8/200
+ - 3s - loss: 0.0303 - classifier_loss: 0.3438 - adversary_loss: 0.0303 - val_loss: 0.0309 - val_classifier_loss: 0.3492 - val_adversary_loss: 0.0309
+Epoch 9/200
+ - 3s - loss: 0.0303 - classifier_loss: 0.3439 - adversary_loss: 0.0303 - val_loss: 0.0309 - val_classifier_loss: 0.3498 - val_adversary_loss: 0.0309
+Epoch 10/200
+ - 3s - loss: 0.0303 - classifier_loss: 0.3438 - adversary_loss: 0.0303 - val_loss: 0.0308 - val_classifier_loss: 0.3485 - val_adversary_loss: 0.0308
+Epoch 11/200
+ - 3s - loss: 0.0303 - classifier_loss: 0.3438 - adversary_loss: 0.0303 - val_loss: 0.0307 - val_classifier_loss: 0.3466 - val_adversary_loss: 0.0307
+Epoch 12/200
+ - 3s - loss: 0.0302 - classifier_loss: 0.3438 - adversary_loss: 0.0302 - val_loss: 0.0308 - val_classifier_loss: 0.3485 - val_adversary_loss: 0.0308
+Epoch 13/200
+ - 3s - loss: 0.0302 - classifier_loss: 0.3438 - adversary_loss: 0.0302 - val_loss: 0.0309 - val_classifier_loss: 0.3513 - val_adversary_loss: 0.0309
+Epoch 14/200
+ - 3s - loss: 0.0302 - classifier_loss: 0.3439 - adversary_loss: 0.0302 - val_loss: 0.0310 - val_classifier_loss: 0.3567 - val_adversary_loss: 0.0310
+Epoch 15/200
+ - 3s - loss: 0.0302 - classifier_loss: 0.3438 - adversary_loss: 0.0302 - val_loss: 0.0309 - val_classifier_loss: 0.3501 - val_adversary_loss: 0.0309
+Epoch 16/200
+ - 3s - loss: 0.0302 - classifier_loss: 0.3438 - adversary_loss: 0.0302 - val_loss: 0.0309 - val_classifier_loss: 0.3528 - val_adversary_loss: 0.0309
+Epoch 17/200
+ - 3s - loss: 0.0302 - classifier_loss: 0.3439 - adversary_loss: 0.0302 - val_loss: 0.0308 - val_classifier_loss: 0.3505 - val_adversary_loss: 0.0308
+Epoch 18/200
+ - 3s - loss: 0.0302 - classifier_loss: 0.3439 - adversary_loss: 0.0302 - val_loss: 0.0308 - val_classifier_loss: 0.3501 - val_adversary_loss: 0.0308
+Epoch 19/200
+ - 3s - loss: 0.0302 - classifier_loss: 0.3438 - adversary_loss: 0.0302 - val_loss: 0.0309 - val_classifier_loss: 0.3523 - val_adversary_loss: 0.0309
+Epoch 20/200
+ - 3s - loss: 0.0302 - classifier_loss: 0.3439 - adversary_loss: 0.0302 - val_loss: 0.0309 - val_classifier_loss: 0.3518 - val_adversary_loss: 0.0309
+Epoch 21/200
+ - 3s - loss: 0.0302 - classifier_loss: 0.3438 - adversary_loss: 0.0302 - val_loss: 0.0309 - val_classifier_loss: 0.3533 - val_adversary_loss: 0.0309
+Epoch 22/200
+ - 3s - loss: 0.0302 - classifier_loss: 0.3439 - adversary_loss: 0.0302 - val_loss: 0.0307 - val_classifier_loss: 0.3487 - val_adversary_loss: 0.0307
+Epoch 23/200
+ - 3s - loss: 0.0302 - classifier_loss: 0.3438 - adversary_loss: 0.0302 - val_loss: 0.0308 - val_classifier_loss: 0.3505 - val_adversary_loss: 0.0308
+Epoch 24/200
+ - 3s - loss: 0.0302 - classifier_loss: 0.3438 - adversary_loss: 0.0302 - val_loss: 0.0308 - val_classifier_loss: 0.3513 - val_adversary_loss: 0.0308
+Epoch 25/200
+ - 3s - loss: 0.0302 - classifier_loss: 0.3439 - adversary_loss: 0.0302 - val_loss: 0.0308 - val_classifier_loss: 0.3534 - val_adversary_loss: 0.0308
+Epoch 26/200
+ - 3s - loss: 0.0302 - classifier_loss: 0.3438 - adversary_loss: 0.0302 - val_loss: 0.0308 - val_classifier_loss: 0.3523 - val_adversary_loss: 0.0308
+Epoch 27/200
+ - 3s - loss: 0.0302 - classifier_loss: 0.3439 - adversary_loss: 0.0302 - val_loss: 0.0308 - val_classifier_loss: 0.3509 - val_adversary_loss: 0.0308
+Epoch 28/200
+ - 3s - loss: 0.0301 - classifier_loss: 0.3438 - adversary_loss: 0.0301 - val_loss: 0.0309 - val_classifier_loss: 0.3540 - val_adversary_loss: 0.0309
+Epoch 29/200
+ - 3s - loss: 0.0301 - classifier_loss: 0.3438 - adversary_loss: 0.0301 - val_loss: 0.0307 - val_classifier_loss: 0.3498 - val_adversary_loss: 0.0307
+Epoch 30/200
+ - 3s - loss: 0.0301 - classifier_loss: 0.3438 - adversary_loss: 0.0301 - val_loss: 0.0307 - val_classifier_loss: 0.3484 - val_adversary_loss: 0.0307
+Epoch 31/200
+ - 3s - loss: 0.0301 - classifier_loss: 0.3439 - adversary_loss: 0.0301 - val_loss: 0.0307 - val_classifier_loss: 0.3497 - val_adversary_loss: 0.0307
+Epoch 32/200
+ - 3s - loss: 0.0301 - classifier_loss: 0.3439 - adversary_loss: 0.0301 - val_loss: 0.0307 - val_classifier_loss: 0.3488 - val_adversary_loss: 0.0307
+Epoch 33/200
+ - 3s - loss: 0.0301 - classifier_loss: 0.3439 - adversary_loss: 0.0301 - val_loss: 0.0307 - val_classifier_loss: 0.3512 - val_adversary_loss: 0.0307
+Epoch 34/200
+ - 3s - loss: 0.0301 - classifier_loss: 0.3439 - adversary_loss: 0.0301 - val_loss: 0.0308 - val_classifier_loss: 0.3517 - val_adversary_loss: 0.0308
+Epoch 35/200
+ - 3s - loss: 0.0301 - classifier_loss: 0.3439 - adversary_loss: 0.0301 - val_loss: 0.0308 - val_classifier_loss: 0.3526 - val_adversary_loss: 0.0308
+Epoch 36/200
+ - 3s - loss: 0.0301 - classifier_loss: 0.3439 - adversary_loss: 0.0301 - val_loss: 0.0307 - val_classifier_loss: 0.3511 - val_adversary_loss: 0.0307
+Epoch 37/200
+ - 3s - loss: 0.0301 - classifier_loss: 0.3439 - adversary_loss: 0.0301 - val_loss: 0.0306 - val_classifier_loss: 0.3489 - val_adversary_loss: 0.0306
+Epoch 38/200
+ - 3s - loss: 0.0301 - classifier_loss: 0.3439 - adversary_loss: 0.0301 - val_loss: 0.0304 - val_classifier_loss: 0.3422 - val_adversary_loss: 0.0304
+Epoch 39/200
+ - 3s - loss: 0.0301 - classifier_loss: 0.3438 - adversary_loss: 0.0301 - val_loss: 0.0307 - val_classifier_loss: 0.3509 - val_adversary_loss: 0.0307
+Epoch 40/200
+ - 3s - loss: 0.0301 - classifier_loss: 0.3439 - adversary_loss: 0.0301 - val_loss: 0.0306 - val_classifier_loss: 0.3493 - val_adversary_loss: 0.0306
+Epoch 41/200
+ - 3s - loss: 0.0301 - classifier_loss: 0.3439 - adversary_loss: 0.0301 - val_loss: 0.0305 - val_classifier_loss: 0.3446 - val_adversary_loss: 0.0305
+Epoch 42/200
+ - 4s - loss: 0.0301 - classifier_loss: 0.3439 - adversary_loss: 0.0301 - val_loss: 0.0310 - val_classifier_loss: 0.3605 - val_adversary_loss: 0.0310
+Epoch 43/200
+ - 3s - loss: 0.0301 - classifier_loss: 0.3439 - adversary_loss: 0.0301 - val_loss: 0.0306 - val_classifier_loss: 0.3481 - val_adversary_loss: 0.0306
+Epoch 44/200
+ - 3s - loss: 0.0301 - classifier_loss: 0.3439 - adversary_loss: 0.0301 - val_loss: 0.0306 - val_classifier_loss: 0.3470 - val_adversary_loss: 0.0306
+Epoch 45/200
+ - 3s - loss: 0.0301 - classifier_loss: 0.3439 - adversary_loss: 0.0301 - val_loss: 0.0308 - val_classifier_loss: 0.3538 - val_adversary_loss: 0.0308
+Epoch 46/200
+ - 3s - loss: 0.0301 - classifier_loss: 0.3439 - adversary_loss: 0.0301 - val_loss: 0.0307 - val_classifier_loss: 0.3517 - val_adversary_loss: 0.0307
+Epoch 47/200
+ - 3s - loss: 0.0301 - classifier_loss: 0.3439 - adversary_loss: 0.0301 - val_loss: 0.0306 - val_classifier_loss: 0.3504 - val_adversary_loss: 0.0306
+Epoch 48/200
+ - 3s - loss: 0.0300 - classifier_loss: 0.3439 - adversary_loss: 0.0300 - val_loss: 0.0307 - val_classifier_loss: 0.3498 - val_adversary_loss: 0.0307
+Epoch 49/200
+ - 3s - loss: 0.0300 - classifier_loss: 0.3439 - adversary_loss: 0.0300 - val_loss: 0.0308 - val_classifier_loss: 0.3571 - val_adversary_loss: 0.0308
+Epoch 50/200
+ - 3s - loss: 0.0300 - classifier_loss: 0.3439 - adversary_loss: 0.0300 - val_loss: 0.0308 - val_classifier_loss: 0.3538 - val_adversary_loss: 0.0308
+Epoch 51/200
+ - 3s - loss: 0.0300 - classifier_loss: 0.3439 - adversary_loss: 0.0300 - val_loss: 0.0307 - val_classifier_loss: 0.3534 - val_adversary_loss: 0.0307
+Epoch 52/200
+ - 4s - loss: 0.0300 - classifier_loss: 0.3438 - adversary_loss: 0.0300 - val_loss: 0.0307 - val_classifier_loss: 0.3515 - val_adversary_loss: 0.0307
+Epoch 53/200
+ - 3s - loss: 0.0300 - classifier_loss: 0.3438 - adversary_loss: 0.0300 - val_loss: 0.0307 - val_classifier_loss: 0.3526 - val_adversary_loss: 0.0307
+Epoch 54/200
+ - 3s - loss: 0.0300 - classifier_loss: 0.3438 - adversary_loss: 0.0300 - val_loss: 0.0307 - val_classifier_loss: 0.3514 - val_adversary_loss: 0.0307
+Epoch 55/200
+ - 3s - loss: 0.0300 - classifier_loss: 0.3438 - adversary_loss: 0.0300 - val_loss: 0.0306 - val_classifier_loss: 0.3484 - val_adversary_loss: 0.0306
+Epoch 56/200
+ - 4s - loss: 0.0300 - classifier_loss: 0.3439 - adversary_loss: 0.0300 - val_loss: 0.0307 - val_classifier_loss: 0.3517 - val_adversary_loss: 0.0307
+Epoch 57/200
+ - 4s - loss: 0.0300 - classifier_loss: 0.3439 - adversary_loss: 0.0300 - val_loss: 0.0306 - val_classifier_loss: 0.3494 - val_adversary_loss: 0.0306
+Epoch 58/200
+ - 3s - loss: 0.0300 - classifier_loss: 0.3438 - adversary_loss: 0.0300 - val_loss: 0.0306 - val_classifier_loss: 0.3496 - val_adversary_loss: 0.0306
+Epoch 59/200
+ - 3s - loss: 0.0300 - classifier_loss: 0.3439 - adversary_loss: 0.0300 - val_loss: 0.0307 - val_classifier_loss: 0.3522 - val_adversary_loss: 0.0307
+Epoch 60/200
+ - 3s - loss: 0.0300 - classifier_loss: 0.3439 - adversary_loss: 0.0300 - val_loss: 0.0306 - val_classifier_loss: 0.3515 - val_adversary_loss: 0.0306
+Epoch 61/200
+ - 3s - loss: 0.0300 - classifier_loss: 0.3439 - adversary_loss: 0.0300 - val_loss: 0.0305 - val_classifier_loss: 0.3481 - val_adversary_loss: 0.0305
+Epoch 62/200
+ - 3s - loss: 0.0300 - classifier_loss: 0.3439 - adversary_loss: 0.0300 - val_loss: 0.0307 - val_classifier_loss: 0.3508 - val_adversary_loss: 0.0307
+Epoch 63/200
+ - 3s - loss: 0.0300 - classifier_loss: 0.3438 - adversary_loss: 0.0300 - val_loss: 0.0305 - val_classifier_loss: 0.3477 - val_adversary_loss: 0.0305
+Epoch 64/200
+ - 3s - loss: 0.0300 - classifier_loss: 0.3439 - adversary_loss: 0.0300 - val_loss: 0.0305 - val_classifier_loss: 0.3478 - val_adversary_loss: 0.0305
+Epoch 65/200
+ - 3s - loss: 0.0300 - classifier_loss: 0.3440 - adversary_loss: 0.0300 - val_loss: 0.0303 - val_classifier_loss: 0.3448 - val_adversary_loss: 0.0303
+Epoch 66/200
+ - 3s - loss: 0.0300 - classifier_loss: 0.3439 - adversary_loss: 0.0300 - val_loss: 0.0306 - val_classifier_loss: 0.3518 - val_adversary_loss: 0.0306
+Epoch 67/200
+ - 3s - loss: 0.0300 - classifier_loss: 0.3439 - adversary_loss: 0.0300 - val_loss: 0.0307 - val_classifier_loss: 0.3545 - val_adversary_loss: 0.0307
+Epoch 68/200
+ - 3s - loss: 0.0300 - classifier_loss: 0.3439 - adversary_loss: 0.0300 - val_loss: 0.0307 - val_classifier_loss: 0.3542 - val_adversary_loss: 0.0307
+Epoch 69/200
+ - 3s - loss: 0.0300 - classifier_loss: 0.3439 - adversary_loss: 0.0300 - val_loss: 0.0305 - val_classifier_loss: 0.3490 - val_adversary_loss: 0.0305
+Epoch 70/200
+ - 3s - loss: 0.0300 - classifier_loss: 0.3438 - adversary_loss: 0.0300 - val_loss: 0.0306 - val_classifier_loss: 0.3512 - val_adversary_loss: 0.0306
+Epoch 71/200
+ - 3s - loss: 0.0300 - classifier_loss: 0.3438 - adversary_loss: 0.0300 - val_loss: 0.0305 - val_classifier_loss: 0.3485 - val_adversary_loss: 0.0305
+Epoch 72/200
+ - 3s - loss: 0.0300 - classifier_loss: 0.3438 - adversary_loss: 0.0300 - val_loss: 0.0306 - val_classifier_loss: 0.3514 - val_adversary_loss: 0.0306
+Epoch 73/200
+ - 4s - loss: 0.0300 - classifier_loss: 0.3438 - adversary_loss: 0.0300 - val_loss: 0.0306 - val_classifier_loss: 0.3527 - val_adversary_loss: 0.0306
+Epoch 74/200
+ - 3s - loss: 0.0300 - classifier_loss: 0.3439 - adversary_loss: 0.0300 - val_loss: 0.0306 - val_classifier_loss: 0.3536 - val_adversary_loss: 0.0306
+Epoch 75/200
+ - 3s - loss: 0.0299 - classifier_loss: 0.3438 - adversary_loss: 0.0299 - val_loss: 0.0305 - val_classifier_loss: 0.3486 - val_adversary_loss: 0.0305
+Epoch 76/200
+ - 3s - loss: 0.0299 - classifier_loss: 0.3438 - adversary_loss: 0.0299 - val_loss: 0.0308 - val_classifier_loss: 0.3587 - val_adversary_loss: 0.0308
+Epoch 77/200
+ - 3s - loss: 0.0299 - classifier_loss: 0.3439 - adversary_loss: 0.0299 - val_loss: 0.0305 - val_classifier_loss: 0.3487 - val_adversary_loss: 0.0305
+Epoch 78/200
+ - 3s - loss: 0.0299 - classifier_loss: 0.3438 - adversary_loss: 0.0299 - val_loss: 0.0305 - val_classifier_loss: 0.3497 - val_adversary_loss: 0.0305
+Epoch 79/200
+ - 3s - loss: 0.0299 - classifier_loss: 0.3439 - adversary_loss: 0.0299 - val_loss: 0.0306 - val_classifier_loss: 0.3519 - val_adversary_loss: 0.0306
+Epoch 80/200
+ - 3s - loss: 0.0299 - classifier_loss: 0.3438 - adversary_loss: 0.0299 - val_loss: 0.0306 - val_classifier_loss: 0.3532 - val_adversary_loss: 0.0306
+Epoch 81/200
+ - 3s - loss: 0.0299 - classifier_loss: 0.3439 - adversary_loss: 0.0299 - val_loss: 0.0305 - val_classifier_loss: 0.3494 - val_adversary_loss: 0.0305
+Epoch 82/200
+ - 3s - loss: 0.0299 - classifier_loss: 0.3440 - adversary_loss: 0.0299 - val_loss: 0.0302 - val_classifier_loss: 0.3421 - val_adversary_loss: 0.0302
+Epoch 83/200
+ - 3s - loss: 0.0299 - classifier_loss: 0.3439 - adversary_loss: 0.0299 - val_loss: 0.0305 - val_classifier_loss: 0.3490 - val_adversary_loss: 0.0305
+Epoch 84/200
+ - 3s - loss: 0.0299 - classifier_loss: 0.3439 - adversary_loss: 0.0299 - val_loss: 0.0305 - val_classifier_loss: 0.3501 - val_adversary_loss: 0.0305
+Epoch 85/200
+ - 3s - loss: 0.0299 - classifier_loss: 0.3438 - adversary_loss: 0.0299 - val_loss: 0.0307 - val_classifier_loss: 0.3557 - val_adversary_loss: 0.0307
+Epoch 86/200
+ - 3s - loss: 0.0299 - classifier_loss: 0.3438 - adversary_loss: 0.0299 - val_loss: 0.0305 - val_classifier_loss: 0.3507 - val_adversary_loss: 0.0305
+Epoch 87/200
+ - 3s - loss: 0.0299 - classifier_loss: 0.3438 - adversary_loss: 0.0299 - val_loss: 0.0307 - val_classifier_loss: 0.3536 - val_adversary_loss: 0.0307
+Epoch 88/200
+ - 3s - loss: 0.0299 - classifier_loss: 0.3439 - adversary_loss: 0.0299 - val_loss: 0.0306 - val_classifier_loss: 0.3523 - val_adversary_loss: 0.0306
+Epoch 89/200
+ - 3s - loss: 0.0299 - classifier_loss: 0.3437 - adversary_loss: 0.0299 - val_loss: 0.0306 - val_classifier_loss: 0.3522 - val_adversary_loss: 0.0306
+Epoch 90/200
+ - 3s - loss: 0.0299 - classifier_loss: 0.3439 - adversary_loss: 0.0299 - val_loss: 0.0305 - val_classifier_loss: 0.3505 - val_adversary_loss: 0.0305
+Epoch 91/200
+ - 3s - loss: 0.0299 - classifier_loss: 0.3438 - adversary_loss: 0.0299 - val_loss: 0.0305 - val_classifier_loss: 0.3523 - val_adversary_loss: 0.0305
+Epoch 92/200
+ - 3s - loss: 0.0299 - classifier_loss: 0.3438 - adversary_loss: 0.0299 - val_loss: 0.0306 - val_classifier_loss: 0.3548 - val_adversary_loss: 0.0306
+Epoch 93/200
+ - 3s - loss: 0.0299 - classifier_loss: 0.3439 - adversary_loss: 0.0299 - val_loss: 0.0305 - val_classifier_loss: 0.3501 - val_adversary_loss: 0.0305
+Epoch 94/200
+ - 3s - loss: 0.0299 - classifier_loss: 0.3439 - adversary_loss: 0.0299 - val_loss: 0.0305 - val_classifier_loss: 0.3530 - val_adversary_loss: 0.0305
+Epoch 95/200
+ - 3s - loss: 0.0299 - classifier_loss: 0.3438 - adversary_loss: 0.0299 - val_loss: 0.0305 - val_classifier_loss: 0.3504 - val_adversary_loss: 0.0305
+Epoch 96/200
+ - 3s - loss: 0.0299 - classifier_loss: 0.3438 - adversary_loss: 0.0299 - val_loss: 0.0304 - val_classifier_loss: 0.3500 - val_adversary_loss: 0.0304
+Epoch 97/200
+ - 3s - loss: 0.0299 - classifier_loss: 0.3438 - adversary_loss: 0.0299 - val_loss: 0.0305 - val_classifier_loss: 0.3524 - val_adversary_loss: 0.0305
+Epoch 98/200
+ - 3s - loss: 0.0299 - classifier_loss: 0.3439 - adversary_loss: 0.0299 - val_loss: 0.0305 - val_classifier_loss: 0.3514 - val_adversary_loss: 0.0305
+Epoch 99/200
+ - 3s - loss: 0.0299 - classifier_loss: 0.3438 - adversary_loss: 0.0299 - val_loss: 0.0305 - val_classifier_loss: 0.3500 - val_adversary_loss: 0.0305
+Epoch 100/200
+ - 3s - loss: 0.0299 - classifier_loss: 0.3438 - adversary_loss: 0.0299 - val_loss: 0.0306 - val_classifier_loss: 0.3556 - val_adversary_loss: 0.0306
+Epoch 101/200
+ - 3s - loss: 0.0299 - classifier_loss: 0.3439 - adversary_loss: 0.0299 - val_loss: 0.0304 - val_classifier_loss: 0.3486 - val_adversary_loss: 0.0304
+Epoch 102/200
+ - 3s - loss: 0.0299 - classifier_loss: 0.3438 - adversary_loss: 0.0299 - val_loss: 0.0305 - val_classifier_loss: 0.3527 - val_adversary_loss: 0.0305
+Epoch 103/200
+ - 3s - loss: 0.0299 - classifier_loss: 0.3438 - adversary_loss: 0.0299 - val_loss: 0.0304 - val_classifier_loss: 0.3504 - val_adversary_loss: 0.0304
+Epoch 104/200
+ - 3s - loss: 0.0299 - classifier_loss: 0.3439 - adversary_loss: 0.0299 - val_loss: 0.0304 - val_classifier_loss: 0.3486 - val_adversary_loss: 0.0304
+Epoch 105/200
+ - 4s - loss: 0.0299 - classifier_loss: 0.3438 - adversary_loss: 0.0299 - val_loss: 0.0306 - val_classifier_loss: 0.3546 - val_adversary_loss: 0.0306
+Epoch 106/200
+ - 3s - loss: 0.0298 - classifier_loss: 0.3438 - adversary_loss: 0.0298 - val_loss: 0.0305 - val_classifier_loss: 0.3546 - val_adversary_loss: 0.0305
+Epoch 107/200
+ - 3s - loss: 0.0298 - classifier_loss: 0.3438 - adversary_loss: 0.0298 - val_loss: 0.0305 - val_classifier_loss: 0.3537 - val_adversary_loss: 0.0305
+Epoch 108/200
+ - 4s - loss: 0.0298 - classifier_loss: 0.3438 - adversary_loss: 0.0298 - val_loss: 0.0307 - val_classifier_loss: 0.3606 - val_adversary_loss: 0.0307
+Epoch 109/200
+ - 4s - loss: 0.0298 - classifier_loss: 0.3439 - adversary_loss: 0.0298 - val_loss: 0.0303 - val_classifier_loss: 0.3471 - val_adversary_loss: 0.0303
+Epoch 110/200
+ - 4s - loss: 0.0298 - classifier_loss: 0.3438 - adversary_loss: 0.0298 - val_loss: 0.0304 - val_classifier_loss: 0.3499 - val_adversary_loss: 0.0304
+Epoch 111/200
+ - 3s - loss: 0.0298 - classifier_loss: 0.3438 - adversary_loss: 0.0298 - val_loss: 0.0305 - val_classifier_loss: 0.3527 - val_adversary_loss: 0.0305
+Epoch 112/200
+ - 3s - loss: 0.0298 - classifier_loss: 0.3438 - adversary_loss: 0.0298 - val_loss: 0.0305 - val_classifier_loss: 0.3510 - val_adversary_loss: 0.0305
+Epoch 113/200
+ - 4s - loss: 0.0298 - classifier_loss: 0.3438 - adversary_loss: 0.0298 - val_loss: 0.0304 - val_classifier_loss: 0.3532 - val_adversary_loss: 0.0304
+Epoch 114/200
+ - 3s - loss: 0.0298 - classifier_loss: 0.3439 - adversary_loss: 0.0298 - val_loss: 0.0305 - val_classifier_loss: 0.3524 - val_adversary_loss: 0.0305
+Epoch 115/200
+ - 4s - loss: 0.0298 - classifier_loss: 0.3439 - adversary_loss: 0.0298 - val_loss: 0.0299 - val_classifier_loss: 0.3428 - val_adversary_loss: 0.0299
+Epoch 116/200
+ - 4s - loss: 0.0298 - classifier_loss: 0.3439 - adversary_loss: 0.0298 - val_loss: 0.0274 - val_classifier_loss: 1.5045 - val_adversary_loss: 0.0274
+Epoch 117/200
+ - 3s - loss: 0.0298 - classifier_loss: 0.3438 - adversary_loss: 0.0298 - val_loss: 0.0306 - val_classifier_loss: 0.3568 - val_adversary_loss: 0.0306
+Epoch 118/200
+ - 4s - loss: 0.0298 - classifier_loss: 0.3438 - adversary_loss: 0.0298 - val_loss: 0.0303 - val_classifier_loss: 0.3484 - val_adversary_loss: 0.0303
+Epoch 119/200
+ - 3s - loss: 0.0298 - classifier_loss: 0.3439 - adversary_loss: 0.0298 - val_loss: 0.0303 - val_classifier_loss: 0.3483 - val_adversary_loss: 0.0303
+Epoch 120/200
+ - 4s - loss: 0.0298 - classifier_loss: 0.3439 - adversary_loss: 0.0298 - val_loss: 0.0303 - val_classifier_loss: 0.3473 - val_adversary_loss: 0.0303
+Epoch 121/200
+ - 3s - loss: 0.0298 - classifier_loss: 0.3438 - adversary_loss: 0.0298 - val_loss: 0.0303 - val_classifier_loss: 0.3493 - val_adversary_loss: 0.0303
+Epoch 122/200
+ - 4s - loss: 0.0298 - classifier_loss: 0.3439 - adversary_loss: 0.0298 - val_loss: 0.0303 - val_classifier_loss: 0.3486 - val_adversary_loss: 0.0303
+Epoch 123/200
+ - 3s - loss: 0.0298 - classifier_loss: 0.3439 - adversary_loss: 0.0298 - val_loss: 0.0303 - val_classifier_loss: 0.3498 - val_adversary_loss: 0.0303
+Epoch 124/200
+ - 3s - loss: 0.0298 - classifier_loss: 0.3439 - adversary_loss: 0.0298 - val_loss: 0.0304 - val_classifier_loss: 0.3505 - val_adversary_loss: 0.0304
+Epoch 125/200
+ - 3s - loss: 0.0298 - classifier_loss: 0.3439 - adversary_loss: 0.0298 - val_loss: 0.0305 - val_classifier_loss: 0.3537 - val_adversary_loss: 0.0305
+Epoch 126/200
+ - 3s - loss: 0.0298 - classifier_loss: 0.3438 - adversary_loss: 0.0298 - val_loss: 0.0304 - val_classifier_loss: 0.3509 - val_adversary_loss: 0.0304
+Epoch 127/200
+ - 3s - loss: 0.0298 - classifier_loss: 0.3438 - adversary_loss: 0.0298 - val_loss: 0.0304 - val_classifier_loss: 0.3500 - val_adversary_loss: 0.0304
+Epoch 128/200
+ - 3s - loss: 0.0298 - classifier_loss: 0.3437 - adversary_loss: 0.0298 - val_loss: 0.0304 - val_classifier_loss: 0.3516 - val_adversary_loss: 0.0304
+Epoch 129/200
+ - 3s - loss: 0.0298 - classifier_loss: 0.3439 - adversary_loss: 0.0298 - val_loss: 0.0303 - val_classifier_loss: 0.3476 - val_adversary_loss: 0.0303
+Epoch 130/200
+ - 3s - loss: 0.0298 - classifier_loss: 0.3438 - adversary_loss: 0.0298 - val_loss: 0.0303 - val_classifier_loss: 0.3483 - val_adversary_loss: 0.0303
+Epoch 131/200
+ - 3s - loss: 0.0298 - classifier_loss: 0.3439 - adversary_loss: 0.0298 - val_loss: 0.0304 - val_classifier_loss: 0.3514 - val_adversary_loss: 0.0304
+Epoch 132/200
+ - 3s - loss: 0.0298 - classifier_loss: 0.3439 - adversary_loss: 0.0298 - val_loss: 0.0305 - val_classifier_loss: 0.3556 - val_adversary_loss: 0.0305
+Epoch 133/200
+ - 3s - loss: 0.0298 - classifier_loss: 0.3439 - adversary_loss: 0.0298 - val_loss: 0.0304 - val_classifier_loss: 0.3514 - val_adversary_loss: 0.0304
+Epoch 134/200
+ - 3s - loss: 0.0298 - classifier_loss: 0.3439 - adversary_loss: 0.0298 - val_loss: 0.0304 - val_classifier_loss: 0.3510 - val_adversary_loss: 0.0304
+Epoch 135/200
+ - 3s - loss: 0.0298 - classifier_loss: 0.3439 - adversary_loss: 0.0298 - val_loss: 0.0304 - val_classifier_loss: 0.3512 - val_adversary_loss: 0.0304
+Epoch 136/200
+ - 3s - loss: 0.0298 - classifier_loss: 0.3438 - adversary_loss: 0.0298 - val_loss: 0.0303 - val_classifier_loss: 0.3509 - val_adversary_loss: 0.0303
+Epoch 137/200
+ - 3s - loss: 0.0298 - classifier_loss: 0.3439 - adversary_loss: 0.0298 - val_loss: 0.0305 - val_classifier_loss: 0.3553 - val_adversary_loss: 0.0305
+Epoch 138/200
+ - 3s - loss: 0.0298 - classifier_loss: 0.3438 - adversary_loss: 0.0298 - val_loss: 0.0304 - val_classifier_loss: 0.3504 - val_adversary_loss: 0.0304
+Epoch 139/200
+ - 3s - loss: 0.0298 - classifier_loss: 0.3438 - adversary_loss: 0.0298 - val_loss: 0.0304 - val_classifier_loss: 0.3504 - val_adversary_loss: 0.0304
+Epoch 140/200
+ - 3s - loss: 0.0298 - classifier_loss: 0.3439 - adversary_loss: 0.0298 - val_loss: 0.0303 - val_classifier_loss: 0.3491 - val_adversary_loss: 0.0303
+Epoch 141/200
+ - 3s - loss: 0.0297 - classifier_loss: 0.3439 - adversary_loss: 0.0297 - val_loss: 0.0305 - val_classifier_loss: 0.3554 - val_adversary_loss: 0.0305
+Epoch 142/200
+ - 3s - loss: 0.0297 - classifier_loss: 0.3439 - adversary_loss: 0.0297 - val_loss: 0.0303 - val_classifier_loss: 0.3521 - val_adversary_loss: 0.0303
+Epoch 143/200
+ - 4s - loss: 0.0297 - classifier_loss: 0.3439 - adversary_loss: 0.0297 - val_loss: 0.0304 - val_classifier_loss: 0.3537 - val_adversary_loss: 0.0304
+Epoch 144/200
+ - 3s - loss: 0.0297 - classifier_loss: 0.3438 - adversary_loss: 0.0297 - val_loss: 0.0305 - val_classifier_loss: 0.3549 - val_adversary_loss: 0.0305
+Epoch 145/200
+ - 4s - loss: 0.0297 - classifier_loss: 0.3438 - adversary_loss: 0.0297 - val_loss: 0.0304 - val_classifier_loss: 0.3515 - val_adversary_loss: 0.0304
+Epoch 146/200
+ - 3s - loss: 0.0297 - classifier_loss: 0.3439 - adversary_loss: 0.0297 - val_loss: 0.0305 - val_classifier_loss: 0.3539 - val_adversary_loss: 0.0305
+Epoch 147/200
+ - 3s - loss: 0.0297 - classifier_loss: 0.3438 - adversary_loss: 0.0297 - val_loss: 0.0303 - val_classifier_loss: 0.3491 - val_adversary_loss: 0.0303
+Epoch 148/200
+ - 3s - loss: 0.0297 - classifier_loss: 0.3438 - adversary_loss: 0.0297 - val_loss: 0.0309 - val_classifier_loss: 0.3663 - val_adversary_loss: 0.0309
+Epoch 149/200
+ - 3s - loss: 0.0297 - classifier_loss: 0.3438 - adversary_loss: 0.0297 - val_loss: 0.0304 - val_classifier_loss: 0.3540 - val_adversary_loss: 0.0304
+Epoch 150/200
+ - 3s - loss: 0.0297 - classifier_loss: 0.3438 - adversary_loss: 0.0297 - val_loss: 0.0305 - val_classifier_loss: 0.3546 - val_adversary_loss: 0.0305
+Epoch 151/200
+ - 3s - loss: 0.0297 - classifier_loss: 0.3439 - adversary_loss: 0.0297 - val_loss: 0.0304 - val_classifier_loss: 0.3519 - val_adversary_loss: 0.0304
+Epoch 152/200
+ - 3s - loss: 0.0297 - classifier_loss: 0.3439 - adversary_loss: 0.0297 - val_loss: 0.0305 - val_classifier_loss: 0.3538 - val_adversary_loss: 0.0305
+Epoch 153/200
+ - 3s - loss: 0.0297 - classifier_loss: 0.3438 - adversary_loss: 0.0297 - val_loss: 0.0303 - val_classifier_loss: 0.3501 - val_adversary_loss: 0.0303
+Epoch 154/200
+ - 3s - loss: 0.0297 - classifier_loss: 0.3438 - adversary_loss: 0.0297 - val_loss: 0.0304 - val_classifier_loss: 0.3540 - val_adversary_loss: 0.0304
+Epoch 155/200
+ - 4s - loss: 0.0297 - classifier_loss: 0.3438 - adversary_loss: 0.0297 - val_loss: 0.0304 - val_classifier_loss: 0.3538 - val_adversary_loss: 0.0304
+Epoch 156/200
+ - 4s - loss: 0.0297 - classifier_loss: 0.3439 - adversary_loss: 0.0297 - val_loss: 0.0303 - val_classifier_loss: 0.3530 - val_adversary_loss: 0.0303
+Epoch 157/200
+ - 4s - loss: 0.0297 - classifier_loss: 0.3438 - adversary_loss: 0.0297 - val_loss: 0.0303 - val_classifier_loss: 0.3502 - val_adversary_loss: 0.0303
+Epoch 158/200
+ - 4s - loss: 0.0297 - classifier_loss: 0.3438 - adversary_loss: 0.0297 - val_loss: 0.0303 - val_classifier_loss: 0.3518 - val_adversary_loss: 0.0303
+Epoch 159/200
+ - 4s - loss: 0.0297 - classifier_loss: 0.3438 - adversary_loss: 0.0297 - val_loss: 0.0304 - val_classifier_loss: 0.3532 - val_adversary_loss: 0.0304
+Epoch 160/200
+ - 3s - loss: 0.0297 - classifier_loss: 0.3439 - adversary_loss: 0.0297 - val_loss: 0.0305 - val_classifier_loss: 0.3550 - val_adversary_loss: 0.0305
+Epoch 161/200
+ - 4s - loss: 0.0297 - classifier_loss: 0.3439 - adversary_loss: 0.0297 - val_loss: 0.0301 - val_classifier_loss: 0.3443 - val_adversary_loss: 0.0301
+Epoch 162/200
+ - 4s - loss: 0.0297 - classifier_loss: 0.3438 - adversary_loss: 0.0297 - val_loss: 0.0304 - val_classifier_loss: 0.3548 - val_adversary_loss: 0.0304
+Epoch 163/200
+ - 3s - loss: 0.0297 - classifier_loss: 0.3439 - adversary_loss: 0.0297 - val_loss: 0.0304 - val_classifier_loss: 0.3525 - val_adversary_loss: 0.0304
+Epoch 164/200
+ - 3s - loss: 0.0297 - classifier_loss: 0.3438 - adversary_loss: 0.0297 - val_loss: 0.0303 - val_classifier_loss: 0.3507 - val_adversary_loss: 0.0303
+Epoch 165/200
+ - 4s - loss: 0.0297 - classifier_loss: 0.3439 - adversary_loss: 0.0297 - val_loss: 0.0300 - val_classifier_loss: 0.3431 - val_adversary_loss: 0.0300
+Epoch 166/200
+ - 3s - loss: 0.0297 - classifier_loss: 0.3438 - adversary_loss: 0.0297 - val_loss: 0.0301 - val_classifier_loss: 0.3468 - val_adversary_loss: 0.0301
+Epoch 167/200
+ - 3s - loss: 0.0297 - classifier_loss: 0.3438 - adversary_loss: 0.0297 - val_loss: 0.0303 - val_classifier_loss: 0.3525 - val_adversary_loss: 0.0303
+Epoch 168/200
+ - 4s - loss: 0.0297 - classifier_loss: 0.3439 - adversary_loss: 0.0297 - val_loss: 0.0304 - val_classifier_loss: 0.3541 - val_adversary_loss: 0.0304
+Epoch 169/200
+ - 4s - loss: 0.0297 - classifier_loss: 0.3438 - adversary_loss: 0.0297 - val_loss: 0.0303 - val_classifier_loss: 0.3527 - val_adversary_loss: 0.0303
+Epoch 170/200
+ - 3s - loss: 0.0297 - classifier_loss: 0.3438 - adversary_loss: 0.0297 - val_loss: 0.0301 - val_classifier_loss: 0.3466 - val_adversary_loss: 0.0301
+Epoch 171/200
+ - 3s - loss: 0.0297 - classifier_loss: 0.3438 - adversary_loss: 0.0297 - val_loss: 0.0303 - val_classifier_loss: 0.3510 - val_adversary_loss: 0.0303
+Epoch 172/200
+ - 3s - loss: 0.0297 - classifier_loss: 0.3439 - adversary_loss: 0.0297 - val_loss: 0.0302 - val_classifier_loss: 0.3484 - val_adversary_loss: 0.0302
+Epoch 173/200
+ - 3s - loss: 0.0297 - classifier_loss: 0.3439 - adversary_loss: 0.0297 - val_loss: 0.0303 - val_classifier_loss: 0.3499 - val_adversary_loss: 0.0303
+Epoch 174/200
+ - 3s - loss: 0.0297 - classifier_loss: 0.3438 - adversary_loss: 0.0297 - val_loss: 0.0302 - val_classifier_loss: 0.3481 - val_adversary_loss: 0.0302
+Epoch 175/200
+ - 3s - loss: 0.0297 - classifier_loss: 0.3439 - adversary_loss: 0.0297 - val_loss: 0.0302 - val_classifier_loss: 0.3479 - val_adversary_loss: 0.0302
+Epoch 176/200
+ - 3s - loss: 0.0297 - classifier_loss: 0.3437 - adversary_loss: 0.0297 - val_loss: 0.0302 - val_classifier_loss: 0.3492 - val_adversary_loss: 0.0302
+Epoch 177/200
+ - 3s - loss: 0.0297 - classifier_loss: 0.3439 - adversary_loss: 0.0297 - val_loss: 0.0302 - val_classifier_loss: 0.3468 - val_adversary_loss: 0.0302
+Epoch 178/200
+ - 3s - loss: 0.0297 - classifier_loss: 0.3438 - adversary_loss: 0.0297 - val_loss: 0.0303 - val_classifier_loss: 0.3525 - val_adversary_loss: 0.0303
+Epoch 179/200
+ - 3s - loss: 0.0297 - classifier_loss: 0.3438 - adversary_loss: 0.0297 - val_loss: 0.0304 - val_classifier_loss: 0.3549 - val_adversary_loss: 0.0304
+Epoch 180/200
+ - 3s - loss: 0.0297 - classifier_loss: 0.3439 - adversary_loss: 0.0297 - val_loss: 0.0301 - val_classifier_loss: 0.3477 - val_adversary_loss: 0.0301
+Epoch 181/200
+ - 3s - loss: 0.0297 - classifier_loss: 0.3439 - adversary_loss: 0.0297 - val_loss: 0.0303 - val_classifier_loss: 0.3528 - val_adversary_loss: 0.0303
+Epoch 182/200
+ - 3s - loss: 0.0296 - classifier_loss: 0.3438 - adversary_loss: 0.0296 - val_loss: 0.0302 - val_classifier_loss: 0.3488 - val_adversary_loss: 0.0302
+Epoch 183/200
+ - 3s - loss: 0.0296 - classifier_loss: 0.3439 - adversary_loss: 0.0296 - val_loss: 0.0301 - val_classifier_loss: 0.3485 - val_adversary_loss: 0.0301
+Epoch 184/200
+ - 3s - loss: 0.0296 - classifier_loss: 0.3438 - adversary_loss: 0.0296 - val_loss: 0.0304 - val_classifier_loss: 0.3539 - val_adversary_loss: 0.0304
+Epoch 185/200
+ - 3s - loss: 0.0296 - classifier_loss: 0.3438 - adversary_loss: 0.0296 - val_loss: 0.0298 - val_classifier_loss: 0.3419 - val_adversary_loss: 0.0298
+Epoch 186/200
+ - 3s - loss: 0.0296 - classifier_loss: 0.3439 - adversary_loss: 0.0296 - val_loss: 0.0303 - val_classifier_loss: 0.3517 - val_adversary_loss: 0.0303
+Epoch 187/200
+ - 3s - loss: 0.0296 - classifier_loss: 0.3438 - adversary_loss: 0.0296 - val_loss: 0.0303 - val_classifier_loss: 0.3492 - val_adversary_loss: 0.0303
+Epoch 188/200
+ - 3s - loss: 0.0296 - classifier_loss: 0.3439 - adversary_loss: 0.0296 - val_loss: 0.0302 - val_classifier_loss: 0.3511 - val_adversary_loss: 0.0302
+Epoch 189/200
+ - 3s - loss: 0.0296 - classifier_loss: 0.3438 - adversary_loss: 0.0296 - val_loss: 0.0302 - val_classifier_loss: 0.3504 - val_adversary_loss: 0.0302
+Epoch 190/200
+ - 3s - loss: 0.0296 - classifier_loss: 0.3439 - adversary_loss: 0.0296 - val_loss: 0.0302 - val_classifier_loss: 0.3481 - val_adversary_loss: 0.0302
+Epoch 191/200
+ - 3s - loss: 0.0296 - classifier_loss: 0.3439 - adversary_loss: 0.0296 - val_loss: 0.0302 - val_classifier_loss: 0.3508 - val_adversary_loss: 0.0302
+Epoch 192/200
+ - 3s - loss: 0.0296 - classifier_loss: 0.3438 - adversary_loss: 0.0296 - val_loss: 0.0303 - val_classifier_loss: 0.3494 - val_adversary_loss: 0.0303
+Epoch 193/200
+ - 3s - loss: 0.0296 - classifier_loss: 0.3439 - adversary_loss: 0.0296 - val_loss: 0.0302 - val_classifier_loss: 0.3507 - val_adversary_loss: 0.0302
+Epoch 194/200
+ - 3s - loss: 0.0296 - classifier_loss: 0.3438 - adversary_loss: 0.0296 - val_loss: 0.0302 - val_classifier_loss: 0.3496 - val_adversary_loss: 0.0302
+Epoch 195/200
+ - 3s - loss: 0.0296 - classifier_loss: 0.3438 - adversary_loss: 0.0296 - val_loss: 0.0301 - val_classifier_loss: 0.3469 - val_adversary_loss: 0.0301
+Epoch 196/200
+ - 3s - loss: 0.0296 - classifier_loss: 0.3438 - adversary_loss: 0.0296 - val_loss: 0.0301 - val_classifier_loss: 0.3473 - val_adversary_loss: 0.0301
+Epoch 197/200
+ - 3s - loss: 0.0296 - classifier_loss: 0.3438 - adversary_loss: 0.0296 - val_loss: 0.0303 - val_classifier_loss: 0.3522 - val_adversary_loss: 0.0303
+Epoch 198/200
+ - 3s - loss: 0.0296 - classifier_loss: 0.3438 - adversary_loss: 0.0296 - val_loss: 0.0303 - val_classifier_loss: 0.3535 - val_adversary_loss: 0.0303
+Epoch 199/200
+ - 3s - loss: 0.0296 - classifier_loss: 0.3438 - adversary_loss: 0.0296 - val_loss: 0.0303 - val_classifier_loss: 0.3522 - val_adversary_loss: 0.0303
+Epoch 200/200
+ - 3s - loss: 0.0296 - classifier_loss: 0.3439 - adversary_loss: 0.0296 - val_loss: 0.0301 - val_classifier_loss: 0.3485 - val_adversary_loss: 0.0301
+INFO: Computing initial loss
+INFO: Pre-training
+[38;2;74;176;245m[1mProfile[0m ⏱  ······ Starting [1m@add_nn[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  ······ Time elapsed in [1m@add_nn[0m: ................................ [1m5.6s[0m
+Background rejection: 22.0464661382
+1/JSD:                4.22560263304
+[38;2;74;176;245m[1mProfile[0m ⏱  ···· Time elapsed in [1mFold 2/3[0m: ............................... [1m807.8s[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  ···· Starting [1mFold 3/3[0m
+Train on 1333334 samples, validate on 666666 samples
+Epoch 1/10
+ - 17s - loss: 0.0285 - classifier_loss: 0.3431 - adversary_loss: 0.0285 - val_loss: 0.0281 - val_classifier_loss: 0.3483 - val_adversary_loss: 0.0281
+Epoch 2/10
+ - 3s - loss: 0.0285 - classifier_loss: 0.3431 - adversary_loss: 0.0285 - val_loss: 0.0281 - val_classifier_loss: 0.3603 - val_adversary_loss: 0.0281
+Epoch 3/10
+ - 3s - loss: 0.0285 - classifier_loss: 0.3431 - adversary_loss: 0.0285 - val_loss: 0.0281 - val_classifier_loss: 0.3492 - val_adversary_loss: 0.0281
+Epoch 4/10
+ - 3s - loss: 0.0285 - classifier_loss: 0.3431 - adversary_loss: 0.0285 - val_loss: 0.0281 - val_classifier_loss: 0.3572 - val_adversary_loss: 0.0281
+Epoch 5/10
+ - 3s - loss: 0.0285 - classifier_loss: 0.3431 - adversary_loss: 0.0285 - val_loss: 0.0280 - val_classifier_loss: 0.3544 - val_adversary_loss: 0.0280
+Epoch 6/10
+ - 3s - loss: 0.0285 - classifier_loss: 0.3431 - adversary_loss: 0.0285 - val_loss: 0.0280 - val_classifier_loss: 0.3538 - val_adversary_loss: 0.0280
+Epoch 7/10
+ - 3s - loss: 0.0285 - classifier_loss: 0.3431 - adversary_loss: 0.0285 - val_loss: 0.0280 - val_classifier_loss: 0.3536 - val_adversary_loss: 0.0280
+Epoch 8/10
+ - 3s - loss: 0.0285 - classifier_loss: 0.3431 - adversary_loss: 0.0285 - val_loss: 0.0281 - val_classifier_loss: 0.3545 - val_adversary_loss: 0.0281
+Epoch 9/10
+ - 3s - loss: 0.0285 - classifier_loss: 0.3431 - adversary_loss: 0.0285 - val_loss: 0.0280 - val_classifier_loss: 0.3512 - val_adversary_loss: 0.0280
+Epoch 10/10
+ - 3s - loss: 0.0285 - classifier_loss: 0.3432 - adversary_loss: 0.0285 - val_loss: 0.0281 - val_classifier_loss: 0.3544 - val_adversary_loss: 0.0281
+INFO: Actual training
+Train on 1333334 samples, validate on 666666 samples
+Epoch 1/200
+ - 23s - loss: 0.0285 - classifier_loss: 0.3431 - adversary_loss: 0.0285 - val_loss: 0.0280 - val_classifier_loss: 0.3604 - val_adversary_loss: 0.0280
+Epoch 2/200
+ - 3s - loss: 0.0284 - classifier_loss: 0.3431 - adversary_loss: 0.0284 - val_loss: 0.0280 - val_classifier_loss: 0.3560 - val_adversary_loss: 0.0280
+Epoch 3/200
+ - 3s - loss: 0.0284 - classifier_loss: 0.3432 - adversary_loss: 0.0284 - val_loss: 0.0280 - val_classifier_loss: 0.3499 - val_adversary_loss: 0.0280
+Epoch 4/200
+ - 3s - loss: 0.0284 - classifier_loss: 0.3431 - adversary_loss: 0.0284 - val_loss: 0.0280 - val_classifier_loss: 0.3532 - val_adversary_loss: 0.0280
+Epoch 5/200
+ - 3s - loss: 0.0284 - classifier_loss: 0.3430 - adversary_loss: 0.0284 - val_loss: 0.0280 - val_classifier_loss: 0.3552 - val_adversary_loss: 0.0280
+Epoch 6/200
+ - 3s - loss: 0.0284 - classifier_loss: 0.3431 - adversary_loss: 0.0284 - val_loss: 0.0280 - val_classifier_loss: 0.3549 - val_adversary_loss: 0.0280
+Epoch 7/200
+ - 3s - loss: 0.0284 - classifier_loss: 0.3432 - adversary_loss: 0.0284 - val_loss: 0.0280 - val_classifier_loss: 0.3525 - val_adversary_loss: 0.0280
+Epoch 8/200
+ - 3s - loss: 0.0284 - classifier_loss: 0.3432 - adversary_loss: 0.0284 - val_loss: 0.0280 - val_classifier_loss: 0.3565 - val_adversary_loss: 0.0280
+Epoch 9/200
+ - 3s - loss: 0.0284 - classifier_loss: 0.3431 - adversary_loss: 0.0284 - val_loss: 0.0280 - val_classifier_loss: 0.3548 - val_adversary_loss: 0.0280
+Epoch 10/200
+ - 3s - loss: 0.0284 - classifier_loss: 0.3432 - adversary_loss: 0.0284 - val_loss: 0.0280 - val_classifier_loss: 0.3542 - val_adversary_loss: 0.0280
+Epoch 11/200
+ - 3s - loss: 0.0284 - classifier_loss: 0.3430 - adversary_loss: 0.0284 - val_loss: 0.0279 - val_classifier_loss: 0.3514 - val_adversary_loss: 0.0279
+Epoch 12/200
+ - 3s - loss: 0.0284 - classifier_loss: 0.3432 - adversary_loss: 0.0284 - val_loss: 0.0279 - val_classifier_loss: 0.3532 - val_adversary_loss: 0.0279
+Epoch 13/200
+ - 3s - loss: 0.0284 - classifier_loss: 0.3431 - adversary_loss: 0.0284 - val_loss: 0.0279 - val_classifier_loss: 0.3518 - val_adversary_loss: 0.0279
+Epoch 14/200
+ - 3s - loss: 0.0284 - classifier_loss: 0.3431 - adversary_loss: 0.0284 - val_loss: 0.0279 - val_classifier_loss: 0.3520 - val_adversary_loss: 0.0279
+Epoch 15/200
+ - 3s - loss: 0.0284 - classifier_loss: 0.3431 - adversary_loss: 0.0284 - val_loss: 0.0279 - val_classifier_loss: 0.3501 - val_adversary_loss: 0.0279
+Epoch 16/200
+ - 3s - loss: 0.0283 - classifier_loss: 0.3431 - adversary_loss: 0.0283 - val_loss: 0.0279 - val_classifier_loss: 0.3563 - val_adversary_loss: 0.0279
+Epoch 17/200
+ - 3s - loss: 0.0283 - classifier_loss: 0.3431 - adversary_loss: 0.0283 - val_loss: 0.0279 - val_classifier_loss: 0.3554 - val_adversary_loss: 0.0279
+Epoch 18/200
+ - 3s - loss: 0.0283 - classifier_loss: 0.3432 - adversary_loss: 0.0283 - val_loss: 0.0279 - val_classifier_loss: 0.3538 - val_adversary_loss: 0.0279
+Epoch 19/200
+ - 3s - loss: 0.0283 - classifier_loss: 0.3431 - adversary_loss: 0.0283 - val_loss: 0.0279 - val_classifier_loss: 0.3536 - val_adversary_loss: 0.0279
+Epoch 20/200
+ - 3s - loss: 0.0283 - classifier_loss: 0.3431 - adversary_loss: 0.0283 - val_loss: 0.0279 - val_classifier_loss: 0.3530 - val_adversary_loss: 0.0279
+Epoch 21/200
+ - 3s - loss: 0.0283 - classifier_loss: 0.3431 - adversary_loss: 0.0283 - val_loss: 0.0279 - val_classifier_loss: 0.3534 - val_adversary_loss: 0.0279
+Epoch 22/200
+ - 3s - loss: 0.0283 - classifier_loss: 0.3431 - adversary_loss: 0.0283 - val_loss: 0.0279 - val_classifier_loss: 0.3546 - val_adversary_loss: 0.0279
+Epoch 23/200
+ - 3s - loss: 0.0283 - classifier_loss: 0.3431 - adversary_loss: 0.0283 - val_loss: 0.0279 - val_classifier_loss: 0.3530 - val_adversary_loss: 0.0279
+Epoch 24/200
+ - 3s - loss: 0.0283 - classifier_loss: 0.3431 - adversary_loss: 0.0283 - val_loss: 0.0279 - val_classifier_loss: 0.3539 - val_adversary_loss: 0.0279
+Epoch 25/200
+ - 3s - loss: 0.0283 - classifier_loss: 0.3431 - adversary_loss: 0.0283 - val_loss: 0.0279 - val_classifier_loss: 0.3535 - val_adversary_loss: 0.0279
+Epoch 26/200
+ - 4s - loss: 0.0283 - classifier_loss: 0.3431 - adversary_loss: 0.0283 - val_loss: 0.0279 - val_classifier_loss: 0.3540 - val_adversary_loss: 0.0279
+Epoch 27/200
+ - 3s - loss: 0.0283 - classifier_loss: 0.3431 - adversary_loss: 0.0283 - val_loss: 0.0279 - val_classifier_loss: 0.3526 - val_adversary_loss: 0.0279
+Epoch 28/200
+ - 3s - loss: 0.0283 - classifier_loss: 0.3431 - adversary_loss: 0.0283 - val_loss: 0.0279 - val_classifier_loss: 0.3518 - val_adversary_loss: 0.0279
+Epoch 29/200
+ - 3s - loss: 0.0283 - classifier_loss: 0.3432 - adversary_loss: 0.0283 - val_loss: 0.0279 - val_classifier_loss: 0.3552 - val_adversary_loss: 0.0279
+Epoch 30/200
+ - 3s - loss: 0.0283 - classifier_loss: 0.3431 - adversary_loss: 0.0283 - val_loss: 0.0279 - val_classifier_loss: 0.3505 - val_adversary_loss: 0.0279
+Epoch 31/200
+ - 3s - loss: 0.0283 - classifier_loss: 0.3431 - adversary_loss: 0.0283 - val_loss: 0.0279 - val_classifier_loss: 0.3532 - val_adversary_loss: 0.0279
+Epoch 32/200
+ - 3s - loss: 0.0283 - classifier_loss: 0.3431 - adversary_loss: 0.0283 - val_loss: 0.0279 - val_classifier_loss: 0.3529 - val_adversary_loss: 0.0279
+Epoch 33/200
+ - 3s - loss: 0.0283 - classifier_loss: 0.3431 - adversary_loss: 0.0283 - val_loss: 0.0279 - val_classifier_loss: 0.3568 - val_adversary_loss: 0.0279
+Epoch 34/200
+ - 3s - loss: 0.0283 - classifier_loss: 0.3431 - adversary_loss: 0.0283 - val_loss: 0.0278 - val_classifier_loss: 0.3522 - val_adversary_loss: 0.0278
+Epoch 35/200
+ - 3s - loss: 0.0283 - classifier_loss: 0.3430 - adversary_loss: 0.0283 - val_loss: 0.0279 - val_classifier_loss: 0.3524 - val_adversary_loss: 0.0279
+Epoch 36/200
+ - 3s - loss: 0.0283 - classifier_loss: 0.3431 - adversary_loss: 0.0283 - val_loss: 0.0279 - val_classifier_loss: 0.3522 - val_adversary_loss: 0.0279
+Epoch 37/200
+ - 3s - loss: 0.0283 - classifier_loss: 0.3431 - adversary_loss: 0.0283 - val_loss: 0.0279 - val_classifier_loss: 0.3569 - val_adversary_loss: 0.0279
+Epoch 38/200
+ - 4s - loss: 0.0283 - classifier_loss: 0.3431 - adversary_loss: 0.0283 - val_loss: 0.0279 - val_classifier_loss: 0.3583 - val_adversary_loss: 0.0279
+Epoch 39/200
+ - 3s - loss: 0.0283 - classifier_loss: 0.3432 - adversary_loss: 0.0283 - val_loss: 0.0279 - val_classifier_loss: 0.3529 - val_adversary_loss: 0.0279
+Epoch 40/200
+ - 4s - loss: 0.0283 - classifier_loss: 0.3431 - adversary_loss: 0.0283 - val_loss: 0.0278 - val_classifier_loss: 0.3504 - val_adversary_loss: 0.0278
+Epoch 41/200
+ - 3s - loss: 0.0283 - classifier_loss: 0.3431 - adversary_loss: 0.0283 - val_loss: 0.0278 - val_classifier_loss: 0.3514 - val_adversary_loss: 0.0278
+Epoch 42/200
+ - 4s - loss: 0.0283 - classifier_loss: 0.3432 - adversary_loss: 0.0283 - val_loss: 0.0278 - val_classifier_loss: 0.3543 - val_adversary_loss: 0.0278
+Epoch 43/200
+ - 3s - loss: 0.0283 - classifier_loss: 0.3431 - adversary_loss: 0.0283 - val_loss: 0.0278 - val_classifier_loss: 0.3525 - val_adversary_loss: 0.0278
+Epoch 44/200
+ - 3s - loss: 0.0283 - classifier_loss: 0.3431 - adversary_loss: 0.0283 - val_loss: 0.0278 - val_classifier_loss: 0.3521 - val_adversary_loss: 0.0278
+Epoch 45/200
+ - 3s - loss: 0.0282 - classifier_loss: 0.3431 - adversary_loss: 0.0282 - val_loss: 0.0278 - val_classifier_loss: 0.3535 - val_adversary_loss: 0.0278
+Epoch 46/200
+ - 4s - loss: 0.0282 - classifier_loss: 0.3432 - adversary_loss: 0.0282 - val_loss: 0.0278 - val_classifier_loss: 0.3531 - val_adversary_loss: 0.0278
+Epoch 47/200
+ - 3s - loss: 0.0282 - classifier_loss: 0.3432 - adversary_loss: 0.0282 - val_loss: 0.0278 - val_classifier_loss: 0.3531 - val_adversary_loss: 0.0278
+Epoch 48/200
+ - 3s - loss: 0.0282 - classifier_loss: 0.3431 - adversary_loss: 0.0282 - val_loss: 0.0278 - val_classifier_loss: 0.3542 - val_adversary_loss: 0.0278
+Epoch 49/200
+ - 3s - loss: 0.0282 - classifier_loss: 0.3431 - adversary_loss: 0.0282 - val_loss: 0.0278 - val_classifier_loss: 0.3521 - val_adversary_loss: 0.0278
+Epoch 50/200
+ - 3s - loss: 0.0282 - classifier_loss: 0.3431 - adversary_loss: 0.0282 - val_loss: 0.0278 - val_classifier_loss: 0.3532 - val_adversary_loss: 0.0278
+Epoch 51/200
+ - 3s - loss: 0.0282 - classifier_loss: 0.3432 - adversary_loss: 0.0282 - val_loss: 0.0278 - val_classifier_loss: 0.3623 - val_adversary_loss: 0.0278
+Epoch 52/200
+ - 3s - loss: 0.0282 - classifier_loss: 0.3431 - adversary_loss: 0.0282 - val_loss: 0.0278 - val_classifier_loss: 0.3540 - val_adversary_loss: 0.0278
+Epoch 53/200
+ - 4s - loss: 0.0282 - classifier_loss: 0.3431 - adversary_loss: 0.0282 - val_loss: 0.0278 - val_classifier_loss: 0.3542 - val_adversary_loss: 0.0278
+Epoch 54/200
+ - 3s - loss: 0.0282 - classifier_loss: 0.3431 - adversary_loss: 0.0282 - val_loss: 0.0278 - val_classifier_loss: 0.3505 - val_adversary_loss: 0.0278
+Epoch 55/200
+ - 3s - loss: 0.0282 - classifier_loss: 0.3432 - adversary_loss: 0.0282 - val_loss: 0.0278 - val_classifier_loss: 0.3549 - val_adversary_loss: 0.0278
+Epoch 56/200
+ - 3s - loss: 0.0282 - classifier_loss: 0.3431 - adversary_loss: 0.0282 - val_loss: 0.0278 - val_classifier_loss: 0.3530 - val_adversary_loss: 0.0278
+Epoch 57/200
+ - 3s - loss: 0.0282 - classifier_loss: 0.3431 - adversary_loss: 0.0282 - val_loss: 0.0278 - val_classifier_loss: 0.3544 - val_adversary_loss: 0.0278
+Epoch 58/200
+ - 3s - loss: 0.0282 - classifier_loss: 0.3430 - adversary_loss: 0.0282 - val_loss: 0.0278 - val_classifier_loss: 0.3525 - val_adversary_loss: 0.0278
+Epoch 59/200
+ - 3s - loss: 0.0282 - classifier_loss: 0.3431 - adversary_loss: 0.0282 - val_loss: 0.0278 - val_classifier_loss: 0.3515 - val_adversary_loss: 0.0278
+Epoch 60/200
+ - 3s - loss: 0.0282 - classifier_loss: 0.3431 - adversary_loss: 0.0282 - val_loss: 0.0278 - val_classifier_loss: 0.3545 - val_adversary_loss: 0.0278
+Epoch 61/200
+ - 3s - loss: 0.0282 - classifier_loss: 0.3430 - adversary_loss: 0.0282 - val_loss: 0.0278 - val_classifier_loss: 0.3582 - val_adversary_loss: 0.0278
+Epoch 62/200
+ - 3s - loss: 0.0282 - classifier_loss: 0.3431 - adversary_loss: 0.0282 - val_loss: 0.0278 - val_classifier_loss: 0.3559 - val_adversary_loss: 0.0278
+Epoch 63/200
+ - 3s - loss: 0.0282 - classifier_loss: 0.3431 - adversary_loss: 0.0282 - val_loss: 0.0278 - val_classifier_loss: 0.3495 - val_adversary_loss: 0.0278
+Epoch 64/200
+ - 3s - loss: 0.0282 - classifier_loss: 0.3432 - adversary_loss: 0.0282 - val_loss: 0.0278 - val_classifier_loss: 0.3527 - val_adversary_loss: 0.0278
+Epoch 65/200
+ - 4s - loss: 0.0282 - classifier_loss: 0.3431 - adversary_loss: 0.0282 - val_loss: 0.0278 - val_classifier_loss: 0.3508 - val_adversary_loss: 0.0278
+Epoch 66/200
+ - 4s - loss: 0.0282 - classifier_loss: 0.3431 - adversary_loss: 0.0282 - val_loss: 0.0278 - val_classifier_loss: 0.3538 - val_adversary_loss: 0.0278
+Epoch 67/200
+ - 3s - loss: 0.0282 - classifier_loss: 0.3432 - adversary_loss: 0.0282 - val_loss: 0.0278 - val_classifier_loss: 0.3486 - val_adversary_loss: 0.0278
+Epoch 68/200
+ - 3s - loss: 0.0282 - classifier_loss: 0.3431 - adversary_loss: 0.0282 - val_loss: 0.0278 - val_classifier_loss: 0.3520 - val_adversary_loss: 0.0278
+Epoch 69/200
+ - 3s - loss: 0.0282 - classifier_loss: 0.3432 - adversary_loss: 0.0282 - val_loss: 0.0278 - val_classifier_loss: 0.3513 - val_adversary_loss: 0.0278
+Epoch 70/200
+ - 3s - loss: 0.0282 - classifier_loss: 0.3431 - adversary_loss: 0.0282 - val_loss: 0.0278 - val_classifier_loss: 0.3536 - val_adversary_loss: 0.0278
+Epoch 71/200
+ - 3s - loss: 0.0282 - classifier_loss: 0.3431 - adversary_loss: 0.0282 - val_loss: 0.0278 - val_classifier_loss: 0.3540 - val_adversary_loss: 0.0278
+Epoch 72/200
+ - 3s - loss: 0.0282 - classifier_loss: 0.3431 - adversary_loss: 0.0282 - val_loss: 0.0278 - val_classifier_loss: 0.3518 - val_adversary_loss: 0.0278
+Epoch 73/200
+ - 3s - loss: 0.0282 - classifier_loss: 0.3431 - adversary_loss: 0.0282 - val_loss: 0.0278 - val_classifier_loss: 0.3523 - val_adversary_loss: 0.0278
+Epoch 74/200
+ - 3s - loss: 0.0282 - classifier_loss: 0.3431 - adversary_loss: 0.0282 - val_loss: 0.0278 - val_classifier_loss: 0.3555 - val_adversary_loss: 0.0278
+Epoch 75/200
+ - 3s - loss: 0.0282 - classifier_loss: 0.3432 - adversary_loss: 0.0282 - val_loss: 0.0278 - val_classifier_loss: 0.3503 - val_adversary_loss: 0.0278
+Epoch 76/200
+ - 3s - loss: 0.0282 - classifier_loss: 0.3431 - adversary_loss: 0.0282 - val_loss: 0.0278 - val_classifier_loss: 0.3505 - val_adversary_loss: 0.0278
+Epoch 77/200
+ - 3s - loss: 0.0282 - classifier_loss: 0.3432 - adversary_loss: 0.0282 - val_loss: 0.0278 - val_classifier_loss: 0.3496 - val_adversary_loss: 0.0278
+Epoch 78/200
+ - 3s - loss: 0.0282 - classifier_loss: 0.3432 - adversary_loss: 0.0282 - val_loss: 0.0278 - val_classifier_loss: 0.3519 - val_adversary_loss: 0.0278
+Epoch 79/200
+ - 3s - loss: 0.0282 - classifier_loss: 0.3431 - adversary_loss: 0.0282 - val_loss: 0.0278 - val_classifier_loss: 0.3516 - val_adversary_loss: 0.0278
+Epoch 80/200
+ - 3s - loss: 0.0282 - classifier_loss: 0.3432 - adversary_loss: 0.0282 - val_loss: 0.0277 - val_classifier_loss: 0.3535 - val_adversary_loss: 0.0277
+Epoch 81/200
+ - 3s - loss: 0.0282 - classifier_loss: 0.3431 - adversary_loss: 0.0282 - val_loss: 0.0277 - val_classifier_loss: 0.3533 - val_adversary_loss: 0.0277
+Epoch 82/200
+ - 3s - loss: 0.0282 - classifier_loss: 0.3431 - adversary_loss: 0.0282 - val_loss: 0.0277 - val_classifier_loss: 0.3540 - val_adversary_loss: 0.0277
+Epoch 83/200
+ - 3s - loss: 0.0282 - classifier_loss: 0.3431 - adversary_loss: 0.0282 - val_loss: 0.0277 - val_classifier_loss: 0.3564 - val_adversary_loss: 0.0277
+Epoch 84/200
+ - 3s - loss: 0.0282 - classifier_loss: 0.3431 - adversary_loss: 0.0282 - val_loss: 0.0277 - val_classifier_loss: 0.3528 - val_adversary_loss: 0.0277
+Epoch 85/200
+ - 3s - loss: 0.0281 - classifier_loss: 0.3431 - adversary_loss: 0.0281 - val_loss: 0.0278 - val_classifier_loss: 0.3533 - val_adversary_loss: 0.0278
+Epoch 86/200
+ - 3s - loss: 0.0281 - classifier_loss: 0.3431 - adversary_loss: 0.0281 - val_loss: 0.0277 - val_classifier_loss: 0.3509 - val_adversary_loss: 0.0277
+Epoch 87/200
+ - 3s - loss: 0.0281 - classifier_loss: 0.3431 - adversary_loss: 0.0281 - val_loss: 0.0277 - val_classifier_loss: 0.3537 - val_adversary_loss: 0.0277
+Epoch 88/200
+ - 3s - loss: 0.0281 - classifier_loss: 0.3431 - adversary_loss: 0.0281 - val_loss: 0.0277 - val_classifier_loss: 0.3664 - val_adversary_loss: 0.0277
+Epoch 89/200
+ - 3s - loss: 0.0281 - classifier_loss: 0.3431 - adversary_loss: 0.0281 - val_loss: 0.0277 - val_classifier_loss: 0.3573 - val_adversary_loss: 0.0277
+Epoch 90/200
+ - 3s - loss: 0.0281 - classifier_loss: 0.3431 - adversary_loss: 0.0281 - val_loss: 0.0277 - val_classifier_loss: 0.3514 - val_adversary_loss: 0.0277
+Epoch 91/200
+ - 3s - loss: 0.0281 - classifier_loss: 0.3432 - adversary_loss: 0.0281 - val_loss: 0.0277 - val_classifier_loss: 0.3553 - val_adversary_loss: 0.0277
+Epoch 92/200
+ - 3s - loss: 0.0281 - classifier_loss: 0.3431 - adversary_loss: 0.0281 - val_loss: 0.0277 - val_classifier_loss: 0.3565 - val_adversary_loss: 0.0277
+Epoch 93/200
+ - 3s - loss: 0.0281 - classifier_loss: 0.3431 - adversary_loss: 0.0281 - val_loss: 0.0277 - val_classifier_loss: 0.3522 - val_adversary_loss: 0.0277
+Epoch 94/200
+ - 3s - loss: 0.0281 - classifier_loss: 0.3431 - adversary_loss: 0.0281 - val_loss: 0.0277 - val_classifier_loss: 0.3535 - val_adversary_loss: 0.0277
+Epoch 95/200
+ - 3s - loss: 0.0281 - classifier_loss: 0.3432 - adversary_loss: 0.0281 - val_loss: 0.0277 - val_classifier_loss: 0.3534 - val_adversary_loss: 0.0277
+Epoch 96/200
+ - 3s - loss: 0.0281 - classifier_loss: 0.3431 - adversary_loss: 0.0281 - val_loss: 0.0277 - val_classifier_loss: 0.3521 - val_adversary_loss: 0.0277
+Epoch 97/200
+ - 3s - loss: 0.0281 - classifier_loss: 0.3431 - adversary_loss: 0.0281 - val_loss: 0.0277 - val_classifier_loss: 0.3539 - val_adversary_loss: 0.0277
+Epoch 98/200
+ - 3s - loss: 0.0281 - classifier_loss: 0.3432 - adversary_loss: 0.0281 - val_loss: 0.0277 - val_classifier_loss: 0.3540 - val_adversary_loss: 0.0277
+Epoch 99/200
+ - 3s - loss: 0.0281 - classifier_loss: 0.3432 - adversary_loss: 0.0281 - val_loss: 0.0277 - val_classifier_loss: 0.3559 - val_adversary_loss: 0.0277
+Epoch 100/200
+ - 3s - loss: 0.0281 - classifier_loss: 0.3431 - adversary_loss: 0.0281 - val_loss: 0.0277 - val_classifier_loss: 0.3563 - val_adversary_loss: 0.0277
+Epoch 101/200
+ - 3s - loss: 0.0281 - classifier_loss: 0.3432 - adversary_loss: 0.0281 - val_loss: 0.0277 - val_classifier_loss: 0.3480 - val_adversary_loss: 0.0277
+Epoch 102/200
+ - 3s - loss: 0.0281 - classifier_loss: 0.3431 - adversary_loss: 0.0281 - val_loss: 0.0277 - val_classifier_loss: 0.3528 - val_adversary_loss: 0.0277
+Epoch 103/200
+ - 3s - loss: 0.0281 - classifier_loss: 0.3432 - adversary_loss: 0.0281 - val_loss: 0.0277 - val_classifier_loss: 0.3573 - val_adversary_loss: 0.0277
+Epoch 104/200
+ - 3s - loss: 0.0281 - classifier_loss: 0.3431 - adversary_loss: 0.0281 - val_loss: 0.0277 - val_classifier_loss: 0.3564 - val_adversary_loss: 0.0277
+Epoch 105/200
+ - 4s - loss: 0.0281 - classifier_loss: 0.3431 - adversary_loss: 0.0281 - val_loss: 0.0277 - val_classifier_loss: 0.3521 - val_adversary_loss: 0.0277
+Epoch 106/200
+ - 4s - loss: 0.0281 - classifier_loss: 0.3432 - adversary_loss: 0.0281 - val_loss: 0.0277 - val_classifier_loss: 0.3539 - val_adversary_loss: 0.0277
+Epoch 107/200
+ - 3s - loss: 0.0281 - classifier_loss: 0.3431 - adversary_loss: 0.0281 - val_loss: 0.0277 - val_classifier_loss: 0.3520 - val_adversary_loss: 0.0277
+Epoch 108/200
+ - 4s - loss: 0.0281 - classifier_loss: 0.3431 - adversary_loss: 0.0281 - val_loss: 0.0277 - val_classifier_loss: 0.3577 - val_adversary_loss: 0.0277
+Epoch 109/200
+ - 3s - loss: 0.0281 - classifier_loss: 0.3432 - adversary_loss: 0.0281 - val_loss: 0.0277 - val_classifier_loss: 0.3521 - val_adversary_loss: 0.0277
+Epoch 110/200
+ - 3s - loss: 0.0281 - classifier_loss: 0.3431 - adversary_loss: 0.0281 - val_loss: 0.0277 - val_classifier_loss: 0.3555 - val_adversary_loss: 0.0277
+Epoch 111/200
+ - 4s - loss: 0.0281 - classifier_loss: 0.3431 - adversary_loss: 0.0281 - val_loss: 0.0277 - val_classifier_loss: 0.3517 - val_adversary_loss: 0.0277
+Epoch 112/200
+ - 3s - loss: 0.0281 - classifier_loss: 0.3431 - adversary_loss: 0.0281 - val_loss: 0.0277 - val_classifier_loss: 0.3521 - val_adversary_loss: 0.0277
+Epoch 113/200
+ - 4s - loss: 0.0281 - classifier_loss: 0.3432 - adversary_loss: 0.0281 - val_loss: 0.0277 - val_classifier_loss: 0.3539 - val_adversary_loss: 0.0277
+Epoch 114/200
+ - 3s - loss: 0.0281 - classifier_loss: 0.3431 - adversary_loss: 0.0281 - val_loss: 0.0277 - val_classifier_loss: 0.3541 - val_adversary_loss: 0.0277
+Epoch 115/200
+ - 4s - loss: 0.0281 - classifier_loss: 0.3430 - adversary_loss: 0.0281 - val_loss: 0.0277 - val_classifier_loss: 0.3537 - val_adversary_loss: 0.0277
+Epoch 116/200
+ - 3s - loss: 0.0281 - classifier_loss: 0.3432 - adversary_loss: 0.0281 - val_loss: 0.0277 - val_classifier_loss: 0.3520 - val_adversary_loss: 0.0277
+Epoch 117/200
+ - 4s - loss: 0.0281 - classifier_loss: 0.3431 - adversary_loss: 0.0281 - val_loss: 0.0277 - val_classifier_loss: 0.3534 - val_adversary_loss: 0.0277
+Epoch 118/200
+ - 4s - loss: 0.0281 - classifier_loss: 0.3431 - adversary_loss: 0.0281 - val_loss: 0.0277 - val_classifier_loss: 0.3524 - val_adversary_loss: 0.0277
+Epoch 119/200
+ - 3s - loss: 0.0281 - classifier_loss: 0.3431 - adversary_loss: 0.0281 - val_loss: 0.0277 - val_classifier_loss: 0.3520 - val_adversary_loss: 0.0277
+Epoch 120/200
+ - 4s - loss: 0.0281 - classifier_loss: 0.3431 - adversary_loss: 0.0281 - val_loss: 0.0277 - val_classifier_loss: 0.3527 - val_adversary_loss: 0.0277
+Epoch 121/200
+ - 3s - loss: 0.0281 - classifier_loss: 0.3432 - adversary_loss: 0.0281 - val_loss: 0.0277 - val_classifier_loss: 0.3502 - val_adversary_loss: 0.0277
+Epoch 122/200
+ - 3s - loss: 0.0281 - classifier_loss: 0.3431 - adversary_loss: 0.0281 - val_loss: 0.0276 - val_classifier_loss: 0.3543 - val_adversary_loss: 0.0276
+Epoch 123/200
+ - 3s - loss: 0.0281 - classifier_loss: 0.3431 - adversary_loss: 0.0281 - val_loss: 0.0276 - val_classifier_loss: 0.3564 - val_adversary_loss: 0.0276
+Epoch 124/200
+ - 3s - loss: 0.0281 - classifier_loss: 0.3431 - adversary_loss: 0.0281 - val_loss: 0.0276 - val_classifier_loss: 0.3569 - val_adversary_loss: 0.0276
+Epoch 125/200
+ - 4s - loss: 0.0281 - classifier_loss: 0.3430 - adversary_loss: 0.0281 - val_loss: 0.0276 - val_classifier_loss: 0.3557 - val_adversary_loss: 0.0276
+Epoch 126/200
+ - 3s - loss: 0.0281 - classifier_loss: 0.3431 - adversary_loss: 0.0281 - val_loss: 0.0276 - val_classifier_loss: 0.3553 - val_adversary_loss: 0.0276
+Epoch 127/200
+ - 4s - loss: 0.0281 - classifier_loss: 0.3431 - adversary_loss: 0.0281 - val_loss: 0.0276 - val_classifier_loss: 0.3555 - val_adversary_loss: 0.0276
+Epoch 128/200
+ - 4s - loss: 0.0281 - classifier_loss: 0.3431 - adversary_loss: 0.0281 - val_loss: 0.0276 - val_classifier_loss: 0.3540 - val_adversary_loss: 0.0276
+Epoch 129/200
+ - 3s - loss: 0.0281 - classifier_loss: 0.3431 - adversary_loss: 0.0281 - val_loss: 0.0277 - val_classifier_loss: 0.3550 - val_adversary_loss: 0.0277
+Epoch 130/200
+ - 4s - loss: 0.0281 - classifier_loss: 0.3432 - adversary_loss: 0.0281 - val_loss: 0.0277 - val_classifier_loss: 0.3541 - val_adversary_loss: 0.0277
+Epoch 131/200
+ - 3s - loss: 0.0281 - classifier_loss: 0.3431 - adversary_loss: 0.0281 - val_loss: 0.0277 - val_classifier_loss: 0.3524 - val_adversary_loss: 0.0277
+Epoch 132/200
+ - 3s - loss: 0.0281 - classifier_loss: 0.3431 - adversary_loss: 0.0281 - val_loss: 0.0276 - val_classifier_loss: 0.3529 - val_adversary_loss: 0.0276
+Epoch 133/200
+ - 3s - loss: 0.0280 - classifier_loss: 0.3431 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3491 - val_adversary_loss: 0.0276
+Epoch 134/200
+ - 3s - loss: 0.0280 - classifier_loss: 0.3431 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3535 - val_adversary_loss: 0.0276
+Epoch 135/200
+ - 4s - loss: 0.0280 - classifier_loss: 0.3431 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3550 - val_adversary_loss: 0.0276
+Epoch 136/200
+ - 3s - loss: 0.0280 - classifier_loss: 0.3432 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3531 - val_adversary_loss: 0.0276
+Epoch 137/200
+ - 3s - loss: 0.0280 - classifier_loss: 0.3432 - adversary_loss: 0.0280 - val_loss: 0.0277 - val_classifier_loss: 0.3558 - val_adversary_loss: 0.0277
+Epoch 138/200
+ - 3s - loss: 0.0280 - classifier_loss: 0.3431 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3520 - val_adversary_loss: 0.0276
+Epoch 139/200
+ - 3s - loss: 0.0280 - classifier_loss: 0.3432 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3524 - val_adversary_loss: 0.0276
+Epoch 140/200
+ - 3s - loss: 0.0280 - classifier_loss: 0.3431 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3534 - val_adversary_loss: 0.0276
+Epoch 141/200
+ - 3s - loss: 0.0280 - classifier_loss: 0.3430 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3539 - val_adversary_loss: 0.0276
+Epoch 142/200
+ - 3s - loss: 0.0280 - classifier_loss: 0.3432 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3527 - val_adversary_loss: 0.0276
+Epoch 143/200
+ - 4s - loss: 0.0280 - classifier_loss: 0.3431 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3545 - val_adversary_loss: 0.0276
+Epoch 144/200
+ - 3s - loss: 0.0280 - classifier_loss: 0.3431 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3559 - val_adversary_loss: 0.0276
+Epoch 145/200
+ - 3s - loss: 0.0280 - classifier_loss: 0.3431 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3519 - val_adversary_loss: 0.0276
+Epoch 146/200
+ - 3s - loss: 0.0280 - classifier_loss: 0.3431 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3571 - val_adversary_loss: 0.0276
+Epoch 147/200
+ - 3s - loss: 0.0280 - classifier_loss: 0.3431 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3553 - val_adversary_loss: 0.0276
+Epoch 148/200
+ - 3s - loss: 0.0280 - classifier_loss: 0.3431 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3508 - val_adversary_loss: 0.0276
+Epoch 149/200
+ - 3s - loss: 0.0280 - classifier_loss: 0.3431 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3543 - val_adversary_loss: 0.0276
+Epoch 150/200
+ - 3s - loss: 0.0280 - classifier_loss: 0.3431 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3506 - val_adversary_loss: 0.0276
+Epoch 151/200
+ - 4s - loss: 0.0280 - classifier_loss: 0.3431 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3573 - val_adversary_loss: 0.0276
+Epoch 152/200
+ - 4s - loss: 0.0280 - classifier_loss: 0.3430 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3558 - val_adversary_loss: 0.0276
+Epoch 153/200
+ - 3s - loss: 0.0280 - classifier_loss: 0.3431 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3478 - val_adversary_loss: 0.0276
+Epoch 154/200
+ - 3s - loss: 0.0280 - classifier_loss: 0.3432 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3547 - val_adversary_loss: 0.0276
+Epoch 155/200
+ - 3s - loss: 0.0280 - classifier_loss: 0.3431 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3519 - val_adversary_loss: 0.0276
+Epoch 156/200
+ - 3s - loss: 0.0280 - classifier_loss: 0.3431 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3520 - val_adversary_loss: 0.0276
+Epoch 157/200
+ - 4s - loss: 0.0280 - classifier_loss: 0.3430 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3504 - val_adversary_loss: 0.0276
+Epoch 158/200
+ - 3s - loss: 0.0280 - classifier_loss: 0.3431 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3556 - val_adversary_loss: 0.0276
+Epoch 159/200
+ - 3s - loss: 0.0280 - classifier_loss: 0.3431 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3484 - val_adversary_loss: 0.0276
+Epoch 160/200
+ - 3s - loss: 0.0280 - classifier_loss: 0.3432 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3522 - val_adversary_loss: 0.0276
+Epoch 161/200
+ - 3s - loss: 0.0280 - classifier_loss: 0.3431 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3534 - val_adversary_loss: 0.0276
+Epoch 162/200
+ - 3s - loss: 0.0280 - classifier_loss: 0.3431 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3547 - val_adversary_loss: 0.0276
+Epoch 163/200
+ - 3s - loss: 0.0280 - classifier_loss: 0.3431 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3540 - val_adversary_loss: 0.0276
+Epoch 164/200
+ - 4s - loss: 0.0280 - classifier_loss: 0.3430 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3554 - val_adversary_loss: 0.0276
+Epoch 165/200
+ - 4s - loss: 0.0280 - classifier_loss: 0.3431 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3546 - val_adversary_loss: 0.0276
+Epoch 166/200
+ - 4s - loss: 0.0280 - classifier_loss: 0.3431 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3517 - val_adversary_loss: 0.0276
+Epoch 167/200
+ - 3s - loss: 0.0280 - classifier_loss: 0.3431 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3535 - val_adversary_loss: 0.0276
+Epoch 168/200
+ - 4s - loss: 0.0280 - classifier_loss: 0.3431 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3525 - val_adversary_loss: 0.0276
+Epoch 169/200
+ - 4s - loss: 0.0280 - classifier_loss: 0.3430 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3540 - val_adversary_loss: 0.0276
+Epoch 170/200
+ - 4s - loss: 0.0280 - classifier_loss: 0.3432 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3534 - val_adversary_loss: 0.0276
+Epoch 171/200
+ - 4s - loss: 0.0280 - classifier_loss: 0.3431 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3546 - val_adversary_loss: 0.0276
+Epoch 172/200
+ - 4s - loss: 0.0280 - classifier_loss: 0.3431 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3499 - val_adversary_loss: 0.0276
+Epoch 173/200
+ - 3s - loss: 0.0280 - classifier_loss: 0.3432 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3522 - val_adversary_loss: 0.0276
+Epoch 174/200
+ - 3s - loss: 0.0280 - classifier_loss: 0.3431 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3521 - val_adversary_loss: 0.0276
+Epoch 175/200
+ - 3s - loss: 0.0280 - classifier_loss: 0.3431 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3535 - val_adversary_loss: 0.0276
+Epoch 176/200
+ - 3s - loss: 0.0280 - classifier_loss: 0.3431 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3563 - val_adversary_loss: 0.0276
+Epoch 177/200
+ - 4s - loss: 0.0280 - classifier_loss: 0.3432 - adversary_loss: 0.0280 - val_loss: 0.0275 - val_classifier_loss: 0.3519 - val_adversary_loss: 0.0275
+Epoch 178/200
+ - 4s - loss: 0.0280 - classifier_loss: 0.3431 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3543 - val_adversary_loss: 0.0276
+Epoch 179/200
+ - 4s - loss: 0.0280 - classifier_loss: 0.3432 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3550 - val_adversary_loss: 0.0276
+Epoch 180/200
+ - 3s - loss: 0.0280 - classifier_loss: 0.3432 - adversary_loss: 0.0280 - val_loss: 0.0275 - val_classifier_loss: 0.3532 - val_adversary_loss: 0.0275
+Epoch 181/200
+ - 4s - loss: 0.0280 - classifier_loss: 0.3432 - adversary_loss: 0.0280 - val_loss: 0.0276 - val_classifier_loss: 0.3521 - val_adversary_loss: 0.0276
+Epoch 182/200
+ - 3s - loss: 0.0280 - classifier_loss: 0.3431 - adversary_loss: 0.0280 - val_loss: 0.0275 - val_classifier_loss: 0.3561 - val_adversary_loss: 0.0275
+Epoch 183/200
+ - 3s - loss: 0.0280 - classifier_loss: 0.3432 - adversary_loss: 0.0280 - val_loss: 0.0275 - val_classifier_loss: 0.3552 - val_adversary_loss: 0.0275
+Epoch 184/200
+ - 4s - loss: 0.0280 - classifier_loss: 0.3430 - adversary_loss: 0.0280 - val_loss: 0.0275 - val_classifier_loss: 0.3560 - val_adversary_loss: 0.0275
+Epoch 185/200
+ - 3s - loss: 0.0280 - classifier_loss: 0.3430 - adversary_loss: 0.0280 - val_loss: 0.0275 - val_classifier_loss: 0.3571 - val_adversary_loss: 0.0275
+Epoch 186/200
+ - 3s - loss: 0.0279 - classifier_loss: 0.3431 - adversary_loss: 0.0279 - val_loss: 0.0276 - val_classifier_loss: 0.3536 - val_adversary_loss: 0.0276
+Epoch 187/200
+ - 3s - loss: 0.0279 - classifier_loss: 0.3431 - adversary_loss: 0.0279 - val_loss: 0.0275 - val_classifier_loss: 0.3506 - val_adversary_loss: 0.0275
+Epoch 188/200
+ - 3s - loss: 0.0279 - classifier_loss: 0.3432 - adversary_loss: 0.0279 - val_loss: 0.0275 - val_classifier_loss: 0.3495 - val_adversary_loss: 0.0275
+Epoch 189/200
+ - 4s - loss: 0.0279 - classifier_loss: 0.3432 - adversary_loss: 0.0279 - val_loss: 0.0275 - val_classifier_loss: 0.3439 - val_adversary_loss: 0.0275
+Epoch 190/200
+ - 3s - loss: 0.0279 - classifier_loss: 0.3431 - adversary_loss: 0.0279 - val_loss: 0.0275 - val_classifier_loss: 0.3522 - val_adversary_loss: 0.0275
+Epoch 191/200
+ - 4s - loss: 0.0279 - classifier_loss: 0.3431 - adversary_loss: 0.0279 - val_loss: 0.0275 - val_classifier_loss: 0.3568 - val_adversary_loss: 0.0275
+Epoch 192/200
+ - 4s - loss: 0.0279 - classifier_loss: 0.3431 - adversary_loss: 0.0279 - val_loss: 0.0275 - val_classifier_loss: 0.3521 - val_adversary_loss: 0.0275
+Epoch 193/200
+ - 4s - loss: 0.0279 - classifier_loss: 0.3432 - adversary_loss: 0.0279 - val_loss: 0.0275 - val_classifier_loss: 0.3525 - val_adversary_loss: 0.0275
+Epoch 194/200
+ - 3s - loss: 0.0279 - classifier_loss: 0.3431 - adversary_loss: 0.0279 - val_loss: 0.0275 - val_classifier_loss: 0.3531 - val_adversary_loss: 0.0275
+Epoch 195/200
+ - 4s - loss: 0.0279 - classifier_loss: 0.3431 - adversary_loss: 0.0279 - val_loss: 0.0275 - val_classifier_loss: 0.3522 - val_adversary_loss: 0.0275
+Epoch 196/200
+ - 3s - loss: 0.0279 - classifier_loss: 0.3432 - adversary_loss: 0.0279 - val_loss: 0.0275 - val_classifier_loss: 0.3523 - val_adversary_loss: 0.0275
+Epoch 197/200
+ - 3s - loss: 0.0279 - classifier_loss: 0.3431 - adversary_loss: 0.0279 - val_loss: 0.0275 - val_classifier_loss: 0.3544 - val_adversary_loss: 0.0275
+Epoch 198/200
+ - 4s - loss: 0.0279 - classifier_loss: 0.3432 - adversary_loss: 0.0279 - val_loss: 0.0275 - val_classifier_loss: 0.3489 - val_adversary_loss: 0.0275
+Epoch 199/200
+ - 3s - loss: 0.0279 - classifier_loss: 0.3430 - adversary_loss: 0.0279 - val_loss: 0.0275 - val_classifier_loss: 0.3546 - val_adversary_loss: 0.0275
+Epoch 200/200
+ - 3s - loss: 0.0279 - classifier_loss: 0.3432 - adversary_loss: 0.0279 - val_loss: 0.0275 - val_classifier_loss: 0.3566 - val_adversary_loss: 0.0275
+Got result -59.2432906886
+Completed successfully in 2491.49 seconds. [{u'main': -59.24329068859905}]
+[38;2;74;176;245m[1mProfile[0m ⏱  ······ Starting [1m@add_nn[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  ······ Time elapsed in [1m@add_nn[0m: ................................ [1m7.7s[0m
+Background rejection: 20.677063983
+1/JSD:                4.06285368037
+[38;2;74;176;245m[1mProfile[0m ⏱  ···· Time elapsed in [1mFold 3/3[0m: ............................... [1m867.3s[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  ·· Time elapsed in [1mCombined adversarial fit, cross-validation[0m:  [1m2432.7s[0m
+rej + 1/jsd: 61.4800228969 ± 2.23673220829
+[38;2;74;176;245m[1mProfile[0m ⏱  Time elapsed in [1m@main[0m: ...................................... [1m2477.8s[0m
+cd: Going back to /exports/eddie3_homes_local/s1562020/work/adversarial/optimisation/experiments/combined

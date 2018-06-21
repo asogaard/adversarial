@@ -1,0 +1,410 @@
+Job launching after 5.93 seconds in submission.
+Running python job.
+Changed into dir /exports/eddie3_homes_local/s1562020/work/adversarial/optimisation/experiments/classifier
+Importing optimise.py
+Running optimise.main()
+INFO: Applying patch '/exports/eddie3_homes_local/s1562020/work/adversarial/optimisation/experiments/classifier/patches/patch.00000063.json'
+INFO: Found 20 Intel(R) Xeon(R) CPU E5-2630 v4 @ 2.20GHz devices with 10 cores each.
+Using TensorFlow backend.
+INFO: Scaling classifier/lr -5 -> 1e-05
+INFO: Scaling classifier/decay -2 -> 0.01
+INFO: Scaling classifier/units 1 -> 2
+INFO: Writing TensorBoard logs to 'logs/tensorboard/classifier-patch.00000063/'
+INFO: Running '/exports/eddie3_homes_local/s1562020/work/adversarial/run/adversarial/common.pyc'
+INFO: Command-line arguments:
+INFO: Configuration file contents:
+INFO: Python version: 2.7.14
+INFO: Numpy  version: 1.12.1
+INFO: Keras  version: 2.1.5
+INFO: Using keras backend: 'tensorflow'
+INFO: Found  1000000 training and  1000249 test samples for signal
+INFO: Found  1000000 training and 10000000 test samples for background
+INFO: load_data: Selecting only training data.
+INFO: Implementing gradient reversal layer in TensorFlow
+INFO: Training cross-validation classifiers
+Call to main function (#63)
+  Parameters: {u'classifier/model/default/units': array([1]), u'classifier/compile/decay': array([-2]), u'classifier/model/default/dropout': array([ 0.35761738]), u'classifier/compile/lr': array([-5]), u'classifier/model/architecture': array([6]), u'classifier/model/default/activation': [u'tanh']}
+param: classifier/model/default/units
+param: classifier/compile/decay
+param: classifier/model/default/dropout
+param: classifier/compile/lr
+param: classifier/model/architecture
+param: classifier/model/default/activation
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+Saving the following patch to '/exports/eddie3_homes_local/s1562020/work/adversarial/optimisation/experiments/classifier/patches/patch.00000063.json':
+{u'classifier': {u'compile': {u'lr': -5, u'decay': -2}, u'model': {u'default': {u'units': 1, u'dropout': 0.3576173844765157, u'activation': u'tanh'}, u'architecture': 6}, 'fit': {'epochs': 50, 'batch_size': 8192}}}
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+cd: Going to /exports/eddie3_homes_local/s1562020/work/adversarial/
+[38;2;74;176;245m[1mProfile[0m ⏱  Starting [1m@main[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  ·· Starting [1mInitialisation[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  ···· Starting [1m@initialise[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  ···· Time elapsed in [1m@initialise[0m: .............................. [1m0.0s[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  ···· Starting [1m@initialise_backend[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  ······ Starting [1m@configure_tensorflow[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  ······ Time elapsed in [1m@configure_tensorflow[0m: ................. [1m15.8s[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  ···· Time elapsed in [1m@initialise_backend[0m: ..................... [1m17.3s[0m
+{'config': './configs/default.json',
+ 'devices': 7,
+ 'folds': 3,
+ 'gpu': True,
+ 'input': './input/',
+ 'jobname': 'classifier-patch.00000063',
+ 'mode': 'gpu',
+ 'optimise_adversarial': False,
+ 'optimise_classifier': True,
+ 'output': './output/',
+ 'patches': ['/exports/eddie3_homes_local/s1562020/work/adversarial/optimisation/experiments/classifier/patches/patch.00000063.json'],
+ 'tensorboard': True,
+ 'theano': False,
+ 'train': False,
+ 'train_adversarial': False,
+ 'train_classifier': True,
+ 'verbose': False}
+{u'adversary': {u'compile': {},
+                u'fit': {},
+                u'model': {u'architecture': [{}, {}, {}, {}],
+                           u'default': {u'activation': u'relu',
+                                        u'units': 64},
+                           u'gmm_components': 5}},
+ u'classifier': {u'compile': {u'loss': u'binary_crossentropy',
+                              u'optimizer': <keras.optimizers.Adam object at 0x2b92e4d02310>},
+                 u'fit': {u'batch_size': 57344,
+                          u'epochs': 50,
+                          u'shuffle': True,
+                          'verbose': 2},
+                 u'model': {u'architecture': [{}, {}, {}, {}, {}, {}],
+                            u'default': {u'activation': u'tanh',
+                                         u'batchnorm': True,
+                                         u'dropout': 0.3576173844765157,
+                                         u'units': 2}}},
+ u'combined': {u'compile': {u'loss': [u'binary_crossentropy', None],
+                            u'loss_weights': [1.8181818181818182e-09, 1.0],
+                            u'optimizer': <keras.optimizers.Adam object at 0x2b92e4d02350>},
+               u'fit': {u'batch_size': 57344,
+                        u'epochs': 100,
+                        u'shuffle': True,
+                        'verbose': 2},
+               u'model': {u'lambda_reg': 10.0,
+                          u'lr_ratio': 1.8181818181818182e-09},
+               u'pretrain': 10}}
+  TensorFlow version: 1.4.1
+[38;2;74;176;245m[1mProfile[0m ⏱  ·· Time elapsed in [1mInitialisation[0m: ............................ [1m17.4s[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  ·· Starting [1m@load_data[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  ·· Time elapsed in [1m@load_data[0m: ................................ [1m35.6s[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  ·· Starting [1m@get_decorrelation_variables[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  ·· Time elapsed in [1m@get_decorrelation_variables[0m: ............... [1m0.0s[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  ·· Starting [1mClassifier-only fit, cross-validation[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  ···· Starting [1mFold 1/3[0m
+Train on 1333332 samples, validate on 666668 samples
+Epoch 1/50
+ - 6s - loss: 0.7254 - val_loss: 0.6929
+Epoch 2/50
+ - 3s - loss: 0.7253 - val_loss: 0.6925
+Epoch 3/50
+ - 3s - loss: 0.7252 - val_loss: 0.6927
+Epoch 4/50
+ - 3s - loss: 0.7246 - val_loss: 0.6927
+Epoch 5/50
+ - 3s - loss: 0.7246 - val_loss: 0.6923
+Epoch 6/50
+ - 3s - loss: 0.7243 - val_loss: 0.6926
+Epoch 7/50
+ - 3s - loss: 0.7252 - val_loss: 0.6922
+Epoch 8/50
+ - 4s - loss: 0.7244 - val_loss: 0.6923
+Epoch 9/50
+ - 3s - loss: 0.7248 - val_loss: 0.6923
+Epoch 10/50
+ - 4s - loss: 0.7247 - val_loss: 0.6919
+Epoch 11/50
+ - 3s - loss: 0.7248 - val_loss: 0.6926
+Epoch 12/50
+ - 3s - loss: 0.7252 - val_loss: 0.6961
+Epoch 13/50
+ - 3s - loss: 0.7241 - val_loss: 0.6901
+Epoch 14/50
+ - 3s - loss: 0.7244 - val_loss: 0.6910
+Epoch 15/50
+ - 3s - loss: 0.7251 - val_loss: 0.6913
+Epoch 16/50
+ - 3s - loss: 0.7249 - val_loss: 0.6922
+Epoch 17/50
+ - 3s - loss: 0.7250 - val_loss: 0.6951
+Epoch 18/50
+ - 3s - loss: 0.7241 - val_loss: 0.6924
+Epoch 19/50
+ - 3s - loss: 0.7244 - val_loss: 0.6926
+Epoch 20/50
+ - 3s - loss: 0.7248 - val_loss: 0.6917
+Epoch 21/50
+ - 3s - loss: 0.7245 - val_loss: 0.6915
+Epoch 22/50
+ - 3s - loss: 0.7246 - val_loss: 7.9742
+Epoch 23/50
+ - 3s - loss: 0.7249 - val_loss: 0.6918
+Epoch 24/50
+ - 3s - loss: 0.7245 - val_loss: 0.6919
+Epoch 25/50
+ - 3s - loss: 0.7252 - val_loss: 0.6916
+Epoch 26/50
+ - 3s - loss: 0.7248 - val_loss: 0.6920
+Epoch 27/50
+ - 3s - loss: 0.7245 - val_loss: 0.6952
+Epoch 28/50
+ - 3s - loss: 0.7247 - val_loss: 0.6931
+Epoch 29/50
+ - 3s - loss: 0.7243 - val_loss: 0.6922
+Epoch 30/50
+ - 3s - loss: 0.7248 - val_loss: 0.6915
+Epoch 31/50
+ - 3s - loss: 0.7243 - val_loss: 0.6926
+Epoch 32/50
+ - 3s - loss: 0.7238 - val_loss: 0.6923
+Epoch 33/50
+ - 3s - loss: 0.7236 - val_loss: 0.6930
+Epoch 34/50
+ - 3s - loss: 0.7242 - val_loss: 0.6929
+Epoch 35/50
+ - 3s - loss: 0.7240 - val_loss: 0.6929
+Epoch 36/50
+ - 4s - loss: 0.7247 - val_loss: 0.6923
+Epoch 37/50
+ - 3s - loss: 0.7246 - val_loss: 0.6925
+Epoch 38/50
+ - 3s - loss: 0.7247 - val_loss: 0.6921
+Epoch 39/50
+ - 3s - loss: 0.7246 - val_loss: 0.6916
+Epoch 40/50
+ - 3s - loss: 0.7247 - val_loss: 0.6913
+Epoch 41/50
+ - 4s - loss: 0.7242 - val_loss: 0.6923
+Epoch 42/50
+ - 3s - loss: 0.7240 - val_loss: 0.6914
+Epoch 43/50
+ - 4s - loss: 0.7242 - val_loss: 0.6931
+Epoch 44/50
+ - 4s - loss: 0.7238 - val_loss: 0.6998
+Epoch 45/50
+ - 3s - loss: 0.7242 - val_loss: 0.6915
+Epoch 46/50
+ - 3s - loss: 0.7246 - val_loss: 0.6922
+Epoch 47/50
+ - 3s - loss: 0.7236 - val_loss: 0.6918
+Epoch 48/50
+ - 4s - loss: 0.7241 - val_loss: 0.6921
+Epoch 49/50
+ - 4s - loss: 0.7246 - val_loss: 0.6919
+Epoch 50/50
+ - 4s - loss: 0.7247 - val_loss: 0.6919
+[38;2;74;176;245m[1mProfile[0m ⏱  ···· Time elapsed in [1mFold 1/3[0m: ............................... [1m208.8s[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  ···· Starting [1mFold 2/3[0m
+Train on 1333334 samples, validate on 666666 samples
+Epoch 1/50
+ - 7s - loss: 0.7078 - val_loss: 0.6675
+Epoch 2/50
+ - 4s - loss: 0.7079 - val_loss: 0.6690
+Epoch 3/50
+ - 4s - loss: 0.7077 - val_loss: 0.6676
+Epoch 4/50
+ - 4s - loss: 0.7076 - val_loss: 0.6683
+Epoch 5/50
+ - 4s - loss: 0.7071 - val_loss: 0.6684
+Epoch 6/50
+ - 4s - loss: 0.7070 - val_loss: 0.6684
+Epoch 7/50
+ - 4s - loss: 0.7075 - val_loss: 0.6679
+Epoch 8/50
+ - 4s - loss: 0.7066 - val_loss: 0.6685
+Epoch 9/50
+ - 3s - loss: 0.7075 - val_loss: 0.6678
+Epoch 10/50
+ - 3s - loss: 0.7067 - val_loss: 0.6690
+Epoch 11/50
+ - 4s - loss: 0.7074 - val_loss: 0.6690
+Epoch 12/50
+ - 3s - loss: 0.7070 - val_loss: 0.6680
+Epoch 13/50
+ - 3s - loss: 0.7072 - val_loss: 0.6668
+Epoch 14/50
+ - 3s - loss: 0.7073 - val_loss: 0.6681
+Epoch 15/50
+ - 3s - loss: 0.7072 - val_loss: 0.6685
+Epoch 16/50
+ - 3s - loss: 0.7071 - val_loss: 0.6688
+Epoch 17/50
+ - 3s - loss: 0.7079 - val_loss: 0.6698
+Epoch 18/50
+ - 3s - loss: 0.7070 - val_loss: 0.6683
+Epoch 19/50
+ - 3s - loss: 0.7068 - val_loss: 0.6685
+Epoch 20/50
+ - 4s - loss: 0.7073 - val_loss: 0.6688
+Epoch 21/50
+ - 3s - loss: 0.7071 - val_loss: 0.6680
+Epoch 22/50
+ - 4s - loss: 0.7078 - val_loss: 0.6682
+Epoch 23/50
+ - 4s - loss: 0.7073 - val_loss: 0.6686
+Epoch 24/50
+ - 3s - loss: 0.7072 - val_loss: 0.6683
+Epoch 25/50
+ - 3s - loss: 0.7073 - val_loss: 0.6685
+Epoch 26/50
+ - 3s - loss: 0.7069 - val_loss: 0.6686
+Epoch 27/50
+ - 3s - loss: 0.7070 - val_loss: 0.6678
+Epoch 28/50
+ - 3s - loss: 0.7071 - val_loss: 0.6685
+Epoch 29/50
+ - 4s - loss: 0.7073 - val_loss: 0.6689
+Epoch 30/50
+ - 4s - loss: 0.7070 - val_loss: 0.6682
+Epoch 31/50
+ - 3s - loss: 0.7070 - val_loss: 0.6686
+Epoch 32/50
+ - 3s - loss: 0.7073 - val_loss: 0.6677
+Epoch 33/50
+ - 3s - loss: 0.7070 - val_loss: 0.6689
+Epoch 34/50
+ - 3s - loss: 0.7072 - val_loss: 0.6688
+Epoch 35/50
+ - 3s - loss: 0.7066 - val_loss: 0.6682
+Epoch 36/50
+ - 4s - loss: 0.7074 - val_loss: 0.6681
+Epoch 37/50
+ - 4s - loss: 0.7068 - val_loss: 0.6687
+Epoch 38/50
+ - 3s - loss: 0.7075 - val_loss: 0.6687
+Epoch 39/50
+ - 3s - loss: 0.7072 - val_loss: 0.6673
+Epoch 40/50
+ - 4s - loss: 0.7072 - val_loss: 0.6684
+Epoch 41/50
+ - 3s - loss: 0.7073 - val_loss: 0.6683
+Epoch 42/50
+ - 3s - loss: 0.7067 - val_loss: 0.6675
+Epoch 43/50
+ - 4s - loss: 0.7076 - val_loss: 0.6685
+Epoch 44/50
+ - 3s - loss: 0.7069 - val_loss: 0.6686
+Epoch 45/50
+ - 3s - loss: 0.7076 - val_loss: 0.6682
+Epoch 46/50
+ - 3s - loss: 0.7070 - val_loss: 0.6683
+Epoch 47/50
+ - 3s - loss: 0.7077 - val_loss: 0.6677
+Epoch 48/50
+ - 3s - loss: 0.7075 - val_loss: 0.6683
+Epoch 49/50
+ - 3s - loss: 0.7078 - val_loss: 0.6675
+Epoch 50/50
+ - 4s - loss: 0.7069 - val_loss: 0.6676
+[38;2;74;176;245m[1mProfile[0m ⏱  ···· Time elapsed in [1mFold 2/3[0m: ............................... [1m208.9s[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  ···· Starting [1mFold 3/3[0m
+Train on 1333334 samples, validate on 666666 samples
+Epoch 1/50
+ - 7s - loss: 0.7811 - val_loss: 0.7234
+Epoch 2/50
+ - 4s - loss: 0.7809 - val_loss: 0.7254
+Epoch 3/50
+ - 3s - loss: 0.7816 - val_loss: 0.7217
+Epoch 4/50
+ - 4s - loss: 0.7803 - val_loss: 0.7228
+Epoch 5/50
+ - 4s - loss: 0.7796 - val_loss: 0.7227
+Epoch 6/50
+ - 4s - loss: 0.7797 - val_loss: 0.7259
+Epoch 7/50
+ - 4s - loss: 0.7807 - val_loss: 0.7229
+Epoch 8/50
+ - 4s - loss: 0.7796 - val_loss: 0.7253
+Epoch 9/50
+ - 3s - loss: 0.7800 - val_loss: 0.7260
+Epoch 10/50
+ - 4s - loss: 0.7806 - val_loss: 0.7259
+Epoch 11/50
+ - 4s - loss: 0.7804 - val_loss: 0.7253
+Epoch 12/50
+ - 4s - loss: 0.7806 - val_loss: 0.7257
+Epoch 13/50
+ - 4s - loss: 0.7814 - val_loss: 0.7257
+Epoch 14/50
+ - 4s - loss: 0.7795 - val_loss: 0.7253
+Epoch 15/50
+ - 4s - loss: 0.7800 - val_loss: 0.7241
+Epoch 16/50
+ - 3s - loss: 0.7806 - val_loss: 0.7251
+Epoch 17/50
+ - 5s - loss: 0.7805 - val_loss: 0.7231
+Epoch 18/50
+ - 4s - loss: 0.7805 - val_loss: 0.7237
+Epoch 19/50
+ - 4s - loss: 0.7811 - val_loss: 0.7248
+Epoch 20/50
+ - 4s - loss: 0.7792 - val_loss: 8.0056
+Epoch 21/50
+ - 4s - loss: 0.7801 - val_loss: 0.7234
+Epoch 22/50
+ - 3s - loss: 0.7796 - val_loss: 0.7243
+Epoch 23/50
+ - 3s - loss: 0.7804 - val_loss: 0.7236
+Epoch 24/50
+ - 4s - loss: 0.7808 - val_loss: 0.7238
+Epoch 25/50
+ - 4s - loss: 0.7805 - val_loss: 0.7240
+Epoch 26/50
+ - 3s - loss: 0.7807 - val_loss: 0.7244
+Epoch 27/50
+ - 4s - loss: 0.7813 - val_loss: 0.7232
+Epoch 28/50
+ - 3s - loss: 0.7795 - val_loss: 0.7222
+Epoch 29/50
+ - 3s - loss: 0.7796 - val_loss: 0.7241
+Epoch 30/50
+ - 3s - loss: 0.7807 - val_loss: 0.7212
+Epoch 31/50
+ - 3s - loss: 0.7792 - val_loss: 0.7188
+Epoch 32/50
+ - 4s - loss: 0.7795 - val_loss: 0.7238
+Epoch 33/50
+ - 4s - loss: 0.7812 - val_loss: 0.7234
+Epoch 34/50
+ - 4s - loss: 0.7799 - val_loss: 0.7227
+Epoch 35/50
+ - 4s - loss: 0.7812 - val_loss: 0.7247
+Epoch 36/50
+ - 4s - loss: 0.7802 - val_loss: 0.7233
+Epoch 37/50
+ - 4s - loss: 0.7793 - val_loss: 0.7230
+Epoch 38/50
+ - 4s - loss: 0.7801 - val_loss: 0.7236
+Epoch 39/50
+ - 4s - loss: 0.7797 - val_loss: 0.7232
+Epoch 40/50
+ - 4s - loss: 0.7810 - val_loss: 0.7235
+Epoch 41/50
+ - 4s - loss: 0.7793 - val_loss: 0.7232
+Epoch 42/50
+ - 3s - loss: 0.7789 - val_loss: 0.7243
+Epoch 43/50
+ - 3s - loss: 0.7801 - val_loss: 0.7238
+Epoch 44/50
+ - 4s - loss: 0.7809 - val_loss: 0.7239
+Epoch 45/50
+ - 4s - loss: 0.7797 - val_loss: 0.7233
+Epoch 46/50
+ - 4s - loss: 0.7799 - val_loss: 0.7234
+Epoch 47/50
+ - 4s - loss: 0.7799 - val_loss: 0.7235
+Epoch 48/50
+ - 3s - loss: 0.7792 - val_loss: 0.7236
+Epoch 49/50
+ - 4s - loss: 0.7798 - val_loss: 0.7236
+Epoch 50/50
+ - 4s - loss: 0.7790 - val_loss: 0.7237
+Got result 0.717350705037
+Completed successfully in 734.52 seconds. [{u'main': 0.717350705036504}]
+[38;2;74;176;245m[1mProfile[0m ⏱  ···· Time elapsed in [1mFold 3/3[0m: ............................... [1m233.4s[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  ·· Time elapsed in [1mClassifier-only fit, cross-validation[0m: .... [1m651.9s[0m
+[38;2;74;176;245m[1mProfile[0m ⏱  Time elapsed in [1m@main[0m: ....................................... [1m705.1s[0m
+cd: Going back to /exports/eddie3_homes_local/s1562020/work/adversarial/optimisation/experiments/classifier
