@@ -59,7 +59,7 @@ def parallelise_model (model, args):
     if (not args.theano) and args.gpu and args.devices > 1:
         parallelised = multi_gpu_model(model, args.devices)
     else:
-        parallelised = classifier
+        parallelised = model
         pass
 
     return parallelised
