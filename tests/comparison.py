@@ -170,7 +170,7 @@ def perform_studies (data, args, tagger_features, ann_vars, uboost_vars):
     Method delegating performance studies.
     """
     masscuts  = [True, False]
-    pt_ranges = [None, (200, 500), (500, 1000)]
+    pt_ranges = [None, (200, 500), (500, 1000), (1000, 2000)]
 
     # Perform combined robustness study
     with Profile("Study: Robustness"):
@@ -216,7 +216,9 @@ def perform_studies (data, args, tagger_features, ann_vars, uboost_vars):
 
     # Perform JSD study
     with Profile("Study: JSD"):
-        studies.jsd(data, args, tagger_features)
+        for pt_range in pt_ranges:
+            studies.jsd(data, args, tagger_features, pt_range)
+            pass
         pass
 
     # Perform efficiency study
