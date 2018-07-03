@@ -29,11 +29,44 @@ import rootplotting as rp
 @profile
 def main (args):
 
+    # Definitions
+    histstyle = dict(**HISTSTYLE)
+
     # Initialise
     args, cfg = initialise(args)
 
     # Load data
-    data, features, _ = load_data(args.input + 'data.h5')
+    data, features, _ = load_data(args.input + 'data.h5', background=True, train=True)
+
+    pt_bins = np.linspace(200, 2000, 18 + 1, endpoint=True)
+    pt_bins = zip(pt_bins[:-1], pt_bins[1:])
+    bins = np.linspace(50, 300, (300 - 50) // 10 + 1, endpoint=True)
+
+    for pt_bin in pt_bins:
+
+        histstyle[True] ['label'] = 'Inclusive'
+        histstyle[False]['label'] = 'p_{{T}} #in  [{:.0f}, {:.0f}] GeV'.format(*pt_bin)
+
+        # Canvas
+        c = rp.canvas(batch=True)
+
+        # Plots
+        msk = (data['pt'] > pt_bin[0]) & (data['pt'] < pt_bin[1])
+        c.hist(data['m'].values,      bins=bins, weight=data['weight_adv'] .values,      normalise=True, **histstyle[True])
+        c.hist(data['m'].values[msk], bins=bins, weight=data['weight_adv'] .values[msk], normalise=True, **histstyle[False])
+        c.hist(data['m'].values[msk], bins=bins, weight=data['weight_test'].values[msk], normalise=True, label="Testing weight", linewidth=2, linecolor=ROOT.kGreen)
+
+        # Decorations
+        c.legend()
+        c.xlabel("Large-#it{R} jet mass [GeV]")
+        c.ylabel("Fraction of jets")
+
+        # Save
+        c.save('figures/temp_mass_pT{:.0f}_{:.0f}.pdf'.format(*pt_bin))
+        pass
+
+    return
+
 
     # Perform selection  @NOTE: For Rel. 20.7 only
     #data = data[(data['m']  >  50) & (data['m']  <  300)]
