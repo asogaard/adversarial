@@ -29,7 +29,7 @@ def main (args):
 
     # Common definitions
     experiment  = 'classifier'
-    paths = sorted(glob.glob('optimisation/{}/output/*.out'.format(experiment)))
+    paths = sorted(glob.glob('optimisation/output/{}/output/*.out'.format(experiment)))
     
     num_steps = 100
 
@@ -102,10 +102,11 @@ def plot (*argv):
     ooby = np.ones_like(oobx) * 0.96 * (ymax - ymin) + ymin
 
     # Plots
-    c.graph(graph, markercolor=rp.colours[1], linecolor=rp.colours[1], markersize=0.7, option='AP', label='Evaluations', legend_option='PE')
+    markersize = 0.8
+    c.graph(graph, markercolor=rp.colours[1], linecolor=rp.colours[1], markerstyle=20, markersize=markersize, option='AP', label='Evaluations', legend_option='PE')
     c.graph(ooby, bins=oobx, markercolor=rp.colours[1], markerstyle=22, option='P')
-    c.graph(best_mean, bins=bins, linecolor=rp.colours[5], linewidth=2, option='L', label='Best result')
-    c.graph(best_mean[idx_improvements], bins=bins[idx_improvements], markercolor=rp.colours[5], markersize=0.5, option='P')
+    c.graph(best_mean, bins=bins, linecolor=rp.colours[5], linewidth=2, option='L')
+    c.graph(best_mean[idx_improvements], bins=bins[idx_improvements], markercolor=rp.colours[5], markerstyle=24, markersize=markersize, option='P')
 
     # Decorations
     c.pad()._yaxis().SetNdivisions(505)
@@ -114,7 +115,9 @@ def plot (*argv):
     c.xlim(0, len(bins))
     #c.ylim(0, ymax)
     c.ylim(0.3, 1.0)
-    c.legend(width=0.22, ymax=0.816)
+    c.legend(width=0.22, ymax=0.816, categories=[
+            ('Best result', dict(linecolor=rp.colours[5], linewidth=2, markercolor=rp.colours[5], markerstyle=24, option='LP')),
+        ])
     c.text(["#sqrt{s} = 13 TeV",
             "Neural network (NN) classifier"
             ],
