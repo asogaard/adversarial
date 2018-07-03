@@ -165,12 +165,13 @@ def plot1D (*argv):
     c.plot([y1,y2], bins=[x1,x2], color=rp.colours[-1], label='Linear fit', linewidth=1, linestyle=1, option='L')
 
     # Decorations
-    c.xlabel("Large-#it{R} jet #rho^{DDT} = log(m^{2}/ p_{T} / 1 GeV)")
+    c.xlabel("Large-#it{R} jet #rho^{DDT} = log[m^{2} / (p_{T} #times 1 GeV)]")
     c.ylabel("#LT#tau_{21}#GT, #LT#tau_{21}^{DDT}#GT")
 
     c.text(["#sqrt{s} = 13 TeV,  Multijets"], qualifier=QUALIFIER)
     c.legend(width=0.25, xmin=0.57, ymax=None if "Internal" in QUALIFIER else 0.85)
 
+    c.xlim(0, 6.0)
     c.ylim(0, 1.4)
     c.latex("Fit range", sum(FIT_RANGE) / 2., 0.08, textsize=13, textcolor=ROOT.kGray + 2)
     c.xline(FIT_RANGE[0], ymax=0.82, text_align='BR', linecolor=ROOT.kGray + 2)
