@@ -112,7 +112,6 @@ def compute (data, args, features, var, bins, masscut, num_bootstrap):
 
         # Compute meaningful limit on JSD
         bin_bkgeffs = [1./rejs[feat][-1][0] for feat in features]
-        sigmoid = lambda x: 1. / (1. + np.exp(-x))
         limits_min  = map(lambda jsd: 1./jsd, jsd_limit(data[msk_bin & msk_bkg], np.min (bin_bkgeffs), num_bootstrap=num_bootstrap))
         limits_mean = map(lambda jsd: 1./jsd, jsd_limit(data[msk_bin & msk_bkg], np.mean(bin_bkgeffs), num_bootstrap=num_bootstrap))
         limits_max  = map(lambda jsd: 1./jsd, jsd_limit(data[msk_bin & msk_bkg], np.max (bin_bkgeffs), num_bootstrap=num_bootstrap))
