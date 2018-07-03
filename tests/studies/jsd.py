@@ -10,16 +10,16 @@ import root_numpy
 
 # Project import(s)
 from .common import *
-from adversarial.utils import mkdir, latex, wpercentile, signal_low, JSD, MASSBINS
+from adversarial.utils import mkdir, latex, wpercentile, signal_low, JSD, MASSBINS, garbage_collect
 from adversarial.constants import *
 
 # Custom import(s)
 import rootplotting as rp
 
 
-
+@garbage_collect
 @showsave
-def jsd (data, args, features):
+def jsd (data_, args, features, pt_range):
     """
     Perform study of ...
 
@@ -30,6 +30,13 @@ def jsd (data, args, features):
         args: Namespace holding command-line arguments.
         features: Features for ...
     """
+
+    # Select data
+    if pt_range is not None:
+        data = data_[(data_['pt'] > pt_range[0]) & (data_['pt'] < pt_range[1])]
+    else:
+        data = data_
+        pass
 
     # Create local histogram style dict
     histstyle = dict(**HISTSTYLE)
@@ -81,11 +88,12 @@ def jsd (data, args, features):
             c.logy()
             c.text(TEXT + [
                 "{:s} {} {:.3f}".format(latex(feat, ROOT=True), '<' if signal_low(feat) else '>', cut),
-                "JSD = {:.4f}".format(jsd[feat][-1])
-                ], qualifier=QUALIFIER)
+                "JSD = {:.4f}".format(jsd[feat][-1])] + \
+                (["p_{{T}} #in  [{:.0f}, {:.0f}] GeV".format(*pt_range)] if pt_range else []),
+                qualifier=QUALIFIER)
 
             # -- Save
-            c.save('figures/temp_jsd_{:s}_{:.0f}.pdf'.format(feat, eff))
+            c.save('figures/temp_jsd_{:s}_{:.0f}{}.pdf'.format(feat, eff, '' if pt_range is None else '__pT{:.0f}_{:.0f}'.format(*pt_range)))
 
             pass
         pass
@@ -99,10 +107,10 @@ def jsd (data, args, features):
         pass
 
     # Perform plotting
-    c = plot(args, data, effs, jsd, jsd_limits, features)
+    c = plot(args, data, effs, jsd, jsd_limits, features, pt_range)
 
     # Output
-    path = 'figures/jsd.pdf'
+    path = 'figures/jsd{}.pdf'.format('' if pt_range is None else '__pT{:.0f}_{:.0f}'.format(*pt_range))
 
     return c, args, path
 
@@ -113,7 +121,7 @@ def plot (*argv):
     """
 
     # Unpack arguments
-    args, data, effs, jsd, jsd_limits, features = argv
+    args, data, effs, jsd, jsd_limits, features, pt_range = argv
 
     with TemporaryStyle() as style:
 
@@ -161,7 +169,8 @@ def plot (*argv):
         c.xlabel("Background efficiency #varepsilon_{bkg}^{rel}")
         c.ylabel("Mass correlation, JSD")
         c.text([], xmin=0.15, ymax = 0.96, qualifier=QUALIFIER)
-        c.text(["#sqrt{s} = 13 TeV",  "Multijets"],
+        c.text(["#sqrt{s} = 13 TeV",  "Multijets"] + \
+              (["p_{T} [GeV] #in", "    [{:.0f}, {:.0f}]".format(*pt_range)] if pt_range else []),
                ymax=0.85, ATLAS=None)
 
         c.latex("Maximal sculpting", 0.065, 1.2, align=11, textsize=11, textcolor=ROOT.kGray + 2)
