@@ -89,6 +89,7 @@ def roc (data_, args, features, masscut=False, pt_range=(200, 2000)):
         pass
 
     # Report scores
+    print "\n== pT range: {:s}".format('inclusive' if pt_range is None else "[{:.0f}, {:.0f}] Gev".format(*pt_range))
     print "\n== {} masscut".format("With" if masscut else "Without")
     for feat in features:
         effsig = ROCs[feat][0]
