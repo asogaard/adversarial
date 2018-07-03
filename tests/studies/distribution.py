@@ -47,6 +47,14 @@ def distribution (data_, args, feat, pt_range, mass_range):
     xmin = wpercentile (data[feat].values,  1, weights=data['weight_test'].values)
     xmax = wpercentile (data[feat].values, 99, weights=data['weight_test'].values)
 
+    if   feat == 'D2-k#minusNN':
+        print "distribution: kNN feature '{}'".format(feat)
+        xmin, xmax = -3.,  4.
+    elif feat == 'D2':
+        print "distribution: D2  feature '{}'".format(feat)
+        xmin, xmax =  0.,  7.
+        pass
+
     snap = 0.5  # Snap to nearest multiple in appropriate direction
     xmin = np.floor(xmin / snap) * snap
     xmax = np.ceil (xmax / snap) * snap
@@ -57,7 +65,7 @@ def distribution (data_, args, feat, pt_range, mass_range):
     c = plot(args, data, feat, bins, pt_range, mass_range)
 
     # Output
-    path = 'figures/distribution_{}{}{}.pdf'.format(standardise(feat), '__pT{:.0f}_{:.0f}'.format(pt_range[0], pt_range[1]) if pt_range is not None else '', '__mass{:.0f}_{:.0f}'.format(mass_range[0], mass_range[1]) if mass_range is not None else '')
+    path = 'figures/distribution/distribution_{}{}{}.pdf'.format(standardise(feat), '__pT{:.0f}_{:.0f}'.format(pt_range[0], pt_range[1]) if pt_range is not None else '', '__mass{:.0f}_{:.0f}'.format(mass_range[0], mass_range[1]) if mass_range is not None else '')
 
     return c, args, path
 
@@ -74,13 +82,14 @@ def plot (*argv):
     c = rp.canvas(batch=not args.show)
 
     # Style
+    histstyle = dict(**HISTSTYLE)
     base = dict(bins=bins, alpha=0.5, normalise=True, linewidth=3)
 
     # Plots
     for signal in [0, 1]:
         msk = (data['signal'] == signal)
-        HISTSTYLE[signal].update(base)
-        c.hist(data.loc[msk, feat].values, weights=data.loc[msk, 'weight_test'].values, **HISTSTYLE[signal])
+        histstyle[signal].update(base)
+        c.hist(data.loc[msk, feat].values, weights=data.loc[msk, 'weight_test'].values, **histstyle[signal])
         pass
 
     # Decorations
