@@ -103,10 +103,13 @@ def unravel (data):
 
 # Main function definition.
 @profile
-def main (sig, bkg, treename='jetTree/nominal', shuffle=True, sample=None, seed=21, replace=True, nleading=2):
+def main (sig, bkg, treename='jetTree/nominal', shuffle=True, sample=None, seed=21, replace=True, nleading=2, frac_train=0.8):
     """
     ...
     """
+
+    # For reproducibility
+    rng = np.random.RandomState(seed=seed)
 
     # Check(s)
     if isinstance(sig, str):
@@ -137,9 +140,9 @@ def main (sig, bkg, treename='jetTree/nominal', shuffle=True, sample=None, seed=
     data_sig = unravel(data_sig)
     data_bkg = unravel(data_bkg)
 
-    # Append target fields
-    data_sig = rfn.append_fields(data_sig, "target", np.ones ((data_sig.shape[0],)), usemask=False)
-    data_bkg = rfn.append_fields(data_bkg, "target", np.zeros((data_bkg.shape[0],)), usemask=False)
+    # Append signal fields
+    data_sig = rfn.append_fields(data_sig, "signal", np.ones ((data_sig.shape[0],)), usemask=False)
+    data_bkg = rfn.append_fields(data_bkg, "signal", np.zeros((data_bkg.shape[0],)), usemask=False)
 
     # Concatenate arrays
     data = np.concatenate((data_sig, data_bkg))
@@ -147,11 +150,13 @@ def main (sig, bkg, treename='jetTree/nominal', shuffle=True, sample=None, seed=
     # Rename columns
     data.dtype.names = map(rename, data.dtype.names)
 
-    # Append rhoDDT fields
+    # Append rhoDDT field
     data = rfn.append_fields(data, "rhoDDT", np.log(np.square(data['fjet_JetConstitScaleMomentum_m']) / data['fjet_pt']), usemask=False)
 
+    # Append train field
+    data = rfn.append_fields(data, "train", rng.rand(data.shape[0]) < frac_train, usemask=False)
+
     # (Opt.) Shuffle
-    rng = np.random.RandomState(seed=seed)
     if shuffle:
         rng.shuffle(data)
         pass
