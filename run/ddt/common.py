@@ -53,5 +53,5 @@ def fill_profile (data, var):
     """
 
     profile = ROOT.TProfile('profile_{}'.format(var), "", len(BINS) - 1, BINS)
-    root_numpy.fill_profile(profile, data[['rhoDDT', var]].values, weights=data['weight_test'].values)
+    root_numpy.fill_profile(profile, data[['rhoDDT', var]].values, weights=data['mcEventWeight'].values)  # @TEMP: weight_test
     return profile
