@@ -45,7 +45,7 @@ def main (args):
     data, _, _ = load_data(args.input + 'data.h5', test=True)
 
     # Add Tau21DDT variable
-    add_ddt(data, 'Tau21')
+    add_ddt(data, 'fjet_tau21_wta')  # @TEMP: Tau21
 
     # Load transform
     ddt = loadclf('models/ddt/ddt.pkl.gz')
@@ -58,7 +58,7 @@ def main (args):
 
     # Fill profiles
     profiles = dict()
-    for var in ['Tau21', 'Tau21DDT']:
+    for var in ['fjet_tau21_wta', 'fjet_tau21_wtaDDT']:  # @TEMP: Tau21, Tau21DDT
         profiles[var] = fill_profile(data[msk], var)
         pass
 
@@ -98,11 +98,11 @@ def main (args):
         msk = data['signal'] == sig
 
         # Normalise jet weights
-        w  = data.loc[msk, 'weight_test'].values
+        w  = data.loc[msk, 'mcEventWeight'].values  # @TEMP: weight_test
         w /= math.fsum(w)
 
         # Prepare inputs
-        X = data.loc[msk, ['rhoDDT', 'Tau21']].values
+        X = data.loc[msk, ['rhoDDT', 'fjet_tau21_wta']].values  # @TEMP: Tau21
 
         # Fill, store contour
         contour = ROOT.TH2F('2d_{}'.format(sig), "", len(binsx) - 1, binsx, len(binsy) - 1, binsy)
@@ -112,9 +112,9 @@ def main (args):
 
     # Linear discriminant analysis (LDA)
     lda = LinearDiscriminantAnalysis()
-    X = data[['rhoDDT', 'Tau21']].values
+    X = data[['rhoDDT', 'fjet_tau21_wta']].values  # @TEMP: Tau21
     y = data['signal'].values
-    w = data['weight_test'].values
+    w = data['mcEventWeight'].values  # @TEMP: weight_test
     p = w / math.fsum(w)
     indices = np.random.choice(y.shape[0], size=int(1E+06), p=p, replace=True)
     lda.fit(X[indices], y[indices])  # Fit weighted sample
@@ -153,9 +153,9 @@ def plot1D (*argv):
     pad.SetTopMargin(0.10)
     pad.SetTopMargin(0.10)
 
-    # Profiles
-    c.graph(graphs['Tau21'],    label="Original, #tau_{21}",          linecolor=rp.colours[4], markercolor=rp.colours[4], markerstyle=24, legend_option='PE')
-    c.graph(graphs['Tau21DDT'], label="Transformed, #tau_{21}^{DDT}", linecolor=rp.colours[1], markercolor=rp.colours[1], markerstyle=20, legend_option='PE')
+    # Profiles  # @TEMP: fjet_tau21_wta -> Tau21
+    c.graph(graphs['fjet_tau21_wta'],    label="Original, #tau_{21}",          linecolor=rp.colours[4], markercolor=rp.colours[4], markerstyle=24, legend_option='PE')
+    c.graph(graphs['fjet_tau21_wtaDDT'], label="Transformed, #tau_{21}^{DDT}", linecolor=rp.colours[1], markercolor=rp.colours[1], markerstyle=20, legend_option='PE')
 
     # Fit
     x1, x2 = min(arr_x), max(arr_x)
@@ -179,7 +179,7 @@ def plot1D (*argv):
 
     # Save
     mkdir('figures/ddt/')
-    c.save('figures/ddt/ddt.pdf')
+    c.save('figures/ddt/ddt_Eva.pdf')
     return
 
 
@@ -228,7 +228,7 @@ def plot2D (*argv):
 
         # Save
         mkdir('figures/ddt')
-        c.save('figures/ddt/ddt_2d.pdf')
+        c.save('figures/ddt/ddt_2d_Eva.pdf')
         pass
     return
 
