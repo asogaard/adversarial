@@ -126,12 +126,8 @@ def main (sig, bkg, treename='jetTree/nominal', shuffle=True, sample=None, seed=
     # Read in data
     branches = None
     selection = 'n{} > 0'.format(COLLECTION)
-    object_selection = {'{0}_JetConstitScaleMomentum_m > 10.0 && {0}_pt > 10.'.format(COLLECTION): JET_FIELDS}
 
-    kwargs = dict(treename=treename, 
-                  branches=branches, 
-                  selection=selection, 
-                  object_selection=object_selection)
+    kwargs = dict(treename=treename, branches=branches, selection=selection)
 
     data_sig = root_numpy.root2array(sig, **kwargs)
     data_bkg = root_numpy.root2array(bkg, **kwargs)
@@ -149,6 +145,10 @@ def main (sig, bkg, treename='jetTree/nominal', shuffle=True, sample=None, seed=
 
     # Rename columns
     data.dtype.names = map(rename, data.dtype.names)
+
+    # Object selection
+    msk = (data['fjet_pt'] > 10.) & (data['fjet_JetConstitScaleMomentum_m'] > 10.)
+    data = data[msk]
 
     # Append rhoDDT field
     data = rfn.append_fields(data, "rhoDDT", np.log(np.square(data['fjet_JetConstitScaleMomentum_m']) / data['fjet_pt']), usemask=False)
