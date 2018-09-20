@@ -17,44 +17,6 @@ from adversarial.profile import profile
 
 # Global variable definition(s)
 COLLECTION = 'AntiKt10LCTopoTrimmedPtFrac5SmallR20JetsCalibSelect'
-JET_FIELDS = [
-    '{}_E',
-    '{}_pt',
-    '{}_phi',
-    '{}_eta',
-    '{}_JetConstitScaleMomentum_eta',
-    '{}_JetConstitScaleMomentum_phi',
-    '{}_JetConstitScaleMomentum_m',
-    '{}_JetConstitScaleMomentum_pt',
-    '{}_JetEMScaleMomentum_eta',
-    '{}_JetEMScaleMomentum_phi',
-    '{}_JetEMScaleMomentum_m',
-    '{}_JetEMScaleMomentum_pt',
-    '{}_GhostArea',
-    '{}_ActiveArea',
-    '{}_VoronoiArea',
-    '{}_ActiveArea4vec_pt',
-    '{}_ActiveArea4vec_eta',
-    '{}_ActiveArea4vec_phi',
-    '{}_ActiveArea4vec_m',
-    '{}_Split12',
-    '{}_Split23',
-    '{}_Split34',
-    '{}_tau1_wta',
-    '{}_tau2_wta',
-    '{}_tau3_wta',
-    '{}_tau21_wta',
-    '{}_tau32_wta',
-    '{}_ECF1',
-    '{}_ECF2',
-    '{}_ECF3',
-    '{}_C2',
-    '{}_D2',
-    '{}_NTrimSubjets',
-    '{}_Nclusters',
-    '{}_nTracks',
-]
-JET_FIELDS = [field.format(COLLECTION) for field in JET_FIELDS]
 
 
 # Utility function(s)
