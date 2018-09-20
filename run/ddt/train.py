@@ -33,7 +33,7 @@ def main (args):
     data, features, _ = load_data(args.input + 'data.h5', train=True, background=True)
 
     # Fill Tau21 profile
-    profile = fill_profile(data, 'fjet_tau21_wta')  # @TEMP: Tau21
+    profile = fill_profile(data, VAR_TAU21)
 
     # Fit profile
     fit = ROOT.TF1('fit', 'pol1', *FIT_RANGE)
