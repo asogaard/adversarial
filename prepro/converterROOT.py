@@ -145,8 +145,8 @@ def main ():
     # Variable names
     var_m      = 'fjet_JetConstitScaleMomentum_m'
     var_pt     = 'fjet_pt'
-    var_rho    = 'fjet_rho'
-    var_rhoDDT = 'fjet_rhoDDT'
+    var_rho    = 'fjet_rho'    # New variable
+    var_rhoDDT = 'fjet_rhoDDT' # New variable
 
     # Object selection
     msk = (data[var_pt] > 10.) & (data[var_m] > 10.) # @TODO: Generalise?
