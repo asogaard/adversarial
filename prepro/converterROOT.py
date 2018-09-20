@@ -122,6 +122,8 @@ def main ():
     sig = glob_sort_list(args.sig)
     bkg = glob_sort_list(args.bkg)
 
+    print "Found {} signal and {} background files.".format(len(sig), len(bkg))
+
     # Read in data
     data_sig = root_numpy.root2array(sig, treename=args.treename)
     data_bkg = root_numpy.root2array(bkg, treename=args.treename)
