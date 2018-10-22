@@ -274,6 +274,9 @@ def main (args):
             # output directory and in the directory for pre-trained classifiers.
             save([args.output, basedir], name, classifier, ret.history)
 
+            # Saving classifier in lwtnn-friendly format.
+            lwtnn_save(classifier, 'nn')
+
         else:
 
             # Load pre-trained classifier
@@ -282,10 +285,6 @@ def main (args):
             pass # end: train/load
         pass
 
-
-    # Saving classifier in lwtnn-friendly format.
-    # --------------------------------------------------------------------------
-    lwtnn_save(classifier, 'nn')
 
 
     # Definitions for adversarial training
@@ -494,6 +493,9 @@ def main (args):
             save([args.output,     basedir],      name,  combined, ret.history)
             save([args.output, adv(basedir)], adv(name), adversary)
 
+            # Saving adversarially trained classifier in lwtnn-friendly format.
+            lwtnn_save(classifier, 'ann')
+
         else:
 
             # Load pre-trained combined _weights_ from file, in order to
@@ -504,11 +506,6 @@ def main (args):
             pass # end: train/load
 
         pass
-
-
-    # Saving adversarially trained classifier in lwtnn-friendly format.
-    # --------------------------------------------------------------------------
-    lwtnn_save(classifier, 'ann')
 
     return 0
 
