@@ -8,6 +8,7 @@ source scripts/utils.sh
 usertarget="" # Default
 username="" # Default
 target=input
+targetfile=data.h5
 source=/eos/atlas/user/a/asogaard/adversarial/data/2018-04-20
 filename=data_1M_10M.h5
 
@@ -28,11 +29,11 @@ if [[ "$(hostname)" == *"lxplus"* ]]; then
 
   # Create a symbolic link
   if [ ! -f "$target/$filename" ] || [ "$source/$filename" ! -ef "$target/$filename" ]; then
-  	print "Creating symlink to $source/$filename in $target/"
+  	print "Creating symlink to $source/$filename as $target/$targetfile"
   	question "Is that OK?" "y"
   	response="$?"
   	if (( "$response" )); then
-  	    ln -s -f $source/$filename $target/
+  	    ln -s -f $source/$filename $target/$targetfile
   	else
   	    warning "Exiting."
   	    return 1
@@ -128,7 +129,7 @@ else
 	    warning "Regular file $filename already exists in $target/. Not overwriting. Make sure it is the right one."
   	elif [ ! -f "$target/$filename" ] || [ "$usertarget/$filename" ! -ef "$target/$filename" ]; then
 	    # Create symlink to data file in default data directory
-	    print "Creating symlink in $target/ to downloaded file $filename."
+	    print "Creating symlink $target/$targetfile to downloaded file $filename."
 	    question "Is that OK?" "y"
 	    response="$?"
 	    if (( "$response" )); then
