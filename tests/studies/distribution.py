@@ -49,10 +49,12 @@ def distribution (data_, args, feat, pt_range, mass_range):
 
     if   feat == 'D2-k#minusNN':
         print "distribution: kNN feature '{}'".format(feat)
-        xmin, xmax = -3.,  4.
-    elif feat == 'D2':
+        xmin, xmax = -1.,  2.
+    elif feat.lower().startswith('d2'):
         print "distribution: D2  feature '{}'".format(feat)
-        xmin, xmax =  0.,  7.
+        xmin, xmax =  0.,  3.
+    elif 'tau21' in feat.lower():
+        xmin, xmax =  0.,  1.
         pass
 
     snap = 0.5  # Snap to nearest multiple in appropriate direction
