@@ -145,7 +145,7 @@ def main (args):
         # Decorations
         c.text(TEXT + [
             "Multijets, training dataset",
-            "Cut on {:s} at #varepsilon_{{sig.}} = 50%".format(latex(var, ROOT=True)),
+            "Cut on {:s} at #varepsilon_{{sig}}^{{rel}} = 50%".format(latex(var, ROOT=True)),
             "p_{{T}} #in  [{:.0f}, {:.0f}] GeV".format(*pt_bin)
         ], qualifier='Simulation Internal')
         c.legend(width=0.25)
