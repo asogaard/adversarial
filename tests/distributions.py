@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # Basic import(s)
-# ...
+import itertools
 
 # Get ROOT to stop hogging the command-line options
 import ROOT
@@ -39,42 +39,56 @@ def main (args):
     data, features, _ = load_data(args.input + 'data.h5', background=True, train=True)
 
     pt_bins = np.linspace(200, 2000, 18 + 1, endpoint=True)
-    pt_bins = zip(pt_bins[:-1], pt_bins[1:])
-    bins = np.linspace(50, 300, (300 - 50) // 10 + 1, endpoint=True)
+    pt_bins = [None] + zip(pt_bins[:-1], pt_bins[1:])
 
-    for pt_bin in pt_bins:
+    vars = ['m', 'pt']
+    for var, pt_bin, log in itertools.product(vars, pt_bins, [True, False]):
 
-        histstyle[True] ['label'] = 'Inclusive'
-        histstyle[False]['label'] = 'p_{{T}} #in  [{:.0f}, {:.0f}] GeV'.format(*pt_bin)
+        if var == 'm':
+            bins = np.linspace(50, 300, (300 - 50) // 10 + 1, endpoint=True)
+        else:
+            bins = np.linspace(200, 2000, (2000 - 200) // 50 + 1, endpoint=True)
+            pass
+
+        histstyle[True] ['label'] = 'Training weight'
+        histstyle[False]['label'] = 'Testing weight'
 
         # Canvas
         c = rp.canvas(batch=True)
 
         # Plots
-        msk = (data['pt'] > pt_bin[0]) & (data['pt'] < pt_bin[1])
-        c.hist(data['m'].values,      bins=bins, weight=data['weight_adv'] .values,      normalise=True, **histstyle[True])
-        c.hist(data['m'].values[msk], bins=bins, weight=data['weight_adv'] .values[msk], normalise=True, **histstyle[False])
-        c.hist(data['m'].values[msk], bins=bins, weight=data['weight_test'].values[msk], normalise=True, label="Testing weight", linewidth=2, linecolor=ROOT.kGreen)
+        if pt_bin is not None:
+            msk = (data['pt'] > pt_bin[0]) & (data['pt'] < pt_bin[1])
+        else:
+            msk = np.ones(data.shape[0], dtype=bool)
+            pass
+
+        if pt_bin is not None:
+            c.hist(data[var].values[msk], bins=bins, weights=data['weight_test'].values[msk], normalise=True, **histstyle[False])
+            c.hist(data[var].values[msk], bins=bins, weights=data['weight_adv'] .values[msk], normalise=True, **histstyle[True])
+            #c.hist(data[var].values,      bins=bins, weights=data['weight_adv'] .values,      normalise=True, **histstyle[True])
+            #c.hist(data[var].values[msk], bins=bins, weights=data['weight_adv'] .values[msk], normalise=True, **histstyle[False])
+            #c.hist(data[var].values[msk], bins=bins, weights=data['weight_test'].values[msk], normalise=True, label="Testing weight", linewidth=2, linecolor=ROOT.kGreen)
+        else:
+            c.hist(data[var].values[msk], bins=bins, weights=data['weight_test'].values[msk], normalise=True, **histstyle[False])
+            c.hist(data[var].values[msk], bins=bins, weights=data['weight_adv'] .values[msk], normalise=True, **histstyle[True])
+            pass
+
 
         # Decorations
+        c.text(TEXT + ["Multijets", "Training dataset"] + (['p_{{T}} #in  [{:.0f}, {:.0f}] GeV'.format(*pt_bin)] if pt_bin is not None else []), qualifier='Simulation Internal')
         c.legend()
-        c.xlabel("Large-#it{R} jet mass [GeV]")
+        c.xlabel("Large-#it{{R}} jet {:s} [GeV]".format('mass' if var == 'm' else 'p_{T}'))
         c.ylabel("Fraction of jets")
+        if log:
+            c.logy()
+            pass
 
         # Save
-        c.save('figures/temp_mass_pT{:.0f}_{:.0f}.pdf'.format(*pt_bin))
+        c.save('figures/weighting_{}{:s}{}.pdf'.format('mass' if var == 'm' else var, '_pT{:.0f}_{:.0f}'.format(*pt_bin) if pt_bin is not None else '', '_log' if log else ''))
         pass
 
     return
-
-
-    # Perform selection  @NOTE: For Rel. 20.7 only
-    #data = data[(data['m']  >  50) & (data['m']  <  300)]
-    #data = data[(data['pt'] > 200) & (data['pt'] < 2000)]
-
-    # Add variables  @NOTE: For Rel. 20.7 only
-    #data['rho']    = pd.Series(np.log(np.square(data['m']) / np.square(data['pt'])), index=data.index)
-    #data['rhoDDT'] = pd.Series(np.log(np.square(data['m']) / data['pt'] / 1.), index=data.index)
 
     data['logm'] = pd.Series(np.log(data['m']), index=data.index)
 
