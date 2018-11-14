@@ -377,7 +377,7 @@ def load_data (path, name='dataset', train=None, test=None, signal=None, backgro
     # Read data from HDF5 file
     data = pd.read_hdf(path, name)
 
-    # @TEMP Subsamples signal by x10
+    # Subsample signal by x10 for testing: 1E+07 -> 1E+06
     np.random.seed(7)
     try:
         msk_test  = data['train'] == 0
